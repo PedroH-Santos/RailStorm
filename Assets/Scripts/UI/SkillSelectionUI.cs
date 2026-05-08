@@ -22,14 +22,17 @@ public class SkillSelectionUI : MonoBehaviour
     public GameObject statRowPrefab;
 
     [Header("Botões")]
-    public Button btnConfirm;
     public Button btnExile;
     public Button btnPass;
     public Button btnRefresh;
+
+    [Header("Badges dos Botões")]
+    public TMP_Text exileCountText;
     public TMP_Text refreshCountText;
 
     [Header("Config")]
     public int maxRefreshes = 2;
+    public int maxExiles = 3;
 
     StarterAssets.PlayerController _playerController;
     StarterAssets.PlayerSkillHandler _skillHandler;
@@ -38,6 +41,7 @@ public class SkillSelectionUI : MonoBehaviour
     List<SkillDefinition> _fullPool = new();
     int _selectedIndex = -1;
     int _refreshesLeft;
+    int _exilesLeft;
 
     Action<SkillDefinition> _onChosen;
     Action _onPassed;
@@ -46,10 +50,10 @@ public class SkillSelectionUI : MonoBehaviour
     {
         panel.SetActive(false);
 
-        //btnConfirm.onClick.AddListener(OnConfirm);
-        //btnExile.onClick.AddListener(OnExile);
-        //btnPass.onClick.AddListener(OnPass);
-        //btnRefresh.onClick.AddListener(OnRefresh);
+        btnExile.onClick.AddListener(OnExile);
+        btnPass.onClick.AddListener(OnPass);
+        btnRefresh.onClick.AddListener(OnRefresh);
+
     }
 
     public void Show(
@@ -67,18 +71,18 @@ public class SkillSelectionUI : MonoBehaviour
         _onChosen = onChosen;
         _onPassed = onPassed;
         _refreshesLeft = maxRefreshes;
+        _exilesLeft = maxExiles;
         _selectedIndex = -1;
 
         panel.SetActive(true);
         Time.timeScale = 0f;
 
-        Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
         RenderCards();
-        //RenderInventory();
-        //RenderStats();
-        //UpdateButtons();
+        RenderInventory();
+        RenderStats();
+        UpdateButtons();
     }
 
     // ── Cards ──────────────────────────────────────────────────────────────
@@ -103,27 +107,13 @@ public class SkillSelectionUI : MonoBehaviour
 
     void OnCardClicked(int index)
     {
-        if (_selectedIndex == index)
-        {
-            OnConfirm();
-            return;
-        }
-
         _selectedIndex = index;
-        RenderCards();
-        //UpdateButtons();
-    }
-
-    // ── Botões ─────────────────────────────────────────────────────────────
-
-    void OnConfirm()
-    {
-        if (_selectedIndex < 0 || _selectedIndex >= _currentOptions.Count) return;
-
         SkillDefinition chosen = _currentOptions[_selectedIndex].skill;
         Close();
         _onChosen?.Invoke(chosen);
     }
+
+    // ── Botões ─────────────────────────────────────────────────────────────
 
     void OnExile()
     {
@@ -161,15 +151,17 @@ public class SkillSelectionUI : MonoBehaviour
     void UpdateButtons()
     {
         bool hasSelection = _selectedIndex >= 0;
-        btnConfirm.interactable = hasSelection;
-        btnExile.interactable = hasSelection;
+        btnExile.interactable = hasSelection && _exilesLeft > 0;
         btnRefresh.interactable = _refreshesLeft > 0;
 
+        // Atualiza badges
+        if (exileCountText != null)
+            exileCountText.text = $"{_exilesLeft}";
+
         if (refreshCountText != null)
-            refreshCountText.text = $"Atualizar ({_refreshesLeft}/{maxRefreshes})";
+            refreshCountText.text = $"{_refreshesLeft}";
     }
 
-    // ── Sorteio para Exile / Refresh ───────────────────────────────────────
 
     SkillCardData DrawReplacement()
     {
@@ -290,8 +282,7 @@ public class SkillSelectionUI : MonoBehaviour
         Time.timeScale = 1f;
         panel.SetActive(false);
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        Cursor.visible = true;
 
     }
 }

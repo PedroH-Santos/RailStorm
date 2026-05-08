@@ -72,6 +72,10 @@ namespace StarterAssets
             _currentT = startT;
             _distance = _currentT * _splineLength;
             _currentSpeed = idleSpeed;
+
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
         }
 
         void Update()

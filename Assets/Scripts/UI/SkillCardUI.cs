@@ -12,7 +12,6 @@ public class SkillCardUI : MonoBehaviour
     public TMP_Text descriptionText;
     public TMP_Text levelText;
     public TMP_Text rarityText;
-    public Button button;
 
     [Header("Seleção")]
     public GameObject selectedBorder;  // outline ou painel que aparece ao selecionar
@@ -24,6 +23,7 @@ public class SkillCardUI : MonoBehaviour
     public Color colorRare = new Color(0.93f, 0.93f, 0.99f);
 
     Action _onClick;
+    Button _selfButton;
 
     public void Setup(SkillCardData data, Action onClick)
     {
@@ -46,8 +46,11 @@ public class SkillCardUI : MonoBehaviour
         if (cardBackground != null)
             cardBackground.color = GetRarityColor(data.skill.weight);
 
-        button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(() => _onClick?.Invoke());
+        if (_selfButton == null)
+            _selfButton = GetComponent<Button>();
+
+        _selfButton.onClick.RemoveAllListeners();
+        _selfButton.onClick.AddListener(() => _onClick?.Invoke());
 
         SetSelected(false);
     }
