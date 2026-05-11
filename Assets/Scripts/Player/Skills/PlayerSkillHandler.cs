@@ -11,6 +11,8 @@ namespace StarterAssets
 
         Dictionary<SkillDefinition, int> _skillLevels = new();
         public IReadOnlyDictionary<SkillDefinition, int> AcquiredSkills => _skillLevels;
+        public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
+
 
         void Awake()
         {
@@ -103,5 +105,13 @@ namespace StarterAssets
         }
 
         public bool HasMechanic(MechanicType mechanic) => UnlockedMechanics.Contains(mechanic);
+
+        public void ExileSkill(SkillDefinition skill)
+        {
+            ExiledSkills.Add(skill);
+            Debug.Log($"[Skills] {skill.skillName} foi exilada permanentemente.");
+        }
+        public bool IsExiled(SkillDefinition skill) => ExiledSkills.Contains(skill);
+
     }
 }

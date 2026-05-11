@@ -49,60 +49,10 @@ public class SkillOrb : MonoBehaviour
         var handler = player.GetComponent<StarterAssets.PlayerSkillHandler>();
         var controller = player.GetComponent<StarterAssets.PlayerController>();
 
-        List<SkillCardData> drawn = DrawSkills(handler);
+        List<SkillCardData> drawn = SkillDrawer.Draw(skillPool, handler, skillChoices);
 
-        skillUI.Show(
-            drawn,
-            skillPool,
-            controller,
-            handler,
-            OnSkillChosen,
-            OnPassed
-        );
-
+        skillUI.Show(drawn, skillPool, controller, handler, OnSkillChosen, OnPassed);
         _active = false;
-    }
-
-    List<SkillCardData> DrawSkills(StarterAssets.PlayerSkillHandler handler)
-    {
-        List<SkillDefinition> newSkills = skillPool
-            .Where(s => !handler.HasSkill(s))
-            .ToList();
-
-        List<SkillDefinition> upgradeable = skillPool
-            .Where(s => handler.CanLevelUp(s))
-            .ToList();
-
-        List<SkillCardData> candidates = new();
-
-        foreach (var s in newSkills)
-            candidates.Add(new SkillCardData(s, handler.GetSkillLevel(s) + 1, s.weight));
-
-        foreach (var s in upgradeable)
-            candidates.Add(new SkillCardData(s, handler.GetSkillLevel(s) + 1, s.weight));
-
-        List<SkillCardData> result = new();
-        List<SkillCardData> remaining = new(candidates);
-
-        for (int i = 0; i < skillChoices && remaining.Count > 0; i++)
-        {
-            float totalWeight = remaining.Sum(c => c.weight);
-            float roll = Random.Range(0f, totalWeight);
-            float cumulative = 0f;
-
-            for (int j = 0; j < remaining.Count; j++)
-            {
-                cumulative += remaining[j].weight;
-                if (roll <= cumulative)
-                {
-                    result.Add(remaining[j]);
-                    remaining.RemoveAt(j);
-                    break;
-                }
-            }
-        }
-
-        return result;
     }
 
     void OnSkillChosen(SkillDefinition skill)

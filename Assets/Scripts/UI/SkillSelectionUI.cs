@@ -9,6 +9,7 @@ public class SkillSelectionUI : MonoBehaviour
 {
     [Header("Painéis")]
     public GameObject panel;
+    public Image gameBackground;
 
     [Header("Cards de melhoria")]
     public List<SkillCardUI> cards;
@@ -34,14 +35,18 @@ public class SkillSelectionUI : MonoBehaviour
     public int maxRefreshes = 2;
     public int maxExiles = 3;
 
+    [Header("BackGround")]
+    Color _normalBgColor;
+    Color _exileBgColor = new Color(0.6f, 0f, 0f, 0.85f);
+
     StarterAssets.PlayerController _playerController;
     StarterAssets.PlayerSkillHandler _skillHandler;
 
     List<SkillCardData> _currentOptions = new();
     List<SkillDefinition> _fullPool = new();
-    int _selectedIndex = -1;
     int _refreshesLeft;
     int _exilesLeft;
+    bool _exileMode = false;
 
     Action<SkillDefinition> _onChosen;
     Action _onPassed;
@@ -53,6 +58,13 @@ public class SkillSelectionUI : MonoBehaviour
         btnExile.onClick.AddListener(OnExile);
         btnPass.onClick.AddListener(OnPass);
         btnRefresh.onClick.AddListener(OnRefresh);
+
+        if (gameBackground != null)
+        {
+            gameBackground.gameObject.SetActive(false);
+            _normalBgColor = gameBackground.color;
+        }
+
 
     }
 
@@ -72,13 +84,14 @@ public class SkillSelectionUI : MonoBehaviour
         _onPassed = onPassed;
         _refreshesLeft = maxRefreshes;
         _exilesLeft = maxExiles;
-        _selectedIndex = -1;
-
+        _exileMode = false;
         panel.SetActive(true);
+        gameBackground.gameObject.SetActive(true);
         Time.timeScale = 0f;
 
         Cursor.visible = true;
 
+        SetBackground(false);
         RenderCards();
         RenderInventory();
         RenderStats();
@@ -96,7 +109,6 @@ public class SkillSelectionUI : MonoBehaviour
                 int captured = i;
                 cards[i].gameObject.SetActive(true);
                 cards[i].Setup(_currentOptions[i], () => OnCardClicked(captured));
-                cards[i].SetSelected(i == _selectedIndex);
             }
             else
             {
@@ -107,26 +119,39 @@ public class SkillSelectionUI : MonoBehaviour
 
     void OnCardClicked(int index)
     {
-        _selectedIndex = index;
-        SkillDefinition chosen = _currentOptions[_selectedIndex].skill;
-        Close();
-        _onChosen?.Invoke(chosen);
+        if (_exileMode)
+        {
+            _exilesLeft--;
+            _exileMode = false;
+            SetBackground(false);
+
+            SkillDefinition exiled = _currentOptions[index].skill;
+            _skillHandler.ExileSkill(exiled);
+            _currentOptions.RemoveAt(index);
+
+            SkillCardData replacement = DrawReplacement();
+            if (replacement != null)
+                _currentOptions.Add(replacement);
+
+            RenderCards();
+            UpdateButtons();
+        }
+        else
+        {
+            SkillDefinition chosen = _currentOptions[index].skill;
+            Close();
+            _onChosen?.Invoke(chosen);
+        }
     }
 
     // ── Botões ─────────────────────────────────────────────────────────────
 
     void OnExile()
     {
-        if (_selectedIndex < 0 || _selectedIndex >= _currentOptions.Count) return;
-
-        _currentOptions.RemoveAt(_selectedIndex);
-        _selectedIndex = -1;
-
-        SkillCardData replacement = DrawReplacement();
-        if (replacement != null)
-            _currentOptions.Add(replacement);
-
-        RenderCards();
+        if (_exilesLeft <= 0) return;
+        Debug.Log("IRA EXILAR");
+        _exileMode = !_exileMode;
+        SetBackground(_exileMode);
         UpdateButtons();
     }
 
@@ -141,7 +166,6 @@ public class SkillSelectionUI : MonoBehaviour
         if (_refreshesLeft <= 0) return;
 
         _refreshesLeft--;
-        _selectedIndex = -1;
         _currentOptions = DrawNewOptions(cards.Count);
 
         RenderCards();
@@ -150,8 +174,7 @@ public class SkillSelectionUI : MonoBehaviour
 
     void UpdateButtons()
     {
-        bool hasSelection = _selectedIndex >= 0;
-        btnExile.interactable = hasSelection && _exilesLeft > 0;
+        btnExile.interactable = _exilesLeft > 0;
         btnRefresh.interactable = _refreshesLeft > 0;
 
         // Atualiza badges
@@ -162,64 +185,21 @@ public class SkillSelectionUI : MonoBehaviour
             refreshCountText.text = $"{_refreshesLeft}";
     }
 
-
+    void SetBackground(bool exileMode)
+    {
+        if (gameBackground == null) return;
+        gameBackground.color = exileMode ? _exileBgColor : _normalBgColor;
+    }
     SkillCardData DrawReplacement()
     {
-        HashSet<string> inUse = new(_currentOptions.Select(o => o.skill.name));
-
-        List<SkillDefinition> candidates = _fullPool
-            .Where(s => !inUse.Contains(s.name))
-            .Where(s => _skillHandler.GetSkillLevel(s) == 0 || _skillHandler.CanLevelUp(s))
-            .ToList();
-
-        if (candidates.Count == 0) return null;
-
-        float total = candidates.Sum(s => s.weight);
-        float roll = UnityEngine.Random.Range(0f, total);
-        float acc = 0f;
-
-        foreach (var s in candidates)
-        {
-            acc += s.weight;
-            if (roll <= acc)
-            {
-                int current = _skillHandler.GetSkillLevel(s);
-                return new SkillCardData(s, current + 1, s.weight);
-            }
-        }
-
-        return null;
+        var inUse = _currentOptions.Select(o => o.skill);
+        var result = SkillDrawer.Draw(_fullPool, _skillHandler, 1, inUse);
+        return result.Count > 0 ? result[0] : null;
     }
 
     List<SkillCardData> DrawNewOptions(int count)
     {
-        List<SkillDefinition> candidates = _fullPool
-            .Where(s => _skillHandler.GetSkillLevel(s) == 0 || _skillHandler.CanLevelUp(s))
-            .ToList();
-
-        List<SkillCardData> result = new();
-        List<SkillDefinition> remaining = new(candidates);
-
-        for (int i = 0; i < count && remaining.Count > 0; i++)
-        {
-            float total = remaining.Sum(s => s.weight);
-            float roll = UnityEngine.Random.Range(0f, total);
-            float acc = 0f;
-
-            for (int j = 0; j < remaining.Count; j++)
-            {
-                acc += remaining[j].weight;
-                if (roll <= acc)
-                {
-                    int current = _skillHandler.GetSkillLevel(remaining[j]);
-                    result.Add(new SkillCardData(remaining[j], current + 1, remaining[j].weight));
-                    remaining.RemoveAt(j);
-                    break;
-                }
-            }
-        }
-
-        return result;
+        return SkillDrawer.Draw(_fullPool, _skillHandler, count);
     }
 
     // ── Inventário ─────────────────────────────────────────────────────────
@@ -281,6 +261,7 @@ public class SkillSelectionUI : MonoBehaviour
     {
         Time.timeScale = 1f;
         panel.SetActive(false);
+        gameBackground.gameObject.SetActive(false);
 
         Cursor.visible = true;
 
