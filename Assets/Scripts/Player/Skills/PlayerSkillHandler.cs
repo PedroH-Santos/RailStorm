@@ -13,6 +13,8 @@ namespace StarterAssets
         public IReadOnlyDictionary<SkillDefinition, int> AcquiredSkills => _skillLevels;
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
 
+        [Header("Luck")]
+        [Range(0f, 100f)] public float luckPercent = 0f;
 
         void Awake()
         {

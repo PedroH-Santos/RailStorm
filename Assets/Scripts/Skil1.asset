@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillName: Skill1
   icon: {fileID: 0}
-  weight: 0.1
+  rarity: 0
   skillType: 0
   statTarget: 0
   mechanicType: 0

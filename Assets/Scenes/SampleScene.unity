@@ -3309,6 +3309,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c655cb30b954c2049a87322abd4a8bec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StarterAssets.PlayerSkillHandler
+  luckPercent: 0
 --- !u!1 &337756826
 GameObject:
   m_ObjectHideFlags: 0

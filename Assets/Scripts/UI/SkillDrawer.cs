@@ -9,6 +9,9 @@ public static class SkillDrawer
     /// Sorteia `count` skills do pool, excluindo exiladas, 
     /// já adquiridas no máximo, e opcionalmente as que já estão em uso.
     /// </summary>
+    /// 
+
+
     public static List<SkillCardData> Draw(
         List<SkillDefinition> pool,
         PlayerSkillHandler handler,
@@ -30,17 +33,17 @@ public static class SkillDrawer
 
         for (int i = 0; i < count && remaining.Count > 0; i++)
         {
-            float total = remaining.Sum(s => s.weight);
+            float total = remaining.Sum(s => s.GetWeight(handler.luckPercent));
             float roll = Random.Range(0f, total);
             float acc = 0f;
 
             for (int j = 0; j < remaining.Count; j++)
             {
-                acc += remaining[j].weight;
+                acc += remaining[j].GetWeight(handler.luckPercent);
                 if (roll <= acc)
                 {
                     int current = handler.GetSkillLevel(remaining[j]);
-                    result.Add(new SkillCardData(remaining[j], current + 1, remaining[j].weight));
+                    result.Add(new SkillCardData(remaining[j], current + 1));
                     remaining.RemoveAt(j);
                     break;
                 }

@@ -14,7 +14,7 @@ public class SkillCardUI : MonoBehaviour
     public TMP_Text rarityText;
 
     [Header("Seleção")]
-    public GameObject selectedBorder;  // outline ou painel que aparece ao selecionar
+    public GameObject selectedBorder;  
     public Image cardBackground;
 
     [Header("Cores de raridade")]
@@ -38,13 +38,13 @@ public class SkillCardUI : MonoBehaviour
             : $"Lv {current} → {data.targetLevel}";
 
         if (rarityText != null)
-            rarityText.text = GetRarityLabel(data.skill.weight);
+            rarityText.text = GetRarityLabel(data.skill.rarity);
 
         if (data.skill.icon != null && iconImage != null)
             iconImage.sprite = data.skill.icon;
 
         if (cardBackground != null)
-            cardBackground.color = GetRarityColor(data.skill.weight);
+            cardBackground.color = GetRarityColor(data.skill.rarity);
 
         if (_selfButton == null)
             _selfButton = GetComponent<Button>();
@@ -61,18 +61,26 @@ public class SkillCardUI : MonoBehaviour
             selectedBorder.SetActive(selected);
     }
 
-    string GetRarityLabel(float weight)
+    string GetRarityLabel(SkillRarity rarity)
     {
-        if (weight >= 0.7f) return "Comum";
-        if (weight >= 0.4f) return "Incomum";
-        return "Raro";
+        switch (rarity)
+        {
+            case SkillRarity.Common: return "Comum";
+            case SkillRarity.Uncommon: return "Incomum";
+            case SkillRarity.Rare: return "Raro";
+            default: return "Desconhecida";
+        }
     }
 
-    Color GetRarityColor(float weight)
+    Color GetRarityColor(SkillRarity rarity)
     {
-        if (weight >= 0.7f) return colorCommon;
-        if (weight >= 0.4f) return colorUncommon;
-        return colorRare;
+        switch (rarity)
+        {
+            case SkillRarity.Common: return colorCommon;
+            case SkillRarity.Uncommon: return colorUncommon;
+            case SkillRarity.Rare: return colorRare;
+            default: return colorCommon;
+        }
     }
     public void OnPointerClick(PointerEventData eventData)
     {

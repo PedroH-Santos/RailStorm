@@ -28,6 +28,14 @@ public class SkillLevel
     public bool isMultiplier;      
 }
 
+public enum SkillRarity
+{
+    Common,
+    Uncommon,
+    Rare
+}
+
+
 [CreateAssetMenu(fileName = "NewSkill", menuName = "Skills/Skill Definition")]
 public class SkillDefinition : ScriptableObject
 {
@@ -36,7 +44,7 @@ public class SkillDefinition : ScriptableObject
     public Sprite icon;
 
     [Header("Rarity")]
-    [Range(0f, 1f)] public float weight = 0.5f;
+    public SkillRarity rarity;
 
     [Header("Type")]
     public SkillType skillType;
@@ -51,6 +59,36 @@ public class SkillDefinition : ScriptableObject
     public List<SkillLevel> levels = new(); 
 
     public int MaxLevel => levels.Count;
+
+    [Header("Probabilidades Base (%)")]
+    private static float WeightCommon = 70f;
+    private static float WeightUncommon = 20f;
+    private static float WeightRare = 10f;
+
+    public float BaseWeight => rarity switch
+    {
+        SkillRarity.Common => WeightCommon,
+        SkillRarity.Uncommon => WeightUncommon,
+        SkillRarity.Rare => WeightRare,
+        _ => 0f
+    };
+
+    public float GetWeight(float luckPercent)
+    {
+        float luck = luckPercent;
+
+        float common = Mathf.Max(0f, WeightCommon - luck * 0.6f);
+        float uncommon = WeightUncommon + luck * 0.3f;
+        float rare = WeightRare + luck * 0.3f;
+
+        return rarity switch
+        {
+            SkillRarity.Common => common,
+            SkillRarity.Uncommon => uncommon,
+            SkillRarity.Rare => rare,
+            _ => 0f
+        };
+    }
 
     public SkillLevel GetLevel(int level)
     {

@@ -80,12 +80,10 @@ public class SkillCardData
 {
     public SkillDefinition skill;
     public int targetLevel;
-    public float weight;
 
-    public SkillCardData(SkillDefinition skill, int targetLevel, float weight)
+    public SkillCardData(SkillDefinition skill, int targetLevel)
     {
         this.skill = skill;
         this.targetLevel = targetLevel;
-        this.weight = weight;
     }
 }
