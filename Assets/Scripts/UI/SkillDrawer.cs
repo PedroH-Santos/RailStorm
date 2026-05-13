@@ -5,45 +5,67 @@ using StarterAssets;
 
 public static class SkillDrawer
 {
-    /// <summary>
-    /// Sorteia `count` skills do pool, excluindo exiladas, 
-    /// já adquiridas no máximo, e opcionalmente as que já estão em uso.
-    /// </summary>
-    /// 
-
-
     public static List<SkillCardData> Draw(
-        List<SkillDefinition> pool,
-        PlayerSkillHandler handler,
+        List<SkillDefinition> skillPool,
+        List<WeaponDefinition> weaponPool,
+        PlayerSkillHandler skillHandler,
+        CarWeaponHandler weaponHandler,
         int count,
-        IEnumerable<SkillDefinition> exclude = null)
+        IEnumerable<SkillCardData> exclude = null)
     {
-        HashSet<string> excluded = exclude != null
-            ? new HashSet<string>(exclude.Select(s => s.name))
-            : new HashSet<string>();
+        var excludedSkills = new HashSet<string>();
+        var excludedWeapons = new HashSet<string>();
 
-        List<SkillDefinition> candidates = pool
-            .Where(s => !excluded.Contains(s.name))
-            .Where(s => !handler.IsExiled(s))
-            .Where(s => handler.GetSkillLevel(s) == 0 || handler.CanLevelUp(s))
-            .ToList();
+        if (exclude != null)
+        {
+            foreach (var c in exclude)
+            {
+                if (c.drawable is SkillDefinition s) excludedSkills.Add(s.name);
+                if (c.drawable is WeaponDefinition w) excludedWeapons.Add(w.name);
+            }
+        }
 
-        List<SkillCardData> result = new();
-        List<SkillDefinition> remaining = new(candidates);
+        var candidates = new List<SkillCardData>();
+
+        foreach (var s in skillPool)
+        {
+            if (excludedSkills.Contains(s.name)) continue;
+            if (skillHandler.IsExiled(s)) continue;
+            if (skillHandler.GetSkillLevel(s) != 0 && !skillHandler.CanLevelUp(s)) continue;
+
+            int next = skillHandler.GetSkillLevel(s) + 1;
+            candidates.Add(new SkillCardData(s, next));
+        }
+
+        if (weaponPool != null && weaponHandler != null && !weaponHandler.IsFull)
+        {
+            foreach (var w in weaponPool)
+            {
+                if (excludedWeapons.Contains(w.name)) continue;
+                if (weaponHandler.HasWeapon(w)) continue;
+                if (weaponHandler.IsExiled(w)) continue;
+
+                candidates.Add(new SkillCardData(w));
+            }
+        }
+
+        float luck = skillHandler.luckPercent;
+
+        var result = new List<SkillCardData>();
+        var remaining = new List<SkillCardData>(candidates);
 
         for (int i = 0; i < count && remaining.Count > 0; i++)
         {
-            float total = remaining.Sum(s => s.GetWeight(handler.luckPercent));
+            float total = remaining.Sum(c => c.drawable.GetWeight(luck));
             float roll = Random.Range(0f, total);
             float acc = 0f;
 
             for (int j = 0; j < remaining.Count; j++)
             {
-                acc += remaining[j].GetWeight(handler.luckPercent);
+                acc += remaining[j].drawable.GetWeight(luck);
                 if (roll <= acc)
                 {
-                    int current = handler.GetSkillLevel(remaining[j]);
-                    result.Add(new SkillCardData(remaining[j], current + 1));
+                    result.Add(remaining[j]);
                     remaining.RemoveAt(j);
                     break;
                 }

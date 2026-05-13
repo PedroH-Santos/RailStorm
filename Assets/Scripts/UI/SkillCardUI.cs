@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+
 public class SkillCardUI : MonoBehaviour
 {
     [Header("Referências")]
@@ -14,7 +15,7 @@ public class SkillCardUI : MonoBehaviour
     public TMP_Text rarityText;
 
     [Header("Seleção")]
-    public GameObject selectedBorder;  
+    public GameObject selectedBorder;
     public Image cardBackground;
 
     [Header("Cores de raridade")]
@@ -25,26 +26,38 @@ public class SkillCardUI : MonoBehaviour
     Action _onClick;
     Button _selfButton;
 
+
     public void Setup(SkillCardData data, Action onClick)
     {
         _onClick = onClick;
 
-        skillNameText.text = data.skill.skillName;
-        descriptionText.text = data.skill.GetLevel(data.targetLevel).description;
+        IDrawable d = data.drawable;
 
-        int current = data.targetLevel - 1;
-        levelText.text = current == 0
-            ? "Novo"
-            : $"Lv {current} → {data.targetLevel}";
+        skillNameText.text = d.DisplayName;
 
-        if (rarityText != null)
-            rarityText.text = GetRarityLabel(data.skill.rarity);
+        if (iconImage != null && d.Icon != null)
+            iconImage.sprite = d.Icon;
 
-        if (data.skill.icon != null && iconImage != null)
-            iconImage.sprite = data.skill.icon;
+        if (rarityText != null) rarityText.text = GetRarityLabel(d.Rarity);
+        if (cardBackground != null) cardBackground.color = GetRarityColor(d.Rarity);
 
-        if (cardBackground != null)
-            cardBackground.color = GetRarityColor(data.skill.rarity);
+        if (d is SkillDefinition skill)
+        {
+            descriptionText.text = skill.GetLevel(data.targetLevel).description;
+
+            int current = data.targetLevel - 1;
+            levelText.text = current == 0
+                ? "Novo"
+                : $"Lv {current} → {data.targetLevel}";
+        }
+        else if (d is WeaponDefinition weapon)
+        {
+            descriptionText.text = weapon.description != ""
+                ? weapon.description
+                : $"DMG {weapon.damage}  |  {weapon.fireRate:F1}/s  |  Alc. {weapon.range:F0}m";
+
+            levelText.text = "Arma do Carro";
+        }
 
         if (_selfButton == null)
             _selfButton = GetComponent<Button>();
@@ -61,29 +74,22 @@ public class SkillCardUI : MonoBehaviour
             selectedBorder.SetActive(selected);
     }
 
-    string GetRarityLabel(SkillRarity rarity)
-    {
-        switch (rarity)
-        {
-            case SkillRarity.Common: return "Comum";
-            case SkillRarity.Uncommon: return "Incomum";
-            case SkillRarity.Rare: return "Raro";
-            default: return "Desconhecida";
-        }
-    }
 
-    Color GetRarityColor(SkillRarity rarity)
+    string GetRarityLabel(SkillRarity rarity) => rarity switch
     {
-        switch (rarity)
-        {
-            case SkillRarity.Common: return colorCommon;
-            case SkillRarity.Uncommon: return colorUncommon;
-            case SkillRarity.Rare: return colorRare;
-            default: return colorCommon;
-        }
-    }
-    public void OnPointerClick(PointerEventData eventData)
+        SkillRarity.Common => "Comum",
+        SkillRarity.Uncommon => "Incomum",
+        SkillRarity.Rare => "Raro",
+        _ => "Desconhecida"
+    };
+
+    Color GetRarityColor(SkillRarity rarity) => rarity switch
     {
-        _onClick?.Invoke();   
-    }
+        SkillRarity.Common => colorCommon,
+        SkillRarity.Uncommon => colorUncommon,
+        SkillRarity.Rare => colorRare,
+        _ => colorCommon
+    };
+
+    public void OnPointerClick(PointerEventData eventData) => _onClick?.Invoke();
 }

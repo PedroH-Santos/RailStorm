@@ -5,6 +5,16 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SkillSelectionUI  (full replacement)
+//
+// Mudanças em relação ao original:
+//   • Show() recebe weaponPool + CarWeaponHandler.
+//   • OnCardClicked usa pattern matching (is SkillDefinition / is WeaponDefinition)
+//     para rotear Confirm e Exile — sem flag IsWeapon.
+//   • DrawReplacement e OnRefresh passam ambos os pools ao SkillDrawer.
+//   • RenderInventory renderiza skills e armas adquiridas.
+// ─────────────────────────────────────────────────────────────────────────────
 public class SkillSelectionUI : MonoBehaviour
 {
     [Header("Painéis")]
@@ -14,9 +24,13 @@ public class SkillSelectionUI : MonoBehaviour
     [Header("Cards de melhoria")]
     public List<SkillCardUI> cards;
 
-    [Header("Inventário")]
+    [Header("Inventário — Player Skills")]
     public Transform inventorySkillsContainer;
     public GameObject inventorySlotPrefab;
+
+    [Header("Inventário — Car Weapons  (opcional)")]
+    public Transform inventoryWeaponsContainer;
+    public GameObject carWeaponSlotPrefab;
 
     [Header("Atributos")]
     public Transform statsContainer;
@@ -35,26 +49,30 @@ public class SkillSelectionUI : MonoBehaviour
     public int maxRefreshes = 2;
     public int maxExiles = 3;
 
-    [Header("BackGround")]
+    // ── Estado privado ────────────────────────────────────────────────────────
+
     Color _normalBgColor;
-    Color _exileBgColor = new Color(0.6f, 0f, 0f, 0.85f);
+    readonly Color _exileBgColor = new Color(0.6f, 0f, 0f, 0.85f);
 
     StarterAssets.PlayerController _playerController;
     StarterAssets.PlayerSkillHandler _skillHandler;
+    CarWeaponHandler _weaponHandler;
 
     List<SkillCardData> _currentOptions = new();
-    List<SkillDefinition> _fullPool = new();
+    List<SkillDefinition> _fullSkillPool = new();
+    List<WeaponDefinition> _fullWeaponPool = new();
+
     int _refreshesLeft;
     int _exilesLeft;
-    bool _exileMode = false;
+    bool _exileMode;
 
     Action<SkillDefinition> _onChosen;
     Action _onPassed;
 
+
     void Awake()
     {
         panel.SetActive(false);
-
         btnExile.onClick.AddListener(OnExile);
         btnPass.onClick.AddListener(OnPass);
         btnRefresh.onClick.AddListener(OnRefresh);
@@ -64,31 +82,34 @@ public class SkillSelectionUI : MonoBehaviour
             gameBackground.gameObject.SetActive(false);
             _normalBgColor = gameBackground.color;
         }
-
-
     }
+
 
     public void Show(
         List<SkillCardData> options,
-        List<SkillDefinition> fullPool,
+        List<SkillDefinition> fullSkillPool,
+        List<WeaponDefinition> fullWeaponPool,
         StarterAssets.PlayerController playerController,
         StarterAssets.PlayerSkillHandler skillHandler,
+        CarWeaponHandler weaponHandler,
         Action<SkillDefinition> onChosen,
         Action onPassed = null)
     {
         _currentOptions = new List<SkillCardData>(options);
-        _fullPool = fullPool;
+        _fullSkillPool = fullSkillPool;
+        _fullWeaponPool = fullWeaponPool;
         _playerController = playerController;
         _skillHandler = skillHandler;
+        _weaponHandler = weaponHandler;
         _onChosen = onChosen;
         _onPassed = onPassed;
         _refreshesLeft = maxRefreshes;
         _exilesLeft = maxExiles;
         _exileMode = false;
-        panel.SetActive(true);
-        gameBackground.gameObject.SetActive(true);
-        Time.timeScale = 0f;
 
+        panel.SetActive(true);
+        if (gameBackground != null) gameBackground.gameObject.SetActive(true);
+        Time.timeScale = 0f;
         Cursor.visible = true;
 
         SetBackground(false);
@@ -98,7 +119,6 @@ public class SkillSelectionUI : MonoBehaviour
         UpdateButtons();
     }
 
-    // ── Cards ──────────────────────────────────────────────────────────────
 
     void RenderCards()
     {
@@ -119,14 +139,19 @@ public class SkillSelectionUI : MonoBehaviour
 
     void OnCardClicked(int index)
     {
+        SkillCardData data = _currentOptions[index];
+
         if (_exileMode)
         {
             _exilesLeft--;
             _exileMode = false;
             SetBackground(false);
 
-            SkillDefinition exiled = _currentOptions[index].skill;
-            _skillHandler.ExileSkill(exiled);
+            if (data.drawable is SkillDefinition skill)
+                _skillHandler.ExileSkill(skill);
+            else if (data.drawable is WeaponDefinition weapon)
+                _weaponHandler?.ExileWeapon(weapon);
+
             _currentOptions.RemoveAt(index);
 
             SkillCardData replacement = DrawReplacement();
@@ -138,18 +163,23 @@ public class SkillSelectionUI : MonoBehaviour
         }
         else
         {
-            SkillDefinition chosen = _currentOptions[index].skill;
-            Close();
-            _onChosen?.Invoke(chosen);
+            if (data.drawable is SkillDefinition chosenSkill)
+            {
+                Close();
+                _onChosen?.Invoke(chosenSkill);
+            }
+            else if (data.drawable is WeaponDefinition chosenWeapon)
+            {
+                Close();
+                _weaponHandler?.AcquireWeapon(chosenWeapon);
+            }
         }
     }
 
-    // ── Botões ─────────────────────────────────────────────────────────────
 
     void OnExile()
     {
         if (_exilesLeft <= 0) return;
-        Debug.Log("IRA EXILAR");
         _exileMode = !_exileMode;
         SetBackground(_exileMode);
         UpdateButtons();
@@ -166,7 +196,10 @@ public class SkillSelectionUI : MonoBehaviour
         if (_refreshesLeft <= 0) return;
 
         _refreshesLeft--;
-        _currentOptions = DrawNewOptions(cards.Count);
+        _currentOptions = SkillDrawer.Draw(
+            _fullSkillPool, _fullWeaponPool,
+            _skillHandler, _weaponHandler,
+            cards.Count);
 
         RenderCards();
         UpdateButtons();
@@ -177,12 +210,8 @@ public class SkillSelectionUI : MonoBehaviour
         btnExile.interactable = _exilesLeft > 0;
         btnRefresh.interactable = _refreshesLeft > 0;
 
-        // Atualiza badges
-        if (exileCountText != null)
-            exileCountText.text = $"{_exilesLeft}";
-
-        if (refreshCountText != null)
-            refreshCountText.text = $"{_refreshesLeft}";
+        if (exileCountText != null) exileCountText.text = $"{_exilesLeft}";
+        if (refreshCountText != null) refreshCountText.text = $"{_refreshesLeft}";
     }
 
     void SetBackground(bool exileMode)
@@ -190,19 +219,19 @@ public class SkillSelectionUI : MonoBehaviour
         if (gameBackground == null) return;
         gameBackground.color = exileMode ? _exileBgColor : _normalBgColor;
     }
+
+
     SkillCardData DrawReplacement()
     {
-        var inUse = _currentOptions.Select(o => o.skill);
-        var result = SkillDrawer.Draw(_fullPool, _skillHandler, 1, inUse);
+        var result = SkillDrawer.Draw(
+            _fullSkillPool, _fullWeaponPool,
+            _skillHandler, _weaponHandler,
+            1,
+            _currentOptions);
+
         return result.Count > 0 ? result[0] : null;
     }
 
-    List<SkillCardData> DrawNewOptions(int count)
-    {
-        return SkillDrawer.Draw(_fullPool, _skillHandler, count);
-    }
-
-    // ── Inventário ─────────────────────────────────────────────────────────
 
     void RenderInventory()
     {
@@ -211,14 +240,23 @@ public class SkillSelectionUI : MonoBehaviour
 
         foreach (var pair in _skillHandler.AcquiredSkills)
         {
-            GameObject slot = Instantiate(inventorySlotPrefab, inventorySkillsContainer);
-            var slotUI = slot.GetComponent<InventorySlotUI>();
-            if (slotUI != null)
-                slotUI.Setup(pair.Key, pair.Value);
+            GameObject go = Instantiate(inventorySlotPrefab, inventorySkillsContainer);
+            go.GetComponent<InventorySlotUI>()?.Setup(pair.Key, pair.Value);
+        }
+
+        if (inventoryWeaponsContainer == null || carWeaponSlotPrefab == null || _weaponHandler == null)
+            return;
+
+        foreach (Transform child in inventoryWeaponsContainer)
+            Destroy(child.gameObject);
+
+        foreach (var w in _weaponHandler.AcquiredWeapons)
+        {
+            GameObject go = Instantiate(carWeaponSlotPrefab, inventoryWeaponsContainer);
+            //go.GetComponent<CarWeaponSlotUI>()?.Setup(w);
         }
     }
 
-    // ── Atributos ──────────────────────────────────────────────────────────
 
     void RenderStats()
     {
@@ -239,31 +277,33 @@ public class SkillSelectionUI : MonoBehaviour
         foreach (var pair in _skillHandler.AcquiredSkills)
             if (pair.Key.skillType == SkillType.Stat)
                 AddStat(pair.Key.skillName, $"Lv {pair.Value}/{pair.Key.MaxLevel}");
+
+        if (_weaponHandler != null && _weaponHandler.AcquiredWeapons.Count > 0)
+        {
+            AddDivider();
+            foreach (var w in _weaponHandler.AcquiredWeapons)
+                AddStat(w.weaponName, $"DMG {w.damage}");
+        }
     }
 
     void AddStat(string label, string value)
     {
         GameObject row = Instantiate(statRowPrefab, statsContainer);
-        var rowUI = row.GetComponent<StatRowUI>();
-        if (rowUI != null) rowUI.Setup(label, value);
+        row.GetComponent<StatRowUI>()?.Setup(label, value);
     }
 
     void AddDivider()
     {
         GameObject row = Instantiate(statRowPrefab, statsContainer);
-        var rowUI = row.GetComponent<StatRowUI>();
-        if (rowUI != null) rowUI.SetAsDivider();
+        row.GetComponent<StatRowUI>()?.SetAsDivider();
     }
 
-    // ── Fechar ─────────────────────────────────────────────────────────────
 
     void Close()
     {
         Time.timeScale = 1f;
         panel.SetActive(false);
-        gameBackground.gameObject.SetActive(false);
-
+        if (gameBackground != null) gameBackground.gameObject.SetActive(false);
         Cursor.visible = true;
-
     }
 }

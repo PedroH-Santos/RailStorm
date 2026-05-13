@@ -3032,6 +3032,7 @@ GameObject:
   - component: {fileID: 337154711}
   - component: {fileID: 337154712}
   - component: {fileID: 337154713}
+  - component: {fileID: 337154714}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -3310,6 +3311,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StarterAssets.PlayerSkillHandler
   luckPercent: 0
+--- !u!114 &337154714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 337154703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 280869bb7f399ab46903c906b08b8471, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CarWeaponHandler
+  maxWeapons: 3
 --- !u!1 &337756826
 GameObject:
   m_ObjectHideFlags: 0
@@ -15641,6 +15655,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4b171c6f8bb01fd41a9568864890c4d2, type: 2}
   - {fileID: 11400000, guid: eda7ab93cfc73ae46b641f535e8622f0, type: 2}
   - {fileID: 11400000, guid: 93414a5ba07bf8042a4bb203da7291d7, type: 2}
+  weaponPool:
+  - {fileID: 11400000, guid: 1071b52c168c1724c846407d4ce79602, type: 2}
+  - {fileID: 11400000, guid: b23b5af01712b8d4f83ffef8d4d92d02, type: 2}
+  - {fileID: 11400000, guid: 71d0227258b539b46810d1b00626b963, type: 2}
   player: {fileID: 337154709}
   skillUI: {fileID: 2098283831}
 --- !u!135 &1531225252
@@ -21642,6 +21660,8 @@ MonoBehaviour:
   - {fileID: 1963364759}
   inventorySkillsContainer: {fileID: 1265997441}
   inventorySlotPrefab: {fileID: 46229145}
+  inventoryWeaponsContainer: {fileID: 1265997441}
+  carWeaponSlotPrefab: {fileID: 46229145}
   statsContainer: {fileID: 191153969}
   statRowPrefab: {fileID: 1984854555}
   btnExile: {fileID: 568044724}

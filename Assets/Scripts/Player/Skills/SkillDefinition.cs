@@ -24,8 +24,8 @@ public enum MechanicType
 public class SkillLevel
 {
     [TextArea] public string description;
-    public float statValue;        
-    public bool isMultiplier;      
+    public float statValue;
+    public bool isMultiplier;
 }
 
 public enum SkillRarity
@@ -37,7 +37,7 @@ public enum SkillRarity
 
 
 [CreateAssetMenu(fileName = "NewSkill", menuName = "Skills/Skill Definition")]
-public class SkillDefinition : ScriptableObject
+public class SkillDefinition : ScriptableObject, IDrawable
 {
     [Header("Info")]
     public string skillName = "Nova Skill";
@@ -56,14 +56,17 @@ public class SkillDefinition : ScriptableObject
     public MechanicType mechanicType;
 
     [Header("Levels")]
-    public List<SkillLevel> levels = new(); 
+    public List<SkillLevel> levels = new();
 
     public int MaxLevel => levels.Count;
 
-    [Header("Probabilidades Base (%)")]
-    private static float WeightCommon = 70f;
-    private static float WeightUncommon = 20f;
-    private static float WeightRare = 10f;
+    public string DisplayName => skillName;
+    public Sprite Icon => icon;
+    public SkillRarity Rarity => rarity;
+
+    static readonly float WeightCommon = 70f;
+    static readonly float WeightUncommon = 20f;
+    static readonly float WeightRare = 10f;
 
     public float BaseWeight => rarity switch
     {
@@ -75,11 +78,9 @@ public class SkillDefinition : ScriptableObject
 
     public float GetWeight(float luckPercent)
     {
-        float luck = luckPercent;
-
-        float common = Mathf.Max(0f, WeightCommon - luck * 0.6f);
-        float uncommon = WeightUncommon + luck * 0.3f;
-        float rare = WeightRare + luck * 0.3f;
+        float common = Mathf.Max(0f, WeightCommon - luckPercent * 0.6f);
+        float uncommon = WeightUncommon + luckPercent * 0.3f;
+        float rare = WeightRare + luckPercent * 0.3f;
 
         return rarity switch
         {
