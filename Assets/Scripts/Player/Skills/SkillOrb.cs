@@ -31,7 +31,7 @@ public class SkillOrb : MonoBehaviour
 
     void Update()
     {
-        if (!_active) return;
+        // if (!_active) return;
 
         float dist = Vector3.Distance(player.position, transform.position);
         _playerInRange = dist <= interactRadius;

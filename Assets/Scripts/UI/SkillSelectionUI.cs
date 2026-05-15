@@ -1,20 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SkillSelectionUI  (full replacement)
-//
-// Mudanças em relação ao original:
-//   • Show() recebe weaponPool + CarWeaponHandler.
-//   • OnCardClicked usa pattern matching (is SkillDefinition / is WeaponDefinition)
-//     para rotear Confirm e Exile — sem flag IsWeapon.
-//   • DrawReplacement e OnRefresh passam ambos os pools ao SkillDrawer.
-//   • RenderInventory renderiza skills e armas adquiridas.
-// ─────────────────────────────────────────────────────────────────────────────
 public class SkillSelectionUI : MonoBehaviour
 {
     [Header("Painéis")]
@@ -24,13 +13,8 @@ public class SkillSelectionUI : MonoBehaviour
     [Header("Cards de melhoria")]
     public List<SkillCardUI> cards;
 
-    [Header("Inventário — Player Skills")]
-    public Transform inventorySkillsContainer;
-    public GameObject inventorySlotPrefab;
-
-    [Header("Inventário — Car Weapons  (opcional)")]
-    public Transform inventoryWeaponsContainer;
-    public GameObject carWeaponSlotPrefab;
+    [Header("Inventário")]
+    public InventoryUI inventoryUI;
 
     [Header("Atributos")]
     public Transform statsContainer;
@@ -49,7 +33,6 @@ public class SkillSelectionUI : MonoBehaviour
     public int maxRefreshes = 2;
     public int maxExiles = 3;
 
-    // ── Estado privado ────────────────────────────────────────────────────────
 
     Color _normalBgColor;
     readonly Color _exileBgColor = new Color(0.6f, 0f, 0f, 0.85f);
@@ -114,9 +97,10 @@ public class SkillSelectionUI : MonoBehaviour
 
         SetBackground(false);
         RenderCards();
-        RenderInventory();
         RenderStats();
         UpdateButtons();
+
+        inventoryUI?.gameObject.SetActive(true);
     }
 
 
@@ -221,43 +205,6 @@ public class SkillSelectionUI : MonoBehaviour
     }
 
 
-    SkillCardData DrawReplacement()
-    {
-        var result = SkillDrawer.Draw(
-            _fullSkillPool, _fullWeaponPool,
-            _skillHandler, _weaponHandler,
-            1,
-            _currentOptions);
-
-        return result.Count > 0 ? result[0] : null;
-    }
-
-
-    void RenderInventory()
-    {
-        foreach (Transform child in inventorySkillsContainer)
-            Destroy(child.gameObject);
-
-        foreach (var pair in _skillHandler.AcquiredSkills)
-        {
-            GameObject go = Instantiate(inventorySlotPrefab, inventorySkillsContainer);
-            go.GetComponent<InventorySlotUI>()?.Setup(pair.Key, pair.Value);
-        }
-
-        if (inventoryWeaponsContainer == null || carWeaponSlotPrefab == null || _weaponHandler == null)
-            return;
-
-        foreach (Transform child in inventoryWeaponsContainer)
-            Destroy(child.gameObject);
-
-        foreach (var w in _weaponHandler.AcquiredWeapons)
-        {
-            GameObject go = Instantiate(carWeaponSlotPrefab, inventoryWeaponsContainer);
-            //go.GetComponent<CarWeaponSlotUI>()?.Setup(w);
-        }
-    }
-
-
     void RenderStats()
     {
         foreach (Transform child in statsContainer)
@@ -277,27 +224,31 @@ public class SkillSelectionUI : MonoBehaviour
         foreach (var pair in _skillHandler.AcquiredSkills)
             if (pair.Key.skillType == SkillType.Stat)
                 AddStat(pair.Key.skillName, $"Lv {pair.Value}/{pair.Key.MaxLevel}");
-
-        if (_weaponHandler != null && _weaponHandler.AcquiredWeapons.Count > 0)
-        {
-            AddDivider();
-            foreach (var w in _weaponHandler.AcquiredWeapons)
-                AddStat(w.weaponName, $"DMG {w.damage}");
-        }
     }
 
     void AddStat(string label, string value)
     {
-        GameObject row = Instantiate(statRowPrefab, statsContainer);
+        var row = Instantiate(statRowPrefab, statsContainer);
         row.GetComponent<StatRowUI>()?.Setup(label, value);
     }
 
     void AddDivider()
     {
-        GameObject row = Instantiate(statRowPrefab, statsContainer);
+        var row = Instantiate(statRowPrefab, statsContainer);
         row.GetComponent<StatRowUI>()?.SetAsDivider();
     }
 
+
+    SkillCardData DrawReplacement()
+    {
+        var result = SkillDrawer.Draw(
+            _fullSkillPool, _fullWeaponPool,
+            _skillHandler, _weaponHandler,
+            1,
+            _currentOptions);
+
+        return result.Count > 0 ? result[0] : null;
+    }
 
     void Close()
     {

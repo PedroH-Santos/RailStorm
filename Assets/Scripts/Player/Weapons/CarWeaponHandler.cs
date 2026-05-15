@@ -2,17 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CarWeaponHandler
-//
-// Espelha PlayerSkillHandler para armas do carro:
-//   • AcquiredWeapons — lista de armas adquiridas (cap: maxWeapons = 3)
-//   • ExiledWeapons   — armas banidas permanentemente (nunca mais oferecidas)
-//   • ExileWeapon / IsExiled — mesmo padrão de PlayerSkillHandler
-//   • IsFull / HasWeapon — verificações usadas pelo SkillDrawer
-//
-// Attach no mesmo GameObject que PlayerSkillHandler (o Player).
-// ─────────────────────────────────────────────────────────────────────────────
 public class CarWeaponHandler : MonoBehaviour
 {
     [Header("Config")]

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
@@ -6,24 +5,26 @@ using TMPro;
 
 public class InventoryUI : MonoBehaviour
 {
-    [Header("Prefabs")]
-    public GameObject sectionPrefab;
-    public GameObject slotPrefab;
+    [Header("Referências da hierarquia")]
+    public Transform entitiesContainer;  
 
-    [Header("Layout")]
-    public Transform sectionsParent;
+    [Header("Slot prefab")]
+    public GameObject slotPrefab;
 
     [Header("Armas")]
     public CarWeaponHandler weaponHandler;
 
-    readonly Dictionary<string, (InventorySection section, GameObject root)> _sections = new();
+    const string SectionWeapons = "Weapons";
+
+    readonly Dictionary<string, InventorySection> _sections = new();
+
 
     void Awake()
     {
         if (weaponHandler == null)
             weaponHandler = FindFirstObjectByType<CarWeaponHandler>();
 
-        RegisterSection("Armas");
+        RegisterSection(SectionWeapons);
     }
 
     void OnEnable()
@@ -41,38 +42,44 @@ public class InventoryUI : MonoBehaviour
     }
 
 
-    public void RegisterSection(string sectionName)
-    {
-        if (_sections.ContainsKey(sectionName)) return;
-
-        var go = Instantiate(sectionPrefab, sectionsParent);
-        var label = go.transform.Find("SectionLabel")?.GetComponent<TextMeshProUGUI>();
-        var slotsParent = go.transform.Find("SlotsContainer");
-
-        if (label != null) label.text = sectionName;
-
-        var section = new InventorySection(sectionName, slotsParent, slotPrefab);
-        _sections[sectionName] = (section, go);
-    }
-
     public void SetSection(string sectionName, IReadOnlyList<InventoryEntry> entries)
     {
-        if (!_sections.ContainsKey(sectionName))
-            RegisterSection(sectionName);
-
-        _sections[sectionName].section.SetEntries(entries);
+        if (_sections.TryGetValue(sectionName, out var section))
+            section.SetEntries(entries);
+        else
+            Debug.LogWarning($"[InventoryUI] Seção '{sectionName}' não registrada. Declare-a no Awake.");
     }
 
     public void HideSection(string sectionName)
     {
-        if (_sections.TryGetValue(sectionName, out var e)) e.root.SetActive(false);
+        if (_sections.TryGetValue(sectionName, out var s)) s.Root.SetActive(false);
     }
 
     public void ShowSection(string sectionName)
     {
-        if (_sections.TryGetValue(sectionName, out var e)) e.root.SetActive(true);
+        if (_sections.TryGetValue(sectionName, out var s)) s.Root.SetActive(true);
     }
 
+    void RegisterSection(string sectionName)
+    {
+        if (_sections.ContainsKey(sectionName)) return;
+
+        var sectionRoot = entitiesContainer.Find(sectionName);
+        if (sectionRoot == null)
+        {
+            Debug.LogError($"[InventoryUI] Nó '{sectionName}' não encontrado em EntitiesContainer.");
+            return;
+        }
+
+        var container = sectionRoot.Find("Container");
+        if (container == null)
+        {
+            Debug.LogError($"[InventoryUI] Nó 'Container' não encontrado dentro de '{sectionName}'.");
+            return;
+        }
+
+        _sections[sectionName] = new InventorySection(sectionName, container, slotPrefab, sectionRoot.gameObject);
+    }
 
     void RefreshWeapons()
     {
@@ -81,11 +88,8 @@ public class InventoryUI : MonoBehaviour
         var entries = new List<InventoryEntry>();
 
         foreach (var weapon in weaponHandler.AcquiredWeapons)
-            entries.Add(new InventoryEntry(weapon)); 
+            entries.Add(new InventoryEntry(weapon));
 
-        while (entries.Count < weaponHandler.maxWeapons)
-            entries.Add(InventoryEntry.Locked());
-
-        SetSection("Armas", entries);
+        SetSection(SectionWeapons, entries);
     }
 }
