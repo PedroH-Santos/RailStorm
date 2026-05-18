@@ -1,3 +1,4 @@
+using StarterAssets;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,7 +34,7 @@ public class EnemySpawner : MonoBehaviour
 
     [Header("References")]
     public Transform player;
-    public StarterAssets.PlayerController playerController;
+    public PlayerStatsAggregator playerStatsAggregator;
 
     int _currentWave = 0;
     int _aliveEnemies = 0;
@@ -167,10 +168,10 @@ public class EnemySpawner : MonoBehaviour
         _waveInProgress = false;
         _currentWave++;
         OnWaveCleared?.Invoke();
-        if (playerController != null)
+        if (playerStatsAggregator != null)
         {
-            playerController.Coins += 10;
-            Debug.Log($"[Waves] Wave cleared! +10 coins → {playerController.Coins}");
+            playerStatsAggregator.Coins += 10;
+            Debug.Log($"[Waves] Wave cleared! +10 coins → {playerStatsAggregator.Coins}");
         }
     }
 

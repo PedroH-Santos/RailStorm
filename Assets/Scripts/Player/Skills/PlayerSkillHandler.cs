@@ -5,7 +5,7 @@ namespace StarterAssets
 {
     public class PlayerSkillHandler : MonoBehaviour
     {
-        PlayerController _controller;
+        PlayerStatsAggregator _stats;
 
         public HashSet<MechanicType> UnlockedMechanics { get; private set; } = new();
 
@@ -13,18 +13,15 @@ namespace StarterAssets
         public IReadOnlyDictionary<SkillDefinition, int> AcquiredSkills => _skillLevels;
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
 
-        [Header("Luck")]
-        [Range(0f, 100f)] public float luckPercent = 0f;
+        public float luckPercent => _stats != null ? _stats.LuckPercent : 0f;
 
         void Awake()
         {
-            _controller = GetComponent<PlayerController>();
+            _stats = GetComponent<PlayerStatsAggregator>();
         }
 
         public int GetSkillLevel(SkillDefinition skill)
-        {
-            return _skillLevels.TryGetValue(skill, out int lvl) ? lvl : 0;
-        }
+            => _skillLevels.TryGetValue(skill, out int lvl) ? lvl : 0;
 
         public bool HasSkill(SkillDefinition skill) => _skillLevels.ContainsKey(skill);
 
@@ -49,12 +46,8 @@ namespace StarterAssets
 
             switch (skill.skillType)
             {
-                case SkillType.Stat:
-                    ApplyStat(skill, nextLevel);
-                    break;
-                case SkillType.Mechanic:
-                    UnlockMechanic(skill);
-                    break;
+                case SkillType.Stat: ApplyStat(skill, nextLevel); break;
+                case SkillType.Mechanic: UnlockMechanic(skill); break;
             }
 
             Debug.Log($"[Skills] {skill.skillName} → Nível {nextLevel}");
@@ -62,19 +55,20 @@ namespace StarterAssets
 
         void ApplyStat(SkillDefinition skill, int level)
         {
+            if (_stats == null) return;
+
             SkillLevel data = skill.GetLevel(level);
 
             switch (skill.statTarget)
             {
                 case StatTarget.MoveSpeed:
-                    if (data.isMultiplier)
-                        _controller.moveSpeed *= data.statValue;
-                    else
-                        _controller.moveSpeed += data.statValue;
+                    _stats.MoveSpeed = data.isMultiplier
+                        ? _stats.MoveSpeed * data.statValue
+                        : _stats.MoveSpeed + data.statValue;
                     break;
 
                 case StatTarget.Coins:
-                    _controller.Coins += (int)data.statValue;
+                    _stats.Coins += (int)data.statValue;
                     break;
             }
         }
@@ -88,22 +82,6 @@ namespace StarterAssets
             }
 
             UnlockedMechanics.Add(skill.mechanicType);
-
-            switch (skill.mechanicType)
-            {
-                //case MechanicType.Dash:
-                //    var dash = GetComponent<DashMechanic>();
-                //    if (dash != null) dash.enabled = true;
-                //    break;
-                //case MechanicType.DoubleJump:
-                //    var dj = GetComponent<DoubleJumpMechanic>();
-                //    if (dj != null) dj.enabled = true;
-                //    break;
-                //case MechanicType.Shield:
-                //    var shield = GetComponent<ShieldMechanic>();
-                //    if (shield != null) shield.enabled = true;
-                //    break;
-            }
         }
 
         public bool HasMechanic(MechanicType mechanic) => UnlockedMechanics.Contains(mechanic);
@@ -113,7 +91,7 @@ namespace StarterAssets
             ExiledSkills.Add(skill);
             Debug.Log($"[Skills] {skill.skillName} foi exilada permanentemente.");
         }
-        public bool IsExiled(SkillDefinition skill) => ExiledSkills.Contains(skill);
 
+        public bool IsExiled(SkillDefinition skill) => ExiledSkills.Contains(skill);
     }
 }

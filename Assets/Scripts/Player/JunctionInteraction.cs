@@ -1,13 +1,14 @@
 using System.Collections.Generic;
 using StarterAssets;
 using UnityEngine;
-using UnityEngine.InputSystem; // <- troca o using
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(SplineJunction))]
 public class JunctionInteraction : MonoBehaviour
 {
     SplineJunction _junction;
     PlayerController _playerInside;
+    PlayerStatsAggregator _stats;
     bool _menuOpen = false;
     List<int> _blockedAtThisJunction = new List<int>();
 
@@ -22,14 +23,12 @@ public class JunctionInteraction : MonoBehaviour
 
         bool hasBlocked = _junction.GetBlockedSplines().Count > 0;
 
-        // Abre menu
         if (hasBlocked && !_menuOpen && Keyboard.current.eKey.wasPressedThisFrame)
         {
             OpenMenu();
             return;
         }
 
-        // Fecha menu
         if (_menuOpen && (Keyboard.current.eKey.wasPressedThisFrame
                        || Keyboard.current.escapeKey.wasPressedThisFrame))
         {
@@ -37,11 +36,8 @@ public class JunctionInteraction : MonoBehaviour
             return;
         }
 
-        // Captura 1-4 para desbloquear
         if (_menuOpen)
-        {
             HandleUnlockInput();
-        }
     }
 
     void HandleUnlockInput()
@@ -57,28 +53,27 @@ public class JunctionInteraction : MonoBehaviour
         if (menuIndex >= _blockedAtThisJunction.Count) return;
 
         int splineIndex = _blockedAtThisJunction[menuIndex];
-        int cost = _junction.GetUnlockCost(splineIndex); // <- custo individual
+        int cost = _junction.GetUnlockCost(splineIndex);
 
-        if (_playerInside.Coins < cost)
+        if (_stats.Coins < cost)
         {
             JunctionUIManager.Instance.ShowInsufficientFunds();
             return;
         }
 
-        _playerInside.SpendCoins(cost);
+        _stats.Coins -= cost;
         _junction.Unblock(splineIndex);
         _blockedAtThisJunction.Remove(splineIndex);
 
         JunctionUIManager.Instance.UpdateMenu(
             _blockedAtThisJunction,
-            _junction,              // <- passa a junction para pegar custo por slot
-            _playerInside.Coins
+            _junction,
+            _stats.Coins
         );
 
         if (_blockedAtThisJunction.Count == 0)
             CloseMenu();
     }
-
 
     void OpenMenu()
     {
@@ -87,8 +82,8 @@ public class JunctionInteraction : MonoBehaviour
         _playerInside.SetMovementLocked(true);
         JunctionUIManager.Instance.ShowMenu(
             _blockedAtThisJunction,
-            _junction,              // <- passa a junction
-            _playerInside.Coins
+            _junction,
+            _stats.Coins
         );
     }
 
@@ -103,6 +98,7 @@ public class JunctionInteraction : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
         _playerInside = other.GetComponent<PlayerController>();
+        _stats = other.GetComponent<PlayerStatsAggregator>();
     }
 
     void OnTriggerExit(Collider other)
@@ -110,5 +106,6 @@ public class JunctionInteraction : MonoBehaviour
         if (!other.CompareTag("Player")) return;
         if (_menuOpen) CloseMenu();
         _playerInside = null;
+        _stats = null;
     }
 }

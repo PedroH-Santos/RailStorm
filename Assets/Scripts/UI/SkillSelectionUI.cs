@@ -16,10 +16,6 @@ public class SkillSelectionUI : MonoBehaviour
     [Header("Inventário")]
     public InventoryUI inventoryUI;
 
-    [Header("Atributos")]
-    public Transform statsContainer;
-    public GameObject statRowPrefab;
-
     [Header("Botões")]
     public Button btnExile;
     public Button btnPass;
@@ -97,7 +93,6 @@ public class SkillSelectionUI : MonoBehaviour
 
         SetBackground(false);
         RenderCards();
-        RenderStats();
         UpdateButtons();
 
         inventoryUI?.gameObject.SetActive(true);
@@ -202,40 +197,6 @@ public class SkillSelectionUI : MonoBehaviour
     {
         if (gameBackground == null) return;
         gameBackground.color = exileMode ? _exileBgColor : _normalBgColor;
-    }
-
-
-    void RenderStats()
-    {
-        foreach (Transform child in statsContainer)
-            Destroy(child.gameObject);
-
-        AddStat("Velocidade", $"{_playerController.moveSpeed:F1}");
-        AddStat("Moedas", $"{_playerController.Coins}");
-
-        AddDivider();
-
-        AddStat("Dash", _skillHandler.HasMechanic(MechanicType.Dash) ? "✓ ON" : "OFF");
-        AddStat("Salto duplo", _skillHandler.HasMechanic(MechanicType.DoubleJump) ? "✓ ON" : "OFF");
-        AddStat("Escudo", _skillHandler.HasMechanic(MechanicType.Shield) ? "✓ ON" : "OFF");
-
-        AddDivider();
-
-        foreach (var pair in _skillHandler.AcquiredSkills)
-            if (pair.Key.skillType == SkillType.Stat)
-                AddStat(pair.Key.skillName, $"Lv {pair.Value}/{pair.Key.MaxLevel}");
-    }
-
-    void AddStat(string label, string value)
-    {
-        var row = Instantiate(statRowPrefab, statsContainer);
-        row.GetComponent<StatRowUI>()?.Setup(label, value);
-    }
-
-    void AddDivider()
-    {
-        var row = Instantiate(statRowPrefab, statsContainer);
-        row.GetComponent<StatRowUI>()?.SetAsDivider();
     }
 
 

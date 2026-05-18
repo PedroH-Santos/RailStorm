@@ -22,16 +22,16 @@ namespace StarterAssets
         public float startT = 0f;
 
         [Header("Movement")]
-        public float moveSpeed = 6f;
         public float idleSpeed = 0.5f;
         public float acceleration = 6f;
         public float deceleration = 4f;
         public float rotationSmoothTime = 0.12f;
 
         [Header("Junction")]
-        public float knotThreshold = 0.8f;  // world-space distance to trigger junction
+        public float knotThreshold = 0.8f;
         public float minDecisionDot = 0.3f;
 
+        PlayerStatsAggregator _stats;
         CharacterController _controller;
         StarterAssetsInputs _input;
 
@@ -44,17 +44,16 @@ namespace StarterAssets
         float _lastDirection = 1f;
         int _lastProcessedKnot = -1;
         float _rotationVelocity = 0f;
-        public int CurrentSplineIndex => _currentSplineIndex;
-        public Vector2 RawInput => _input.move;
-
-        public float LastDirection => _lastDirection;
-
-
-        [Header("Economy")]
-        public int Coins = 50;
-
         bool _movementLocked = false;
 
+        public int CurrentSplineIndex => _currentSplineIndex;
+        public Vector2 RawInput => _input.move;
+        public float LastDirection => _lastDirection;
+
+        void Awake()
+        {
+            _stats = GetComponent<PlayerStatsAggregator>();
+        }
 
         void Start()
         {
@@ -75,7 +74,6 @@ namespace StarterAssets
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-
         }
 
         void Update()
@@ -117,12 +115,12 @@ namespace StarterAssets
 
             if (dot > 0.4f)
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, moveSpeed, Time.deltaTime * acceleration);
+                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed, Time.deltaTime * acceleration);
                 _lastDirection = 1f;
             }
             else if (dot < -0.4f)
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, moveSpeed, Time.deltaTime * acceleration);
+                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed, Time.deltaTime * acceleration);
                 _lastDirection = -1f;
             }
             else
@@ -170,7 +168,6 @@ namespace StarterAssets
 
             Spline newSpline = splineContainer.Splines[splineIndex];
 
-            // 1. Find the knot on the new spline closest to the player (XZ only)
             int closestKnot = -1;
             float closestDist = float.MaxValue;
 
@@ -190,13 +187,9 @@ namespace StarterAssets
 
             if (closestKnot < 0) return;
 
-            // 2. Get the knot's world position DIRECTLY — no GetNearestPoint, no T math
             Vector3 exactKnotWorld = splineContainer.transform.TransformPoint(
                                          newSpline[closestKnot].Position);
 
-            // 3. Walk the spline curve to find the T that actually maps to this knot's position.
-            //    We do a brute-force sample because GetNormalizedInterpolation is unreliable
-            //    on non-uniform splines (curve lengths differ between knots).
             float bestT = 0f;
             float bestDist = float.MaxValue;
             int samples = 200;
@@ -216,7 +209,6 @@ namespace StarterAssets
                 }
             }
 
-            // 4. Apply
             _currentSplineIndex = splineIndex;
             _currentSpline = newSpline;
             _lastDirection = direction;
@@ -226,12 +218,9 @@ namespace StarterAssets
                                 _currentSpline,
                                 splineContainer.transform.localToWorldMatrix);
 
-            // 5. Place the player at the knot world position — guaranteed exact
             _controller.enabled = false;
             transform.position = exactKnotWorld;
             _controller.enabled = true;
-
-           // Debug.Log($"[Switch] spline={splineIndex} knot={closestKnot} T={bestT:F3} pos={exactKnotWorld}");
         }
 
         public void SetMovementLocked(bool locked)
@@ -242,8 +231,7 @@ namespace StarterAssets
 
         public void SpendCoins(int amount)
         {
-            Coins = Mathf.Max(0, Coins - amount);
+            _stats.Coins = Mathf.Max(0, _stats.Coins - amount);
         }
-
     }
 }
