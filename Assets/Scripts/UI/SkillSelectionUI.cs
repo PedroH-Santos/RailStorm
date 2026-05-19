@@ -16,6 +16,9 @@ public class SkillSelectionUI : MonoBehaviour
     [Header("Inventário")]
     public InventoryUI inventoryUI;
 
+    [Header("Stats")]
+    public StatsUI statsUI;
+
     [Header("Botões")]
     public Button btnExile;
     public Button btnPass;
@@ -28,7 +31,6 @@ public class SkillSelectionUI : MonoBehaviour
     [Header("Config")]
     public int maxRefreshes = 2;
     public int maxExiles = 3;
-
 
     Color _normalBgColor;
     readonly Color _exileBgColor = new Color(0.6f, 0f, 0f, 0.85f);
@@ -48,7 +50,6 @@ public class SkillSelectionUI : MonoBehaviour
     Action<SkillDefinition> _onChosen;
     Action _onPassed;
 
-
     void Awake()
     {
         panel.SetActive(false);
@@ -62,7 +63,6 @@ public class SkillSelectionUI : MonoBehaviour
             _normalBgColor = gameBackground.color;
         }
     }
-
 
     public void Show(
         List<SkillCardData> options,
@@ -95,9 +95,10 @@ public class SkillSelectionUI : MonoBehaviour
         RenderCards();
         UpdateButtons();
 
+        statsUI?.Bind(playerController.GetComponent<StarterAssets.PlayerStatsAggregator>());
+
         inventoryUI?.gameObject.SetActive(true);
     }
-
 
     void RenderCards()
     {
@@ -155,7 +156,6 @@ public class SkillSelectionUI : MonoBehaviour
         }
     }
 
-
     void OnExile()
     {
         if (_exilesLeft <= 0) return;
@@ -198,7 +198,6 @@ public class SkillSelectionUI : MonoBehaviour
         if (gameBackground == null) return;
         gameBackground.color = exileMode ? _exileBgColor : _normalBgColor;
     }
-
 
     SkillCardData DrawReplacement()
     {

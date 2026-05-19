@@ -6,7 +6,7 @@ public class StatRowUI : MonoBehaviour
 {
     public TMP_Text labelText;
     public TMP_Text valueText;
-    public GameObject dividerObject; // linha horizontal, visível apenas em dividers
+    public GameObject dividerObject;
 
     public void Setup(string label, string value)
     {
@@ -14,12 +14,14 @@ public class StatRowUI : MonoBehaviour
 
         if (labelText != null)
         {
+            Debug.Log($"Setting stat row label: {label}");
             labelText.gameObject.SetActive(true);
             labelText.text = label;
         }
 
         if (valueText != null)
         {
+            Debug.Log($"Setting stat row value: {value}");
             valueText.gameObject.SetActive(true);
             valueText.text = value;
         }

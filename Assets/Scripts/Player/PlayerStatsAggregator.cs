@@ -14,13 +14,13 @@ namespace StarterAssets
         public int HP
         {
             get => _hp;
-            set { _hp = Mathf.Clamp(value, 0, _maxHp); NotifyChanged(); }
+            set => _hp = Mathf.Clamp(value, 0, _maxHp);
         }
 
         public int MaxHP
         {
             get => _maxHp;
-            set { _maxHp = Mathf.Max(1, value); NotifyChanged(); }
+            set => _maxHp = Mathf.Max(1, value);
         }
 
         [Header("Movimento")]
@@ -29,7 +29,7 @@ namespace StarterAssets
         public float MoveSpeed
         {
             get => _moveSpeed;
-            set { _moveSpeed = Mathf.Max(0f, value); NotifyChanged(); }
+            set => _moveSpeed = Mathf.Max(0f, value);
         }
 
         [Header("Economia")]
@@ -38,7 +38,7 @@ namespace StarterAssets
         public int Coins
         {
             get => _coins;
-            set { _coins = Mathf.Max(0, value); NotifyChanged(); }
+            set => _coins = Mathf.Max(0, value);
         }
 
         [Header("Sorte")]
@@ -48,12 +48,8 @@ namespace StarterAssets
         public float LuckPercent
         {
             get => _luckPercent;
-            set { _luckPercent = Mathf.Clamp(value, 0f, 100f); NotifyChanged(); }
+            set => _luckPercent = Mathf.Clamp(value, 0f, 100f);
         }
-
-        public event Action OnStatsChanged;
-
-        public void NotifyChanged() => OnStatsChanged?.Invoke();
 
         public enum StatKey
         {
@@ -79,10 +75,10 @@ namespace StarterAssets
 
         void RegisterDisplayStats()
         {
-            Add(StatKey.HP, "Vida", "Vida", () => $"{HP} / {MaxHP}");
-            Add(StatKey.MoveSpeed, "Velocidade", "Atributos", () => $"{MoveSpeed:F1}");
-            Add(StatKey.LuckPercent, "Sorte", "Atributos", () => $"{LuckPercent:F0}%");
-            Add(StatKey.Coins, "Moedas", "Atributos", () => $"{Coins}");
+            Add(StatKey.HP, "Vida", "LifeContainer", () => $"{HP} / {MaxHP}");
+            Add(StatKey.MoveSpeed, "Velocidade", "PlayerContainer", () => $"{MoveSpeed:F1}");
+            Add(StatKey.LuckPercent, "Sorte", "PlayerContainer", () => $"{LuckPercent:F0}%");
+            Add(StatKey.Coins, "Moedas", "PlayerContainer", () => $"{Coins}");
         }
 
         void Add(StatKey key, string label, string group, Func<string> getValue)
