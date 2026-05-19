@@ -12,13 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f82ae6d27fe8bc47bbab8aaa2149980, type: 3}
   m_Name: Skiil2
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillName: Skill2
+  skillName: Skill Life
   icon: {fileID: 0}
-  weight: 0.8
-  skillType: 0
-  statTarget: 0
-  mechanicType: 0
+  rarity: 0
+  statTarget: 1
   levels:
-  - description: 'Move Speed 3 '
+  - description: 'Skill Life doideira '
     statValue: 3
     isMultiplier: 0

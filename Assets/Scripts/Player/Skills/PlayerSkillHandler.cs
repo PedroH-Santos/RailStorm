@@ -7,8 +7,6 @@ namespace StarterAssets
     {
         PlayerStatsAggregator _stats;
 
-        public HashSet<MechanicType> UnlockedMechanics { get; private set; } = new();
-
         Dictionary<SkillDefinition, int> _skillLevels = new();
         public IReadOnlyDictionary<SkillDefinition, int> AcquiredSkills => _skillLevels;
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
@@ -44,11 +42,7 @@ namespace StarterAssets
 
             _skillLevels[skill] = nextLevel;
 
-            switch (skill.skillType)
-            {
-                case SkillType.Stat: ApplyStat(skill, nextLevel); break;
-                case SkillType.Mechanic: UnlockMechanic(skill); break;
-            }
+            ApplyStat(skill, nextLevel);
 
             Debug.Log($"[Skills] {skill.skillName} → Nível {nextLevel}");
         }
@@ -68,23 +62,17 @@ namespace StarterAssets
                     break;
 
                 case StatTarget.Coins:
-                    _stats.Coins += (int)data.statValue;
+                    _stats.Coins = data.isMultiplier
+                        ? _stats.Coins * (int)data.statValue
+                        : _stats.Coins + (int)data.statValue;
+                    break;
+                case StatTarget.MaxHP:
+                    _stats.MaxHP = data.isMultiplier
+                        ? _stats.MaxHP * (int)data.statValue
+                        : _stats.MaxHP + (int)data.statValue;
                     break;
             }
         }
-
-        void UnlockMechanic(SkillDefinition skill)
-        {
-            if (UnlockedMechanics.Contains(skill.mechanicType))
-            {
-                Debug.Log($"[Skills] Mecânica {skill.mechanicType} já desbloqueada.");
-                return;
-            }
-
-            UnlockedMechanics.Add(skill.mechanicType);
-        }
-
-        public bool HasMechanic(MechanicType mechanic) => UnlockedMechanics.Contains(mechanic);
 
         public void ExileSkill(SkillDefinition skill)
         {

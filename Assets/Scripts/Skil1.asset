@@ -12,13 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f82ae6d27fe8bc47bbab8aaa2149980, type: 3}
   m_Name: Skil1
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillName: Skill1
+  skillName: Skill Coins
   icon: {fileID: 0}
   rarity: 0
-  skillType: 0
-  statTarget: 0
-  mechanicType: 0
+  statTarget: 4
   levels:
-  - description: Move speed 2
-    statValue: 2
+  - description: 'Coins e o cara '
+    statValue: 10
     isMultiplier: 0
