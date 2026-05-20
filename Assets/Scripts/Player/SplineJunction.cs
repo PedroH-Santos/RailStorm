@@ -42,6 +42,13 @@ public class SplineJunction : MonoBehaviour
         return result;
     }
 
+    public IEnumerable<int> GetAvailableSplines()
+    {
+        foreach (var info in _splineInfos)
+            if (!info.isBlocked)
+                yield return info.splineIndex;
+    }
+
     void OnDrawGizmos()
     {
         Gizmos.color = Color.cyan;

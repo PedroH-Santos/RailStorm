@@ -2,7 +2,6 @@
 using UnityEngine.Splines;
 using System.Linq;
 using Unity.Mathematics;
-using System.Collections.Generic;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -42,7 +41,6 @@ namespace StarterAssets
         float _splineLength;
         float _currentSpeed;
         float _lastDirection = 1f;
-        int _lastProcessedKnot = -1;
         float _rotationVelocity = 0f;
         bool _movementLocked = false;
 
@@ -50,10 +48,7 @@ namespace StarterAssets
         public Vector2 RawInput => _input.move;
         public float LastDirection => _lastDirection;
 
-        void Awake()
-        {
-            _stats = GetComponent<PlayerStatsAggregator>();
-        }
+        void Awake() => _stats = GetComponent<PlayerStatsAggregator>();
 
         void Start()
         {
@@ -62,12 +57,7 @@ namespace StarterAssets
 
             _currentSplineIndex = 0;
             _currentSpline = splineContainer.Splines.First();
-
-            _splineLength = SplineUtility.CalculateLength(
-                _currentSpline,
-                splineContainer.transform.localToWorldMatrix
-            );
-
+            _splineLength = CalcLength(_currentSpline);
             _currentT = startT;
             _distance = _currentT * _splineLength;
             _currentSpeed = idleSpeed;
@@ -88,26 +78,53 @@ namespace StarterAssets
             Rotate(tangent);
         }
 
+        // ── API pública ───────────────────────────────────────────────────────
+
         public Vector3 GetInputDir()
         {
-            Vector2 input = _input.move;
-            return new Vector3(input.x, 0f, input.y).normalized;
+            Vector2 v = _input.move;
+            return new Vector3(v.x, 0f, v.y).normalized;
         }
+
+        /// <summary>
+        /// Troca de spline usando o T exato do knot da junção.
+        /// Não move o transform — o próximo Move() parte deste T.
+        /// </summary>
+        public void SwitchToSplineIndex(int splineIndex, float direction, float knotT)
+        {
+            if (splineIndex < 0 || splineIndex >= splineContainer.Splines.Count) return;
+
+            Spline newSpline = splineContainer.Splines[splineIndex];
+
+            _currentSplineIndex = splineIndex;
+            _currentSpline = newSpline;
+            _lastDirection = direction;
+            _currentT = knotT;
+            _splineLength = CalcLength(newSpline);
+            _distance = _currentT * _splineLength;
+
+            // Mantém a velocidade atual — não há motivo para frear na troca
+        }
+
+        // ── helpers internos ──────────────────────────────────────────────────
+
+        float CalcLength(Spline s) =>
+            SplineUtility.CalculateLength(s, splineContainer.transform.localToWorldMatrix);
 
         Vector3 GetTangent()
         {
-            float3 localTangent = _currentSpline.EvaluateTangent(_currentT);
-            Vector3 worldTangent = splineContainer.transform.TransformDirection(localTangent);
-            worldTangent.y = 0f;
-            if (worldTangent.sqrMagnitude < 0.001f) return transform.forward;
-            return worldTangent.normalized;
+            Vector3 t = splineContainer.transform.TransformDirection(
+                            _currentSpline.EvaluateTangent(_currentT));
+            t.y = 0f;
+            return t.sqrMagnitude < 0.001f ? transform.forward : t.normalized;
         }
 
         void UpdateSpeed(Vector3 inputDir, Vector3 tangent)
         {
             if (inputDir.sqrMagnitude < 0.001f)
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, idleSpeed, Time.deltaTime * deceleration);
+                _currentSpeed = Mathf.Lerp(_currentSpeed, idleSpeed,
+                                            Time.deltaTime * deceleration);
                 return;
             }
 
@@ -115,17 +132,21 @@ namespace StarterAssets
 
             if (dot > 0.4f)
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed, Time.deltaTime * acceleration);
+                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed,
+                                             Time.deltaTime * acceleration);
                 _lastDirection = 1f;
             }
             else if (dot < -0.4f)
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed, Time.deltaTime * acceleration);
+                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed,
+                                             Time.deltaTime * acceleration);
                 _lastDirection = -1f;
             }
             else
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, idleSpeed, Time.deltaTime * deceleration);
+                // Input diagonal / perpendicular — desacelera mas não muda direção
+                _currentSpeed = Mathf.Lerp(_currentSpeed, idleSpeed,
+                                            Time.deltaTime * deceleration);
             }
         }
 
@@ -142,86 +163,20 @@ namespace StarterAssets
             _distance = _currentT * _splineLength;
 
             Vector3 pos = splineContainer.transform.TransformPoint(
-                _currentSpline.EvaluatePosition(_currentT)
-            );
+                              _currentSpline.EvaluatePosition(_currentT));
             _controller.Move(pos - transform.position);
         }
 
         void Rotate(Vector3 tangent)
         {
             if (tangent.sqrMagnitude < 0.001f) return;
-
-            Vector3 faceDir = tangent * _lastDirection;
-            float targetY = Quaternion.LookRotation(faceDir).eulerAngles.y;
-
-            float y = Mathf.SmoothDampAngle(
-                transform.eulerAngles.y, targetY,
-                ref _rotationVelocity, rotationSmoothTime
-            );
-
+            float targetY = Quaternion.LookRotation(tangent * _lastDirection).eulerAngles.y;
+            float y = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetY,
+                                             ref _rotationVelocity, rotationSmoothTime);
             transform.rotation = Quaternion.Euler(0f, y, 0f);
         }
 
-        public void SwitchToSplineIndex(int splineIndex, float direction)
-        {
-            if (splineIndex < 0 || splineIndex >= splineContainer.Splines.Count) return;
-
-            Spline newSpline = splineContainer.Splines[splineIndex];
-
-            int closestKnot = -1;
-            float closestDist = float.MaxValue;
-
-            for (int i = 0; i < newSpline.Count; i++)
-            {
-                Vector3 knotWorld = splineContainer.transform.TransformPoint(newSpline[i].Position);
-                float dist = Vector3.Distance(
-                    new Vector3(transform.position.x, 0f, transform.position.z),
-                    new Vector3(knotWorld.x, 0f, knotWorld.z));
-
-                if (dist < closestDist)
-                {
-                    closestDist = dist;
-                    closestKnot = i;
-                }
-            }
-
-            if (closestKnot < 0) return;
-
-            Vector3 exactKnotWorld = splineContainer.transform.TransformPoint(
-                                         newSpline[closestKnot].Position);
-
-            float bestT = 0f;
-            float bestDist = float.MaxValue;
-            int samples = 200;
-
-            for (int i = 0; i <= samples; i++)
-            {
-                float t = (float)i / samples;
-                Vector3 p = splineContainer.transform.TransformPoint(newSpline.EvaluatePosition(t));
-                float d = Vector3.Distance(
-                    new Vector3(p.x, 0f, p.z),
-                    new Vector3(exactKnotWorld.x, 0f, exactKnotWorld.z));
-
-                if (d < bestDist)
-                {
-                    bestDist = d;
-                    bestT = t;
-                }
-            }
-
-            _currentSplineIndex = splineIndex;
-            _currentSpline = newSpline;
-            _lastDirection = direction;
-            _currentT = bestT;
-
-            _splineLength = SplineUtility.CalculateLength(
-                                _currentSpline,
-                                splineContainer.transform.localToWorldMatrix);
-
-            _controller.enabled = false;
-            transform.position = exactKnotWorld;
-            _controller.enabled = true;
-        }
+        // ─────────────────────────────────────────────────────────────────────
 
         public void SetMovementLocked(bool locked)
         {
@@ -229,9 +184,7 @@ namespace StarterAssets
             if (locked) _currentSpeed = 0f;
         }
 
-        public void SpendCoins(int amount)
-        {
+        public void SpendCoins(int amount) =>
             _stats.Coins = Mathf.Max(0, _stats.Coins - amount);
-        }
     }
 }

@@ -2812,7 +2812,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &300319118
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2828,7 +2828,6 @@ MonoBehaviour:
   switchCooldown: 0.8
   inputThreshold: 0.5
   sampleStep: 0.05
-  minDotToSwitch: 0.4
 --- !u!135 &300319119
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -3382,8 +3381,8 @@ MonoBehaviour:
   idleSpeed: 0.5
   acceleration: 3
   deceleration: 2
-  rotationSmoothTime: 5
-  knotThreshold: 0.8
+  rotationSmoothTime: 0
+  knotThreshold: 0.02
   minDecisionDot: 0.3
 --- !u!143 &337154706
 CharacterController:
@@ -8432,24 +8431,6 @@ MonoBehaviour:
           z: -0.0032136876
           w: 0.7143539
     - Position:
-        x: 12.933
-        y: 0
-        z: -4.12
-      TangentIn:
-        x: 0.00000047683716
-        y: -9.313226e-10
-        z: -3.1835058
-      TangentOut:
-        x: 0
-        y: -4.656613e-10
-        z: 4.5600367
-      Rotation:
-        value:
-          x: 0.000972037
-          y: 0.7008887
-          z: 0.0009892073
-          w: 0.71326935
-    - Position:
         x: 24.62
         y: 0
         z: -3.9399996
@@ -8517,33 +8498,13 @@ MonoBehaviour:
         z: 0
       Rotation:
         value:
-          x: 0
-          y: -0.70710677
-          z: -0
-          w: 0.70710677
-    - Position:
-        x: 15.92
-        y: 0
-        z: 4.8999996
-      TangentIn:
-        x: -0
-        y: -0
-        z: -0.72900003
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0.72900003
-      Rotation:
-        value:
-          x: 0
-          y: 0.70710677
-          z: 0
-          w: 0.7071067
+          x: -0.00000006862339
+          y: 0.71038985
+          z: 0.00000007373253
+          w: -0.7038085
     m_MetaData:
     - Mode: 1
       Tension: 0.5
-    - Mode: 4
-      Tension: 0.5
     - Mode: 1
       Tension: 0.5
     - Mode: 1
@@ -8551,8 +8512,6 @@ MonoBehaviour:
     - Mode: 1
       Tension: 0.5
     - Mode: 1
-      Tension: 0.5
-    - Mode: 0
       Tension: 0.5
     m_Closed: 0
     m_IntData:
@@ -8673,7 +8632,7 @@ MonoBehaviour:
       - Spline: 0
         Knot: 2
       - Spline: 2
-        Knot: 5
+        Knot: 4
     - Knots:
       - Spline: 3
         Knot: 0
@@ -8681,7 +8640,7 @@ MonoBehaviour:
         Knot: 3
     - Knots:
       - Spline: 2
-        Knot: 4
+        Knot: 3
       - Spline: 3
         Knot: 3
 --- !u!4 &717960646
@@ -10420,7 +10379,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &852723060
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10436,7 +10395,6 @@ MonoBehaviour:
   switchCooldown: 0.8
   inputThreshold: 0.5
   sampleStep: 0.05
-  minDotToSwitch: 0.4
 --- !u!135 &852723061
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -16665,7 +16623,6 @@ MonoBehaviour:
   switchCooldown: 0.8
   inputThreshold: 0.5
   sampleStep: 0.05
-  minDotToSwitch: 0.4
 --- !u!135 &1503546221
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -19231,9 +19188,6 @@ MonoBehaviour:
   - splineIndex: 2
     isBlocked: 0
     unlockCost: 35
-  - splineIndex: 0
-    isBlocked: 0
-    unlockCost: 0
 --- !u!114 &1735138000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19298,7 +19252,6 @@ MonoBehaviour:
   switchCooldown: 0.8
   inputThreshold: 0.5
   sampleStep: 0.05
-  minDotToSwitch: 0.4
 --- !u!114 &1735138004
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19404,7 +19357,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1751830410
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19420,7 +19373,6 @@ MonoBehaviour:
   switchCooldown: 0.8
   inputThreshold: 0.5
   sampleStep: 0.05
-  minDotToSwitch: 0.4
 --- !u!135 &1751830411
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -19455,10 +19407,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SplineJunction
   splineContainer: {fileID: 717960645}
-  _splineInfos:
-  - splineIndex: 2
-    isBlocked: 0
-    unlockCost: 20
+  _splineInfos: []
 --- !u!114 &1751830413
 MonoBehaviour:
   m_ObjectHideFlags: 0
