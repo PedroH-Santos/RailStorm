@@ -1,11 +1,12 @@
 using StarterAssets;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Splines;
 
 [RequireComponent(typeof(SplineJunction))]
 public class SplineCollision : MonoBehaviour
 {
-    [SerializeField] private float switchCooldown = 0.3f;
+    [SerializeField] private float switchCooldown = 0.2f;
     [SerializeField] private float inputThreshold = 0.15f;
     [SerializeField] private float sampleStep = 0.05f;
     [SerializeField] private float minDotToSwitch = 0.4f;
@@ -31,34 +32,56 @@ public class SplineCollision : MonoBehaviour
 
         Vector3 inputDir = new Vector3(rawInput.x, 0f, rawInput.y).normalized;
 
-        if (TryFindBest(inputDir, out int bestSpline, out float bestDir, out float bestKnotT))
+        if (TryFindBest(inputDir, out int bestSpline, out float bestDir,
+                        out float bestKnotT, out float bestDotScore))
         {
             if (bestSpline != _playerInside.CurrentSplineIndex)
             {
-                _playerInside.SwitchToSplineIndex(bestSpline, bestDir, bestKnotT);
+                // Passa a velocidade atual para o novo spline não desacelerar
+                // — e multiplica pelo dot para escalar levemente com a
+                // correspondência entre input e direção da nova spline.
+                float speedToCarry = _playerInside.CurrentSpeed
+                                     * Mathf.Clamp01(bestDotScore);
+
+                _playerInside.SwitchToSplineIndex(bestSpline, bestDir,
+                                                  bestKnotT, speedToCarry);
                 _cooldownTimer = switchCooldown;
             }
         }
     }
 
     bool TryFindBest(Vector3 inputDir,
-                     out int bestSplineIndex, out float bestDir, out float bestKnotT)
+                     out int bestSplineIndex,
+                     out float bestDir,
+                     out float bestKnotT,
+                     out float bestDotOut)
     {
         bestSplineIndex = -1;
         bestDir = 1f;
         bestKnotT = 0f;
+        bestDotOut = 0f;
         float bestDot = minDotToSwitch;
 
         SplineContainer container = _junction.splineContainer;
+        KnotLinkCollection links = container.KnotLinkCollection;
 
-        foreach (int splineIdx in _junction.GetAvailableSplines())
+        int currentIdx = _playerInside.CurrentSplineIndex;
+        Spline currentSpline = container.Splines[currentIdx];
+        int closestKnot = GetClosestKnotIndex(currentSpline, container);
+
+        var currentKnotIdx = new SplineKnotIndex(currentIdx, closestKnot);
+        IReadOnlyList<SplineKnotIndex> linked = links.GetKnotLinks(currentKnotIdx);
+
+        foreach (SplineKnotIndex ski in linked)
         {
-            if (splineIdx == _playerInside.CurrentSplineIndex) continue;
+            if (ski.Spline == currentIdx) continue;   // ignora spline atual
+            if (_junction.IsBlocked(ski.Spline)) continue;
 
-            Spline spline = container.Splines[splineIdx];
+            Spline spline = container.Splines[ski.Spline];
 
-            // Acha o knot deste spline mais próximo desta junção no mundo
-            float knotT = GetJunctionKnotT(spline, container);
+            // T exato do knot linkado nesta junção — sem GetNearestPoint
+            float knotT = SplineUtility.GetNormalizedInterpolation(
+                              spline, ski.Knot, PathIndexUnit.Knot);
 
             float tFwd = spline.Closed
                        ? Mathf.Repeat(knotT + sampleStep, 1f)
@@ -74,20 +97,21 @@ public class SplineCollision : MonoBehaviour
             Vector3 dirFwd = pFwd - origin; dirFwd.y = 0f;
             Vector3 dirBwd = pBwd - origin; dirBwd.y = 0f;
 
-            TryScore(inputDir, dirFwd, 1f, splineIdx, knotT,
-                     ref bestDot, ref bestSplineIndex, ref bestDir, ref bestKnotT);
-            TryScore(inputDir, dirBwd, -1f, splineIdx, knotT,
-                     ref bestDot, ref bestSplineIndex, ref bestDir, ref bestKnotT);
+            TryScore(inputDir, dirFwd, 1f, ski.Spline, knotT,
+                     ref bestDot, ref bestSplineIndex, ref bestDir,
+                     ref bestKnotT, ref bestDotOut);
+            TryScore(inputDir, dirBwd, -1f, ski.Spline, knotT,
+                     ref bestDot, ref bestSplineIndex, ref bestDir,
+                     ref bestKnotT, ref bestDotOut);
         }
 
         return bestSplineIndex >= 0;
     }
 
-    // Retorna o T normalizado do knot deste spline que está mais perto desta junção
-    float GetJunctionKnotT(Spline spline, SplineContainer container)
+    int GetClosestKnotIndex(Spline spline, SplineContainer container)
     {
         Vector3 jPos = transform.position;
-        int closestKnot = 0;
+        int closest = 0;
         float closestDist = float.MaxValue;
 
         for (int k = 0; k < spline.Count; k++)
@@ -96,20 +120,15 @@ public class SplineCollision : MonoBehaviour
             float dist = Vector3.Distance(
                 new Vector3(jPos.x, 0f, jPos.z),
                 new Vector3(kw.x, 0f, kw.z));
-
-            if (dist < closestDist)
-            {
-                closestDist = dist;
-                closestKnot = k;
-            }
+            if (dist < closestDist) { closestDist = dist; closest = k; }
         }
-
-        return SplineUtility.GetNormalizedInterpolation(
-                   spline, closestKnot, PathIndexUnit.Knot);
+        return closest;
     }
 
-    void TryScore(Vector3 inputDir, Vector3 exitDir, float dir, int splineIdx, float knotT,
-                  ref float bestDot, ref int bestSpline, ref float bestDir, ref float bestKnotT)
+    void TryScore(Vector3 inputDir, Vector3 exitDir, float dir,
+                  int splineIdx, float knotT,
+                  ref float bestDot, ref int bestSpline,
+                  ref float bestDir, ref float bestKnotT, ref float bestDotOut)
     {
         if (exitDir.magnitude < 0.01f) return;
         float dot = Vector3.Dot(inputDir, exitDir.normalized);
@@ -119,6 +138,7 @@ public class SplineCollision : MonoBehaviour
             bestSpline = splineIdx;
             bestDir = dir;
             bestKnotT = knotT;
+            bestDotOut = dot;
         }
     }
 

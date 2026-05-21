@@ -47,6 +47,7 @@ namespace StarterAssets
         public int CurrentSplineIndex => _currentSplineIndex;
         public Vector2 RawInput => _input.move;
         public float LastDirection => _lastDirection;
+        public float CurrentSpeed => _currentSpeed;
 
         void Awake() => _stats = GetComponent<PlayerStatsAggregator>();
 
@@ -78,38 +79,11 @@ namespace StarterAssets
             Rotate(tangent);
         }
 
-        // ── API pública ───────────────────────────────────────────────────────
-
         public Vector3 GetInputDir()
         {
             Vector2 v = _input.move;
             return new Vector3(v.x, 0f, v.y).normalized;
         }
-
-        /// <summary>
-        /// Troca de spline usando o T exato do knot da junção.
-        /// Não move o transform — o próximo Move() parte deste T.
-        /// </summary>
-        public void SwitchToSplineIndex(int splineIndex, float direction, float knotT)
-        {
-            if (splineIndex < 0 || splineIndex >= splineContainer.Splines.Count) return;
-
-            Spline newSpline = splineContainer.Splines[splineIndex];
-
-            _currentSplineIndex = splineIndex;
-            _currentSpline = newSpline;
-            _lastDirection = direction;
-            _currentT = knotT;
-            _splineLength = CalcLength(newSpline);
-            _distance = _currentT * _splineLength;
-
-            // Mantém a velocidade atual — não há motivo para frear na troca
-        }
-
-        // ── helpers internos ──────────────────────────────────────────────────
-
-        float CalcLength(Spline s) =>
-            SplineUtility.CalculateLength(s, splineContainer.transform.localToWorldMatrix);
 
         Vector3 GetTangent()
         {
@@ -144,7 +118,6 @@ namespace StarterAssets
             }
             else
             {
-                // Input diagonal / perpendicular — desacelera mas não muda direção
                 _currentSpeed = Mathf.Lerp(_currentSpeed, idleSpeed,
                                             Time.deltaTime * deceleration);
             }
@@ -176,7 +149,36 @@ namespace StarterAssets
             transform.rotation = Quaternion.Euler(0f, y, 0f);
         }
 
-        // ─────────────────────────────────────────────────────────────────────
+        /// <summary>
+        /// Troca de spline.
+        ///
+        /// knotWorldPos: posição world do knot de junção na nova spline,
+        /// calculada pelo SplineCollision antes de chamar este método.
+        /// Usamos ela para ancorar _currentT exatamente no knot —
+        /// sem GetNearestPoint (que pode errar em splines com curvas),
+        /// sem offset para a frente.
+        ///
+        /// direction e speed são passados explicitamente para que o
+        /// UpdateSpeed não cause desaceleração nos frames logo após a troca.
+        /// </summary>
+        public void SwitchToSplineIndex(int splineIndex, float direction,
+                                        float knotT, float speedOverride)
+        {
+            if (splineIndex < 0 || splineIndex >= splineContainer.Splines.Count) return;
+
+            Spline newSpline = splineContainer.Splines[splineIndex];
+
+            _currentSplineIndex = splineIndex;
+            _currentSpline = newSpline;
+            _lastDirection = direction;
+            _currentT = knotT;
+            _currentSpeed = speedOverride;   // evita desaceleração pós-troca
+            _splineLength = CalcLength(newSpline);
+            _distance = _currentT * _splineLength;
+        }
+
+        float CalcLength(Spline s) =>
+            SplineUtility.CalculateLength(s, splineContainer.transform.localToWorldMatrix);
 
         public void SetMovementLocked(bool locked)
         {

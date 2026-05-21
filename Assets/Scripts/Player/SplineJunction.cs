@@ -6,6 +6,7 @@ public class SplineJunction : MonoBehaviour
 {
     public SplineContainer splineContainer;
 
+
     [SerializeField]
     private List<SplineInfo> _splineInfos = new List<SplineInfo>();
 
@@ -40,13 +41,6 @@ public class SplineJunction : MonoBehaviour
         foreach (var info in _splineInfos)
             if (info.isBlocked) result.Add(info.splineIndex);
         return result;
-    }
-
-    public IEnumerable<int> GetAvailableSplines()
-    {
-        foreach (var info in _splineInfos)
-            if (!info.isBlocked)
-                yield return info.splineIndex;
     }
 
     void OnDrawGizmos()
