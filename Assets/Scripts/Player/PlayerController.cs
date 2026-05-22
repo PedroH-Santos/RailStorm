@@ -70,10 +70,8 @@ namespace StarterAssets
         void Update()
         {
             if (_movementLocked) return;
-
             Vector3 tangent = GetTangent();
             Vector3 inputDir = GetInputDir();
-
             UpdateSpeed(inputDir, tangent);
             Move();
             Rotate(tangent);
@@ -149,30 +147,22 @@ namespace StarterAssets
             transform.rotation = Quaternion.Euler(0f, y, 0f);
         }
 
-        /// <summary>
-        /// Troca de spline.
-        ///
-        /// knotWorldPos: posição world do knot de junção na nova spline,
-        /// calculada pelo SplineCollision antes de chamar este método.
-        /// Usamos ela para ancorar _currentT exatamente no knot —
-        /// sem GetNearestPoint (que pode errar em splines com curvas),
-        /// sem offset para a frente.
-        ///
-        /// direction e speed são passados explicitamente para que o
-        /// UpdateSpeed não cause desaceleração nos frames logo após a troca.
-        /// </summary>
-        public void SwitchToSplineIndex(int splineIndex, float direction,
-                                        float knotT, float speedOverride)
+
+        public void SwitchToSplineIndex(int splineIndex, float direction, float speedOverride)
         {
             if (splineIndex < 0 || splineIndex >= splineContainer.Splines.Count) return;
 
             Spline newSpline = splineContainer.Splines[splineIndex];
 
+
+            float3 localPos = splineContainer.transform.InverseTransformPoint(transform.position);
+            SplineUtility.GetNearestPoint(newSpline, localPos, out _, out float nearestT);
+
             _currentSplineIndex = splineIndex;
             _currentSpline = newSpline;
             _lastDirection = direction;
-            _currentT = knotT;
-            _currentSpeed = speedOverride;   // evita desaceleração pós-troca
+            _currentT = nearestT;
+            _currentSpeed = speedOverride;
             _splineLength = CalcLength(newSpline);
             _distance = _currentT * _splineLength;
         }

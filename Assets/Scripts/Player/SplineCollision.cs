@@ -6,7 +6,7 @@ using UnityEngine.Splines;
 [RequireComponent(typeof(SplineJunction))]
 public class SplineCollision : MonoBehaviour
 {
-    [SerializeField] private float switchCooldown = 0.2f;
+    [SerializeField] private float switchCooldown = 0.25f;
     [SerializeField] private float inputThreshold = 0.15f;
     [SerializeField] private float sampleStep = 0.05f;
     [SerializeField] private float minDotToSwitch = 0.4f;
@@ -32,34 +32,20 @@ public class SplineCollision : MonoBehaviour
 
         Vector3 inputDir = new Vector3(rawInput.x, 0f, rawInput.y).normalized;
 
-        if (TryFindBest(inputDir, out int bestSpline, out float bestDir,
-                        out float bestKnotT, out float bestDotScore))
+        if (TryFindBest(inputDir, out int bestSpline, out float bestDir))
         {
             if (bestSpline != _playerInside.CurrentSplineIndex)
             {
-                // Passa a velocidade atual para o novo spline não desacelerar
-                // — e multiplica pelo dot para escalar levemente com a
-                // correspondência entre input e direção da nova spline.
-                float speedToCarry = _playerInside.CurrentSpeed
-                                     * Mathf.Clamp01(bestDotScore);
-
-                _playerInside.SwitchToSplineIndex(bestSpline, bestDir,
-                                                  bestKnotT, speedToCarry);
+                _playerInside.SwitchToSplineIndex(bestSpline, bestDir, _playerInside.CurrentSpeed);
                 _cooldownTimer = switchCooldown;
             }
         }
     }
 
-    bool TryFindBest(Vector3 inputDir,
-                     out int bestSplineIndex,
-                     out float bestDir,
-                     out float bestKnotT,
-                     out float bestDotOut)
+    bool TryFindBest(Vector3 inputDir, out int bestSplineIndex, out float bestDir)
     {
         bestSplineIndex = -1;
         bestDir = 1f;
-        bestKnotT = 0f;
-        bestDotOut = 0f;
         float bestDot = minDotToSwitch;
 
         SplineContainer container = _junction.splineContainer;
@@ -67,19 +53,19 @@ public class SplineCollision : MonoBehaviour
 
         int currentIdx = _playerInside.CurrentSplineIndex;
         Spline currentSpline = container.Splines[currentIdx];
-        int closestKnot = GetClosestKnotIndex(currentSpline, container);
 
+        int closestKnot = GetClosestKnotIndex(currentSpline, container);
         var currentKnotIdx = new SplineKnotIndex(currentIdx, closestKnot);
+
         IReadOnlyList<SplineKnotIndex> linked = links.GetKnotLinks(currentKnotIdx);
 
         foreach (SplineKnotIndex ski in linked)
         {
-            if (ski.Spline == currentIdx) continue;   // ignora spline atual
+            if (ski.Spline == currentIdx) continue;
             if (_junction.IsBlocked(ski.Spline)) continue;
 
             Spline spline = container.Splines[ski.Spline];
 
-            // T exato do knot linkado nesta junção — sem GetNearestPoint
             float knotT = SplineUtility.GetNormalizedInterpolation(
                               spline, ski.Knot, PathIndexUnit.Knot);
 
@@ -97,12 +83,10 @@ public class SplineCollision : MonoBehaviour
             Vector3 dirFwd = pFwd - origin; dirFwd.y = 0f;
             Vector3 dirBwd = pBwd - origin; dirBwd.y = 0f;
 
-            TryScore(inputDir, dirFwd, 1f, ski.Spline, knotT,
-                     ref bestDot, ref bestSplineIndex, ref bestDir,
-                     ref bestKnotT, ref bestDotOut);
-            TryScore(inputDir, dirBwd, -1f, ski.Spline, knotT,
-                     ref bestDot, ref bestSplineIndex, ref bestDir,
-                     ref bestKnotT, ref bestDotOut);
+            TryScore(inputDir, dirFwd, 1f, ski.Spline,
+                     ref bestDot, ref bestSplineIndex, ref bestDir);
+            TryScore(inputDir, dirBwd, -1f, ski.Spline,
+                     ref bestDot, ref bestSplineIndex, ref bestDir);
         }
 
         return bestSplineIndex >= 0;
@@ -125,21 +109,12 @@ public class SplineCollision : MonoBehaviour
         return closest;
     }
 
-    void TryScore(Vector3 inputDir, Vector3 exitDir, float dir,
-                  int splineIdx, float knotT,
-                  ref float bestDot, ref int bestSpline,
-                  ref float bestDir, ref float bestKnotT, ref float bestDotOut)
+    void TryScore(Vector3 inputDir, Vector3 exitDir, float dir, int splineIdx,
+                  ref float bestDot, ref int bestSpline, ref float bestDir)
     {
         if (exitDir.magnitude < 0.01f) return;
         float dot = Vector3.Dot(inputDir, exitDir.normalized);
-        if (dot > bestDot)
-        {
-            bestDot = dot;
-            bestSpline = splineIdx;
-            bestDir = dir;
-            bestKnotT = knotT;
-            bestDotOut = dot;
-        }
+        if (dot > bestDot) { bestDot = dot; bestSpline = splineIdx; bestDir = dir; }
     }
 
     void OnTriggerEnter(Collider other)
