@@ -283,7 +283,7 @@ Transform:
   m_GameObject: {fileID: 11786350}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.2303658, y: -4.1507177, z: -7.189252}
+  m_LocalPosition: {x: 1.2303658, y: 4.5095363, z: -12.189253}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -314,8 +314,8 @@ MonoBehaviour:
     CustomLookAtTarget: 0
   Lens:
     FieldOfView: 40
-    OrthographicSize: 15
-    NearClipPlane: 0
+    OrthographicSize: 8
+    NearClipPlane: -50
     FarClipPlane: 5000
     Dutch: 0
     ModeOverride: 1
@@ -350,7 +350,7 @@ MonoBehaviour:
     AngularDampingMode: 0
     RotationDamping: {x: 1, y: 1, z: 1}
     QuaternionDamping: 1
-  FollowOffset: {x: -5, y: 0, z: -10}
+  FollowOffset: {x: -5, y: 10, z: -10}
 --- !u!1 &17838018
 GameObject:
   m_ObjectHideFlags: 0
@@ -3279,11 +3279,11 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0
+  near clip plane: -50
   far clip plane: 5000
   field of view: 40
   orthographic: 1
-  orthographic size: 15
+  orthographic size: 8
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -3308,7 +3308,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.2303658, y: -4.1507177, z: -7.189252}
+  m_LocalPosition: {x: 1.2303658, y: 4.5095363, z: -12.189253}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4452,7 +4452,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &391835166
 RectTransform:
   m_ObjectHideFlags: 0
@@ -12914,7 +12914,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1069116618
 Transform:
   m_ObjectHideFlags: 0
@@ -13634,9 +13634,18 @@ MonoBehaviour:
     - enemyPrefab: {fileID: 4643450904342780680, guid: 31c9a0d6ccc0b6449a1374e7904fbdcc, type: 3}
       minCount: 1
       weight: 0.6
-    - enemyPrefab: {fileID: 4942594899136224553, guid: a643be2147192db4292fd2e59a9b5c42, type: 3}
-      minCount: 0
-      weight: 0.4
+  - waveName: Wave02
+    totalEnemies: 1
+    enemies:
+    - enemyPrefab: {fileID: 4643450904342780680, guid: 31c9a0d6ccc0b6449a1374e7904fbdcc, type: 3}
+      minCount: 2
+      weight: 0.6
+  - waveName: Wave03
+    totalEnemies: 1
+    enemies:
+    - enemyPrefab: {fileID: 4643450904342780680, guid: 31c9a0d6ccc0b6449a1374e7904fbdcc, type: 3}
+      minCount: 3
+      weight: 0.6
   spawnInterval: 2
   spawnBatchSize: 3
   timeBetweenWaves: 5
@@ -13730,7 +13739,7 @@ Transform:
   m_GameObject: {fileID: 1125928110}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.30776, y: 0.039, z: 9.68}
+  m_LocalPosition: {x: 4.12, y: 0.039, z: 9.68}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23757,7 +23766,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7547fe35642b604985bb77819973155, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkillSelectionUI
-  panel: {fileID: 2098283827}
+  parentPanel: {fileID: 391835165}
   gameBackground: {fileID: 939484718}
   cards:
   - {fileID: 1290715459}
@@ -24336,6 +24345,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Fireball
       objectReference: {fileID: 0}
+    - target: {fileID: 6358198007250492734, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -24352,6 +24365,10 @@ PrefabInstance:
     - target: {fileID: 2068033236350881797, guid: 93138c27f54b2674e89359ea98fe797d, type: 3}
       propertyPath: m_Name
       value: AxeProjectile
+      objectReference: {fileID: 0}
+    - target: {fileID: 2068033236350881797, guid: 93138c27f54b2674e89359ea98fe797d, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6659545502796049600, guid: 93138c27f54b2674e89359ea98fe797d, type: 3}
       propertyPath: m_LocalPosition.x
@@ -24631,6 +24648,10 @@ PrefabInstance:
     - target: {fileID: 4643450904342780680, guid: 31c9a0d6ccc0b6449a1374e7904fbdcc, type: 3}
       propertyPath: m_Name
       value: Orc
+      objectReference: {fileID: 0}
+    - target: {fileID: 4643450904342780680, guid: 31c9a0d6ccc0b6449a1374e7904fbdcc, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5420936825602638258, guid: 31c9a0d6ccc0b6449a1374e7904fbdcc, type: 3}
       propertyPath: m_LocalPosition.x

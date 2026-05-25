@@ -20,8 +20,17 @@ public class SkillOrb : MonoBehaviour
     bool _active = false;
     bool _playerInRange = false;
 
-    void OnEnable() => EnemySpawner.OnWaveCleared += Activate;
-    void OnDisable() => EnemySpawner.OnWaveCleared -= Activate;
+    void Awake()
+    {
+        EnemySpawner.OnWaveCleared += Activate;
+        gameObject.SetActive(false);
+    }
+
+    void OnDestroy()
+    {
+        EnemySpawner.OnWaveCleared -= Activate;
+    }
+
 
     void Activate()
     {
@@ -55,7 +64,7 @@ public class SkillOrb : MonoBehaviour
             drawn,
             skillPool, weaponPool,
             controller, skillHandler, weaponHandler,
-            OnSkillChosen, OnPassed);
+            OnSkillChosen, OnPassed, OnClosed);
 
         _active = false;
     }
@@ -63,11 +72,20 @@ public class SkillOrb : MonoBehaviour
     void OnSkillChosen(SkillDefinition skill)
     {
         player.GetComponent<StarterAssets.PlayerSkillHandler>()?.ApplySkill(skill);
-        gameObject.SetActive(false);
+        EnemySpawner.NotifyReady(); 
     }
 
-    void OnPassed() => gameObject.SetActive(false);
-
+    void OnPassed()
+    {
+        gameObject.SetActive(false);
+        EnemySpawner.NotifyReady();
+    }
+    void OnClosed()  
+    {
+        _active = false;
+        gameObject.SetActive(false);
+        EnemySpawner.NotifyReady();
+    }
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.2f);

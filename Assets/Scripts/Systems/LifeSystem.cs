@@ -32,6 +32,7 @@ public class LifeSystem : MonoBehaviour
             if (life <= 0)
             {
                 OnDeath?.Invoke(gameObject);
+                Destroy(gameObject);
             }
         }
     }

@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class SkillSelectionUI : MonoBehaviour
 {
     [Header("Painéis")]
-    public GameObject panel;
+    public GameObject parentPanel;
+    private GameObject panel;
     public Image gameBackground;
 
     [Header("Cards de melhoria")]
@@ -49,10 +50,12 @@ public class SkillSelectionUI : MonoBehaviour
 
     Action<SkillDefinition> _onChosen;
     Action _onPassed;
+    Action _onClosed;
+
 
     void Awake()
     {
-        panel.SetActive(false);
+        panel = gameObject;
         btnExile.onClick.AddListener(OnExile);
         btnPass.onClick.AddListener(OnPass);
         btnRefresh.onClick.AddListener(OnRefresh);
@@ -72,7 +75,8 @@ public class SkillSelectionUI : MonoBehaviour
         StarterAssets.PlayerSkillHandler skillHandler,
         CarWeaponHandler weaponHandler,
         Action<SkillDefinition> onChosen,
-        Action onPassed = null)
+        Action onPassed = null,
+        Action onClosed = null)
     {
         _currentOptions = new List<SkillCardData>(options);
         _fullSkillPool = fullSkillPool;
@@ -85,8 +89,9 @@ public class SkillSelectionUI : MonoBehaviour
         _refreshesLeft = maxRefreshes;
         _exilesLeft = maxExiles;
         _exileMode = false;
+        _onClosed = onClosed;
 
-        panel.SetActive(true);
+        parentPanel.SetActive(true);
         if (gameBackground != null) gameBackground.gameObject.SetActive(true);
         Time.timeScale = 0f;
         Cursor.visible = true;
@@ -213,8 +218,9 @@ public class SkillSelectionUI : MonoBehaviour
     void Close()
     {
         Time.timeScale = 1f;
-        panel.SetActive(false);
+        parentPanel.SetActive(false);
         if (gameBackground != null) gameBackground.gameObject.SetActive(false);
         Cursor.visible = true;
+        _onClosed?.Invoke(); 
     }
 }

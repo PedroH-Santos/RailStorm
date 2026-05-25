@@ -44,6 +44,7 @@ public class EnemySpawner : MonoBehaviour
     public bool WaveInProgress => _waveInProgress;
 
     public static event System.Action OnWaveCleared;
+    public static event System.Action OnReadyForNextWave;
 
     void Start()
     {
@@ -62,8 +63,13 @@ public class EnemySpawner : MonoBehaviour
 
             if (_currentWave < waves.Count)
             {
-                Debug.Log($"[Waves] Next wave in {timeBetweenWaves}s...");
-                yield return new WaitForSeconds(timeBetweenWaves);
+                bool ready = false;
+                System.Action onReady = () => ready = true;
+                OnReadyForNextWave += onReady;
+
+                yield return new WaitUntil(() => ready);
+
+                OnReadyForNextWave -= onReady;
             }
         }
 
@@ -183,6 +189,10 @@ public class EnemySpawner : MonoBehaviour
             Random.Range(-spawnAreaSize.z / 2, spawnAreaSize.z / 2)
         );
     }
+
+    public static void NotifyReady() => OnReadyForNextWave?.Invoke();
+
+
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.25f);
