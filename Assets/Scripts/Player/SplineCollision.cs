@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Splines;
 
-[RequireComponent(typeof(SplineJunction))]
 public class SplineCollision : MonoBehaviour
 {
     [SerializeField] private float switchCooldown = 0.25f;
@@ -11,13 +10,13 @@ public class SplineCollision : MonoBehaviour
     [SerializeField] private float sampleStep = 0.05f;
     [SerializeField] private float minDotToSwitch = 0.4f;
 
-    SplineJunction _junction;
+    [SerializeField] private SplineContainer _splineContainer;
     PlayerController _playerInside;
     float _cooldownTimer;
 
     void Awake()
     {
-        _junction = GetComponent<SplineJunction>();
+        _splineContainer = GetComponent<SplineContainer>();
         GetComponent<Collider>().isTrigger = true;
     }
 
@@ -48,13 +47,12 @@ public class SplineCollision : MonoBehaviour
         bestDir = 1f;
         float bestDot = minDotToSwitch;
 
-        SplineContainer container = _junction.splineContainer;
-        KnotLinkCollection links = container.KnotLinkCollection;
+        KnotLinkCollection links = _splineContainer.KnotLinkCollection;
 
         int currentIdx = _playerInside.CurrentSplineIndex;
-        Spline currentSpline = container.Splines[currentIdx];
+        Spline currentSpline = _splineContainer.Splines[currentIdx];
 
-        int closestKnot = GetClosestKnotIndex(currentSpline, container);
+        int closestKnot = GetClosestKnotIndex(currentSpline, _splineContainer);
         var currentKnotIdx = new SplineKnotIndex(currentIdx, closestKnot);
 
         IReadOnlyList<SplineKnotIndex> linked = links.GetKnotLinks(currentKnotIdx);
@@ -62,9 +60,9 @@ public class SplineCollision : MonoBehaviour
         foreach (SplineKnotIndex ski in linked)
         {
             if (ski.Spline == currentIdx) continue;
-            if (_junction.IsBlocked(ski.Spline)) continue;
+            if (SplineRuntimeState.Instance != null && SplineRuntimeState.Instance.IsBlocked(ski.Spline)) continue;
 
-            Spline spline = container.Splines[ski.Spline];
+            Spline spline = _splineContainer.Splines[ski.Spline];
 
             float knotT = SplineUtility.GetNormalizedInterpolation(
                               spline, ski.Knot, PathIndexUnit.Knot);
@@ -76,9 +74,9 @@ public class SplineCollision : MonoBehaviour
                        ? Mathf.Repeat(knotT - sampleStep + 1f, 1f)
                        : Mathf.Clamp01(knotT - sampleStep);
 
-            Vector3 origin = container.transform.TransformPoint(spline.EvaluatePosition(knotT));
-            Vector3 pFwd = container.transform.TransformPoint(spline.EvaluatePosition(tFwd));
-            Vector3 pBwd = container.transform.TransformPoint(spline.EvaluatePosition(tBwd));
+            Vector3 origin = _splineContainer.transform.TransformPoint(spline.EvaluatePosition(knotT));
+            Vector3 pFwd = _splineContainer.transform.TransformPoint(spline.EvaluatePosition(tFwd));
+            Vector3 pBwd = _splineContainer.transform.TransformPoint(spline.EvaluatePosition(tBwd));
 
             Vector3 dirFwd = pFwd - origin; dirFwd.y = 0f;
             Vector3 dirBwd = pBwd - origin; dirBwd.y = 0f;

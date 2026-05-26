@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d22394537343d534fb92dbf62fdff386, type: 3}
+  m_Name: SplineManifest
+  m_EditorClassIdentifier: Assembly-CSharp::SplineManifest
+  entries:
+  - index: 0
+    displayName: Spline 0
+    isBlockedByDefault: 0
+    unlockCost: 0
+  - index: 1
+    displayName: Spline 1
+    isBlockedByDefault: 1
+    unlockCost: 20
+  - index: 2
+    displayName: Spline 2
+    isBlockedByDefault: 1
+    unlockCost: 30
+  - index: 3
+    displayName: Spline 3
+    isBlockedByDefault: 1
+    unlockCost: 40
+  - index: 4
+    displayName: Spline 4
+    isBlockedByDefault: 1
+    unlockCost: 50

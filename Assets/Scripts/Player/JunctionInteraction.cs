@@ -2,26 +2,32 @@ using System.Collections.Generic;
 using StarterAssets;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Splines;
 
-[RequireComponent(typeof(SplineJunction))]
 public class JunctionInteraction : MonoBehaviour
 {
-    SplineJunction _junction;
+    [SerializeField] private float interactionRadius = 2f;
+
     PlayerController _playerInside;
     PlayerStatsAggregator _stats;
     bool _menuOpen = false;
-    List<int> _blockedAtThisJunction = new List<int>();
+    List<int> _blockedHere = new();
+    List<int> _relevantSplines = new();
+
+    SphereCollider _interactionCollider;
 
     void Awake()
     {
-        _junction = GetComponent<SplineJunction>();
+        _interactionCollider = gameObject.AddComponent<SphereCollider>();
+        _interactionCollider.radius = interactionRadius;
+        _interactionCollider.isTrigger = true;
     }
 
     void Update()
     {
         if (_playerInside == null) return;
 
-        bool hasBlocked = _junction.GetBlockedSplines().Count > 0;
+        bool hasBlocked = GetLocalBlockedSplines().Count > 0;
 
         if (hasBlocked && !_menuOpen && Keyboard.current.eKey.wasPressedThisFrame)
         {
@@ -50,10 +56,10 @@ public class JunctionInteraction : MonoBehaviour
 
     void TryUnlock(int menuIndex)
     {
-        if (menuIndex >= _blockedAtThisJunction.Count) return;
+        if (menuIndex >= _blockedHere.Count) return;
 
-        int splineIndex = _blockedAtThisJunction[menuIndex];
-        int cost = _junction.GetUnlockCost(splineIndex);
+        int splineIndex = _blockedHere[menuIndex];
+        int cost = SplineRuntimeState.Instance.GetUnlockCost(splineIndex);
 
         if (_stats.Coins < cost)
         {
@@ -62,29 +68,21 @@ public class JunctionInteraction : MonoBehaviour
         }
 
         _stats.Coins -= cost;
-        _junction.Unblock(splineIndex);
-        _blockedAtThisJunction.Remove(splineIndex);
+        SplineRuntimeState.Instance.Unblock(splineIndex);
+        _blockedHere.Remove(splineIndex);
 
-        JunctionUIManager.Instance.UpdateMenu(
-            _blockedAtThisJunction,
-            _junction,
-            _stats.Coins
-        );
+        JunctionUIManager.Instance.UpdateMenu(_blockedHere, splineIndex, _stats.Coins);
 
-        if (_blockedAtThisJunction.Count == 0)
+        if (_blockedHere.Count == 0)
             CloseMenu();
     }
 
     void OpenMenu()
     {
         _menuOpen = true;
-        _blockedAtThisJunction = _junction.GetBlockedSplines();
+        _blockedHere = GetLocalBlockedSplines();
         _playerInside.SetMovementLocked(true);
-        JunctionUIManager.Instance.ShowMenu(
-            _blockedAtThisJunction,
-            _junction,
-            _stats.Coins
-        );
+        JunctionUIManager.Instance.ShowMenu(_blockedHere, _stats.Coins);
     }
 
     void CloseMenu()
@@ -94,11 +92,60 @@ public class JunctionInteraction : MonoBehaviour
         JunctionUIManager.Instance.HideMenu();
     }
 
+    List<int> GetLocalBlockedSplines()
+    {
+        if (SplineRuntimeState.Instance == null) return new List<int>();
+        return SplineRuntimeState.Instance.GetBlockedSplinesFromList(_relevantSplines);
+    }
+
+    List<int> ResolveRelevantSplines(int currentSplineIndex)
+    {
+        var result = new List<int>();
+
+        SplineContainer container = FindFirstObjectByType<SplineContainer>();
+        if (container == null) return result;
+
+        KnotLinkCollection links = container.KnotLinkCollection;
+        Spline currentSpline = container.Splines[currentSplineIndex];
+
+        int closestKnot = GetClosestKnotIndex(currentSpline, container);
+        var currentKnotIdx = new SplineKnotIndex(currentSplineIndex, closestKnot);
+
+        IReadOnlyList<SplineKnotIndex> linked = links.GetKnotLinks(currentKnotIdx);
+
+        foreach (var ski in linked)
+        {
+            if (ski.Spline == currentSplineIndex) continue;
+            if (!result.Contains(ski.Spline))
+                result.Add(ski.Spline);
+        }
+
+        return result;
+    }
+
+    int GetClosestKnotIndex(Spline spline, SplineContainer container)
+    {
+        Vector3 jPos = transform.position;
+        int closest = 0;
+        float closestDist = float.MaxValue;
+
+        for (int k = 0; k < spline.Count; k++)
+        {
+            Vector3 kw = container.transform.TransformPoint(spline[k].Position);
+            float dist = Vector3.Distance(
+                new Vector3(jPos.x, 0f, jPos.z),
+                new Vector3(kw.x, 0f, kw.z));
+            if (dist < closestDist) { closestDist = dist; closest = k; }
+        }
+        return closest;
+    }
+
     void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
         _playerInside = other.GetComponent<PlayerController>();
         _stats = other.GetComponent<PlayerStatsAggregator>();
+        _relevantSplines = ResolveRelevantSplines(_playerInside.CurrentSplineIndex);
     }
 
     void OnTriggerExit(Collider other)
@@ -107,5 +154,6 @@ public class JunctionInteraction : MonoBehaviour
         if (_menuOpen) CloseMenu();
         _playerInside = null;
         _stats = null;
+        _relevantSplines.Clear();
     }
 }

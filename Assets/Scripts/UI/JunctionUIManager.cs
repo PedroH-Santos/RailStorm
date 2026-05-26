@@ -20,26 +20,33 @@ public class JunctionUIManager : MonoBehaviour
         menuPanel.SetActive(false);
     }
 
-    public void ShowMenu(List<int> blocked, SplineJunction junction, int coins)
+    public void ShowMenu(List<int> blocked, int coins)
     {
         menuPanel.SetActive(true);
         messageText.text = "";
-        UpdateMenu(blocked, junction, coins);
+        RefreshSlots(blocked, coins);
     }
 
-    public void UpdateMenu(List<int> blocked, SplineJunction junction, int coins)
+    public void UpdateMenu(List<int> blocked, int unlockedSpline, int coins)
+    {
+        RefreshSlots(blocked, coins);
+    }
+
+    void RefreshSlots(List<int> blocked, int coins)
     {
         coinsText.text = $"Moedas: {coins}";
 
         for (int i = 0; i < slotLabels.Length; i++)
             slotLabels[i].gameObject.SetActive(false);
 
-        for (int i = 0; i < blocked.Count && i < 4; i++)
+        for (int i = 0; i < blocked.Count && i < slotLabels.Length; i++)
         {
             int splineIndex = blocked[i];
-            int cost = junction.GetUnlockCost(splineIndex); // custo individual
+            int cost = SplineRuntimeState.Instance.GetUnlockCost(splineIndex);
+            string name = SplineRuntimeState.Instance.GetDisplayName(splineIndex);
+
             slotLabels[i].gameObject.SetActive(true);
-            slotLabels[i].text = $"[{i + 1}]  Caminho {splineIndex}  —  {cost} moedas";
+            slotLabels[i].text = $"[{i + 1}]  {name}  —  {cost} moedas";
         }
     }
 

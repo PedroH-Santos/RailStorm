@@ -6,40 +6,41 @@ public class SplineJunction : MonoBehaviour
 {
     public SplineContainer splineContainer;
 
-
     [SerializeField]
     private List<SplineInfo> _splineInfos = new List<SplineInfo>();
 
-    SplineInfo GetInfo(int splineIndex)
+
+    void Awake()
     {
+        if (SplineBlockRegistry.Instance == null)
+        {
+            Debug.LogWarning("[SplineJunction] SplineBlockRegistry não encontrado na cena. " +
+                             "Adicione um GameObject com o componente SplineBlockRegistry.");
+            return;
+        }
+
         foreach (var info in _splineInfos)
-            if (info.splineIndex == splineIndex) return info;
-        return null;
+        {
+            if (info.isBlocked)
+                SplineBlockRegistry.Instance.Block(info.splineIndex, info.unlockCost);
+        }
     }
 
     public bool IsBlocked(int splineIndex)
-    {
-        var info = GetInfo(splineIndex);
-        return info != null && info.isBlocked;
-    }
+        => SplineBlockRegistry.Instance != null && SplineBlockRegistry.Instance.IsBlocked(splineIndex);
 
     public void Unblock(int splineIndex)
-    {
-        var info = GetInfo(splineIndex);
-        if (info != null) info.isBlocked = false;
-    }
+        => SplineBlockRegistry.Instance?.Unblock(splineIndex);
 
     public int GetUnlockCost(int splineIndex)
-    {
-        var info = GetInfo(splineIndex);
-        return info != null ? info.unlockCost : 0;
-    }
+        => SplineBlockRegistry.Instance != null ? SplineBlockRegistry.Instance.GetUnlockCost(splineIndex) : 0;
 
     public List<int> GetBlockedSplines()
     {
         var result = new List<int>();
         foreach (var info in _splineInfos)
-            if (info.isBlocked) result.Add(info.splineIndex);
+            if (IsBlocked(info.splineIndex))
+                result.Add(info.splineIndex);
         return result;
     }
 
