@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+
 
 public class SplineRuntimeState : MonoBehaviour
 {
@@ -15,6 +17,7 @@ public class SplineRuntimeState : MonoBehaviour
         Instance = this;
     }
 
+
     public bool IsBlocked(int splineIndex)
     {
         if (_unlocked.Contains(splineIndex)) return false;
@@ -22,37 +25,23 @@ public class SplineRuntimeState : MonoBehaviour
         return entry != null && entry.isBlockedByDefault;
     }
 
-    public void Unblock(int splineIndex)
+ 
+    public IEnumerable<SplineEntry> GetBlockedEntries()
     {
-        _unlocked.Add(splineIndex);
-    }
+        if (manifest == null) yield break;
 
-    public int GetUnlockCost(int splineIndex)
-    {
-        var entry = manifest?.GetEntry(splineIndex);
-        return entry != null ? entry.unlockCost : 0;
-    }
-
-    public string GetDisplayName(int splineIndex)
-    {
-        var entry = manifest?.GetEntry(splineIndex);
-        return entry != null ? entry.displayName : $"Spline {splineIndex}";
-    }
-
-    public List<int> GetBlockedSplines()
-    {
-        var result = new List<int>();
-        if (manifest == null) return result;
         foreach (var entry in manifest.entries)
-            if (IsBlocked(entry.index)) result.Add(entry.index);
-        return result;
+            if (IsBlocked(entry.index))
+                yield return entry;
     }
 
-    public List<int> GetBlockedSplinesFromList(List<int> candidates)
+    public IEnumerable<SplineEntry> GetBlockedEntriesFrom(IEnumerable<SplineEntry> candidates)
     {
-        var result = new List<int>();
-        foreach (var index in candidates)
-            if (IsBlocked(index)) result.Add(index);
-        return result;
+        foreach (var entry in candidates)
+            if (IsBlocked(entry.index))
+                yield return entry;
     }
+
+
+    public void Unblock(int splineIndex) => _unlocked.Add(splineIndex);
 }

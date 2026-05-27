@@ -59,19 +59,19 @@ public class JunctionInteraction : MonoBehaviour
         if (menuIndex >= _blockedHere.Count) return;
 
         int splineIndex = _blockedHere[menuIndex];
-        int cost = SplineRuntimeState.Instance.GetUnlockCost(splineIndex);
+       // int cost = SplineRuntimeState.Instance.GetUnlockCost(splineIndex);
 
-        if (_stats.Coins < cost)
-        {
-            JunctionUIManager.Instance.ShowInsufficientFunds();
-            return;
-        }
+        //if (_stats.Coins < cost)
+        //{
+        //    JunctionUIManager.Instance.ShowInsufficientFunds();
+        //    return;
+        //}
 
-        _stats.Coins -= cost;
-        SplineRuntimeState.Instance.Unblock(splineIndex);
-        _blockedHere.Remove(splineIndex);
+        //_stats.Coins -= cost;
+        //SplineRuntimeState.Instance.Unblock(splineIndex);
+        //_blockedHere.Remove(splineIndex);
 
-        JunctionUIManager.Instance.UpdateMenu(_blockedHere, splineIndex, _stats.Coins);
+        //JunctionUIManager.Instance.UpdateMenu(_blockedHere, splineIndex, _stats.Coins);
 
         if (_blockedHere.Count == 0)
             CloseMenu();
@@ -82,7 +82,7 @@ public class JunctionInteraction : MonoBehaviour
         _menuOpen = true;
         _blockedHere = GetLocalBlockedSplines();
         _playerInside.SetMovementLocked(true);
-        JunctionUIManager.Instance.ShowMenu(_blockedHere, _stats.Coins);
+        //JunctionUIManager.Instance.ShowMenu(_blockedHere, _stats.Coins);
     }
 
     void CloseMenu()
@@ -95,7 +95,7 @@ public class JunctionInteraction : MonoBehaviour
     List<int> GetLocalBlockedSplines()
     {
         if (SplineRuntimeState.Instance == null) return new List<int>();
-        return SplineRuntimeState.Instance.GetBlockedSplinesFromList(_relevantSplines);
+        return new List<int>();
     }
 
     List<int> ResolveRelevantSplines(int currentSplineIndex)

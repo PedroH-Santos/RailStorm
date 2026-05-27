@@ -3,21 +3,26 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Splines;
 
+
+[RequireComponent(typeof(Collider))]
 public class SplineCollision : MonoBehaviour
 {
+    [Header("Switch Settings")]
     [SerializeField] private float switchCooldown = 0.25f;
     [SerializeField] private float inputThreshold = 0.15f;
     [SerializeField] private float sampleStep = 0.05f;
     [SerializeField] private float minDotToSwitch = 0.4f;
 
     [SerializeField] private SplineContainer _splineContainer;
+
     PlayerController _playerInside;
     float _cooldownTimer;
 
     void Awake()
     {
-        _splineContainer = GetComponent<SplineContainer>();
-        GetComponent<Collider>().isTrigger = true;
+        var col = GetComponent<Collider>();
+        if (col != null)
+            col.isTrigger = true;
     }
 
     void Update()
@@ -47,7 +52,10 @@ public class SplineCollision : MonoBehaviour
         bestDir = 1f;
         float bestDot = minDotToSwitch;
 
+        if (_splineContainer == null) return false;
+
         KnotLinkCollection links = _splineContainer.KnotLinkCollection;
+        if (links == null) return false;
 
         int currentIdx = _playerInside.CurrentSplineIndex;
         Spline currentSpline = _splineContainer.Splines[currentIdx];
@@ -56,11 +64,14 @@ public class SplineCollision : MonoBehaviour
         var currentKnotIdx = new SplineKnotIndex(currentIdx, closestKnot);
 
         IReadOnlyList<SplineKnotIndex> linked = links.GetKnotLinks(currentKnotIdx);
+        if (linked == null || linked.Count == 0) return false;
 
         foreach (SplineKnotIndex ski in linked)
         {
             if (ski.Spline == currentIdx) continue;
-            if (SplineRuntimeState.Instance != null && SplineRuntimeState.Instance.IsBlocked(ski.Spline)) continue;
+
+            if (SplineRuntimeState.Instance != null && SplineRuntimeState.Instance.IsBlocked(ski.Spline))
+                continue;
 
             Spline spline = _splineContainer.Splines[ski.Spline];
 
@@ -81,10 +92,8 @@ public class SplineCollision : MonoBehaviour
             Vector3 dirFwd = pFwd - origin; dirFwd.y = 0f;
             Vector3 dirBwd = pBwd - origin; dirBwd.y = 0f;
 
-            TryScore(inputDir, dirFwd, 1f, ski.Spline,
-                     ref bestDot, ref bestSplineIndex, ref bestDir);
-            TryScore(inputDir, dirBwd, -1f, ski.Spline,
-                     ref bestDot, ref bestSplineIndex, ref bestDir);
+            TryScore(inputDir, dirFwd, 1f, ski.Spline, ref bestDot, ref bestSplineIndex, ref bestDir);
+            TryScore(inputDir, dirBwd, -1f, ski.Spline, ref bestDot, ref bestSplineIndex, ref bestDir);
         }
 
         return bestSplineIndex >= 0;
@@ -119,6 +128,7 @@ public class SplineCollision : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
         _playerInside = other.GetComponent<PlayerController>();
+
     }
 
     void OnTriggerExit(Collider other)
