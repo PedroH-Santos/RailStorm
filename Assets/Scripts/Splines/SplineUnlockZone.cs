@@ -5,7 +5,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Splines;
 
-
 [RequireComponent(typeof(SphereCollider))]
 public class SplineUnlockZone : MonoBehaviour
 {
@@ -20,8 +19,9 @@ public class SplineUnlockZone : MonoBehaviour
     bool _menuOpen;
 
     List<SplineEntry> _relevantEntries = new();
-
     List<SplineEntry> _blockedHere = new();
+
+    readonly Dictionary<int, string> _entryDirections = new();
 
     void Awake()
     {
@@ -78,32 +78,115 @@ public class SplineUnlockZone : MonoBehaviour
         }
 
         _stats.Coins -= entry.unlockCost;
-
         SplineRuntimeState.Instance.Unblock(entry.index);
 
-        JunctionUIManager.Instance?.UpdateMenu(_blockedHere, _stats.Coins);
+        _blockedHere = SplineRuntimeState.Instance
+            .GetBlockedEntriesFrom(_relevantEntries)
+            .ToList();
 
+        if (_blockedHere.Count == 0)
+            CloseMenu();
+        else
+            JunctionUIManager.Instance?.UpdateMenu(BuildMenuEntries(), _stats.Coins);
     }
-
 
     void OpenMenu()
     {
         _menuOpen = true;
         _player.SetMovementLocked(true);
-        JunctionUIManager.Instance?.ShowMenu(_blockedHere, _stats.Coins);
+        Time.timeScale = 0f;
+        JunctionUIManager.Instance?.ShowMenu(BuildMenuEntries(), _stats.Coins);
     }
 
     void CloseMenu()
     {
         _menuOpen = false;
         _player?.SetMovementLocked(false);
+        Time.timeScale = 1f;
         JunctionUIManager.Instance?.HideMenu();
     }
 
+    List<JunctionMenuEntry> BuildMenuEntries()
+    {
+        var result = new List<JunctionMenuEntry>();
+        foreach (var entry in _blockedHere)
+        {
+            string dir = _entryDirections.TryGetValue(entry.index, out var d) ? d : "?";
+            string dest = !string.IsNullOrEmpty(entry.destinationName)
+                          ? entry.destinationName
+                          : entry.displayName;
+
+            result.Add(new JunctionMenuEntry
+            {
+                DirectionArrow = dir,
+                DestinationName = dest,
+                UnlockCost = entry.unlockCost
+            });
+        }
+        return result;
+    }
+
+    string GetDirectionArrow(SplineEntry entry)
+    {
+        if (splineContainer == null) return "→";
+
+        Spline spline = splineContainer.Splines[entry.index];
+        if (spline == null || spline.Count == 0) return "→";
+
+        int closestKnot = GetClosestKnotIndex(spline);
+        float knotT = SplineUtility.GetNormalizedInterpolation(spline, closestKnot, PathIndexUnit.Knot);
+
+        Vector3 junctionPos = transform.position;
+        Vector3 origin = splineContainer.transform.TransformPoint(spline.EvaluatePosition(knotT));
+
+        float sampleStep = 0.08f;
+
+        float tFwd = spline.Closed
+            ? Mathf.Repeat(knotT + sampleStep, 1f)
+            : Mathf.Clamp01(knotT + sampleStep);
+        float tBwd = spline.Closed
+            ? Mathf.Repeat(knotT - sampleStep + 1f, 1f)
+            : Mathf.Clamp01(knotT - sampleStep);
+
+        Vector3 pFwd = splineContainer.transform.TransformPoint(spline.EvaluatePosition(tFwd));
+        Vector3 pBwd = splineContainer.transform.TransformPoint(spline.EvaluatePosition(tBwd));
+
+        float distFwd = Vector3.Distance(new Vector3(pFwd.x, 0f, pFwd.z),
+                                         new Vector3(junctionPos.x, 0f, junctionPos.z));
+        float distBwd = Vector3.Distance(new Vector3(pBwd.x, 0f, pBwd.z),
+                                         new Vector3(junctionPos.x, 0f, junctionPos.z));
+
+        Vector3 chosenPoint = distFwd >= distBwd ? pFwd : pBwd;
+        Vector3 dir = chosenPoint - origin;
+        dir.y = 0f;
+
+        if (dir.sqrMagnitude < 0.0001f) return "→";
+
+        dir.Normalize();
+
+        float angle = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+        if (angle < 0f) angle += 360f;
+
+        int sector = Mathf.RoundToInt(angle / 45f) % 8;
+        return sector switch
+        {
+            0 => "↑",
+            1 => "↗",
+            2 => "→",
+            3 => "↘",
+            4 => "↓",
+            5 => "↙",
+            6 => "←",
+            7 => "↖",
+            _ => "→"
+        };
+    }
 
     List<SplineEntry> ResolveRelevantEntries(int currentSplineIndex)
     {
         var result = new List<SplineEntry>();
+        _entryDirections.Clear();
+
         if (splineContainer == null || SplineRuntimeState.Instance?.manifest == null)
             return result;
 
@@ -123,7 +206,10 @@ public class SplineUnlockZone : MonoBehaviour
 
             SplineEntry entry = SplineRuntimeState.Instance.manifest.GetEntry(ski.Spline);
             if (entry != null && !result.Contains(entry))
+            {
                 result.Add(entry);
+                _entryDirections[entry.index] = GetDirectionArrow(entry);
+            }
         }
 
         return result;
@@ -146,7 +232,6 @@ public class SplineUnlockZone : MonoBehaviour
         return closest;
     }
 
-
     void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
@@ -168,8 +253,8 @@ public class SplineUnlockZone : MonoBehaviour
         _stats = null;
         _relevantEntries.Clear();
         _blockedHere.Clear();
+        _entryDirections.Clear();
     }
-
 
     void OnDrawGizmosSelected()
     {

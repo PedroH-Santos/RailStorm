@@ -220,7 +220,7 @@
       }
     },
     "com.unity.test-framework.performance": {
-      "version": "3.2.1",
+      "version": "3.4.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {

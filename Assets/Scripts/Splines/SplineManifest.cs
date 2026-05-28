@@ -7,6 +7,10 @@ public class SplineEntry
 {
     public int index;
     public string displayName;
+
+    [Tooltip("Nome do destino exibido no menu de desbloqueio. Ex: 'Floresta Sombria', 'Cidade Alta'")]
+    public string destinationName = "";
+
     public bool isBlockedByDefault;
     public int unlockCost = 10;
 }
@@ -42,6 +46,7 @@ public class SplineManifest : ScriptableObject
                 {
                     index = i,
                     displayName = $"Spline {i}",
+                    destinationName = $"Destino {i}",
                     isBlockedByDefault = false,
                     unlockCost = 10
                 });

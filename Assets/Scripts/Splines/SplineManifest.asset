@@ -15,21 +15,31 @@ MonoBehaviour:
   entries:
   - index: 0
     displayName: Spline 0
+    destinationName: 
     isBlockedByDefault: 0
     unlockCost: 0
   - index: 1
     displayName: Spline 1
-    isBlockedByDefault: 0
-    unlockCost: 20
+    destinationName: 
+    isBlockedByDefault: 1
+    unlockCost: 15
   - index: 2
     displayName: Spline 2
+    destinationName: 
     isBlockedByDefault: 1
-    unlockCost: 30
+    unlockCost: 15
   - index: 3
     displayName: Spline 3
+    destinationName: 
     isBlockedByDefault: 1
-    unlockCost: 40
+    unlockCost: 15
   - index: 4
     displayName: Spline 4
+    destinationName: 
     isBlockedByDefault: 1
-    unlockCost: 50
+    unlockCost: 15
+  - index: 5
+    displayName: Spline 5
+    destinationName: Destino 5
+    isBlockedByDefault: 1
+    unlockCost: 15

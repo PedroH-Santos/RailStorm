@@ -20,30 +20,31 @@ public class JunctionUIManager : MonoBehaviour
         menuPanel.SetActive(false);
     }
 
-    public void ShowMenu(IReadOnlyList<SplineEntry> blocked, int coins)
+    public void ShowMenu(IReadOnlyList<JunctionMenuEntry> entries, int coins)
     {
         menuPanel.SetActive(true);
         messageText.text = "";
-        RefreshSlots(blocked, coins);
+        RefreshSlots(entries, coins);
     }
 
-    public void UpdateMenu(IReadOnlyList<SplineEntry> blocked, int coins)
+    public void UpdateMenu(IReadOnlyList<JunctionMenuEntry> entries, int coins)
     {
-        RefreshSlots(blocked, coins);
+        RefreshSlots(entries, coins);
     }
 
-    void RefreshSlots(IReadOnlyList<SplineEntry> blocked, int coins)
+    void RefreshSlots(IReadOnlyList<JunctionMenuEntry> entries, int coins)
     {
         coinsText.text = $"Moedas: {coins}";
 
         for (int i = 0; i < slotLabels.Length; i++)
             slotLabels[i].gameObject.SetActive(false);
 
-        for (int i = 0; i < blocked.Count && i < slotLabels.Length; i++)
+        for (int i = 0; i < entries.Count && i < slotLabels.Length; i++)
         {
-            SplineEntry entry = blocked[i];
+            JunctionMenuEntry e = entries[i];
             slotLabels[i].gameObject.SetActive(true);
-            slotLabels[i].text = $"[{i + 1}]  {entry.displayName}  —  {entry.unlockCost} moedas";
+
+            slotLabels[i].text = $"[{i + 1}]  {e.DirectionArrow}  {e.DestinationName}  —  {e.UnlockCost}";
         }
     }
 
@@ -52,8 +53,13 @@ public class JunctionUIManager : MonoBehaviour
     public void ShowInsufficientFunds()
     {
         messageText.text = "Moedas insuficientes!";
-        Invoke(nameof(Clear), 1.5f);
+        StopAllCoroutines();
+        StartCoroutine(ClearAfterDelay(1.5f));
     }
 
-    void Clear() => messageText.text = "";
+    System.Collections.IEnumerator ClearAfterDelay(float seconds)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        messageText.text = "";
+    }
 }
