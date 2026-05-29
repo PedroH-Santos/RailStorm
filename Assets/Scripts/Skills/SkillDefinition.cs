@@ -1,49 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public enum StatTarget
-{
-    MoveSpeed,
-    MaxHP,
-    HP,
-    LuckPercent,
-    Coins,
-    FireballDamage,
-    FireballSpeed,
-    FireballRange,
-    AttackRate,
 
-    CarWeaponDamage,
-    CarFireRate,
-    CarRange,
-    CarMaxWeapons,
-    CarSpeed,
-
-    EnemyDamage,
-    EnemySpeed,
-    EnemyHP,
-    EnemyAttackRate,
-
-    SpawnRate,
-    WaveSize,
-    CoinDropRate,
-    XpMultiplier,
-}
-
-public enum SkillRarity
-{
-    Common,
-    Uncommon,
-    Rare
-}
-
-[System.Serializable]
-public class SkillLevel
-{
-    [TextArea] public string description;
-    public float statValue;
-    public bool isMultiplier;
-}
 
 [CreateAssetMenu(fileName = "NewSkill", menuName = "Skills/Skill Definition")]
 public class SkillDefinition : ScriptableObject, IDrawable
@@ -53,17 +11,17 @@ public class SkillDefinition : ScriptableObject, IDrawable
     public Sprite icon;
 
     [Header("Raridade")]
-    public SkillRarity rarity;
+    public ESkillRarity rarity;
 
     [Header("Atributo afetado")]
-    public StatTarget statTarget;
+    public EStatTarget statTarget;
 
     [Header("Níveis")]
     public List<SkillLevel> levels = new();
 
     public string DisplayName => skillName;
     public Sprite Icon => icon;
-    public SkillRarity Rarity => rarity;
+    public ESkillRarity Rarity => rarity;
 
     public int MaxLevel => levels.Count;
 
@@ -85,9 +43,9 @@ public class SkillDefinition : ScriptableObject, IDrawable
 
         return rarity switch
         {
-            SkillRarity.Common => common,
-            SkillRarity.Uncommon => uncommon,
-            SkillRarity.Rare => rare,
+            ESkillRarity.Common => common,
+            ESkillRarity.Uncommon => uncommon,
+            ESkillRarity.Rare => rare,
             _ => 0f
         };
     }

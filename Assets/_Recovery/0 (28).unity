@@ -3294,10 +3294,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StarterAssets.PlayerController
   splineContainer: {fileID: 717960645}
   startT: 0
-  idleSpeed: 0.5
-  acceleration: 3
-  deceleration: 2
-  rotationSmoothTime: 5
   knotThreshold: 0.8
   minDecisionDot: 0.3
 --- !u!143 &337154706
@@ -3540,6 +3536,10 @@ MonoBehaviour:
   _hp: 100
   _maxHp: 100
   _moveSpeed: 15
+  _idleSpeed: 0.5
+  _acceleration: 6
+  _deceleration: 4
+  _rotationSmoothTime: 0.12
   _coins: 50
   _luckPercent: 0
 --- !u!114 &337154716

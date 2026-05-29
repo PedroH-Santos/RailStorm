@@ -55,18 +55,18 @@ namespace StarterAssets
 
             switch (skill.statTarget)
             {
-                case StatTarget.MoveSpeed:
+                case EStatTarget.MoveSpeed:
                     _stats.MoveSpeed = data.isMultiplier
                         ? _stats.MoveSpeed * data.statValue
                         : _stats.MoveSpeed + data.statValue;
                     break;
 
-                case StatTarget.Coins:
+                case EStatTarget.Coins:
                     _stats.Coins = data.isMultiplier
                         ? _stats.Coins * (int)data.statValue
                         : _stats.Coins + (int)data.statValue;
                     break;
-                case StatTarget.MaxHP:
+                case EStatTarget.MaxHP:
                     _stats.MaxHP = data.isMultiplier
                         ? _stats.MaxHP * (int)data.statValue
                         : _stats.MaxHP + (int)data.statValue;

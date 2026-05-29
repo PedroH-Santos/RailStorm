@@ -6,7 +6,7 @@ public class SkillCardData
     public int targetLevel;
 
     public string DisplayName => drawable.DisplayName;
-    public SkillRarity Rarity => drawable.Rarity;
+    public ESkillRarity Rarity => drawable.Rarity;
 
     public SkillCardData(SkillDefinition skill, int targetLevel)
     {

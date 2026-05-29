@@ -21,7 +21,7 @@ MonoBehaviour:
   - index: 1
     displayName: Spline 1
     destinationName: 
-    isBlockedByDefault: 1
+    isBlockedByDefault: 0
     unlockCost: 15
   - index: 2
     displayName: Spline 2

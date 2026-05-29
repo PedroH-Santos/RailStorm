@@ -5,7 +5,7 @@ public interface IDrawable
 
     UnityEngine.Sprite Icon { get; }
 
-    SkillRarity Rarity { get; }
+    ESkillRarity Rarity { get; }
 
     float GetWeight(float luckPercent);
 }

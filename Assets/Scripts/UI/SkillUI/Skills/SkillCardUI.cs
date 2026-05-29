@@ -75,19 +75,19 @@ public class SkillCardUI : MonoBehaviour
     }
 
 
-    string GetRarityLabel(SkillRarity rarity) => rarity switch
+    string GetRarityLabel(ESkillRarity rarity) => rarity switch
     {
-        SkillRarity.Common => "Comum",
-        SkillRarity.Uncommon => "Incomum",
-        SkillRarity.Rare => "Raro",
+        ESkillRarity.Common => "Comum",
+        ESkillRarity.Uncommon => "Incomum",
+        ESkillRarity.Rare => "Raro",
         _ => "Desconhecida"
     };
 
-    Color GetRarityColor(SkillRarity rarity) => rarity switch
+    Color GetRarityColor(ESkillRarity rarity) => rarity switch
     {
-        SkillRarity.Common => colorCommon,
-        SkillRarity.Uncommon => colorUncommon,
-        SkillRarity.Rare => colorRare,
+        ESkillRarity.Common => colorCommon,
+        ESkillRarity.Uncommon => colorUncommon,
+        ESkillRarity.Rare => colorRare,
         _ => colorCommon
     };
 

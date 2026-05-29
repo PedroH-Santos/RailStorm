@@ -3,16 +3,9 @@ using UnityEngine.Splines;
 using System.Linq;
 using Unity.Mathematics;
 
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
-
 namespace StarterAssets
 {
     [RequireComponent(typeof(CharacterController))]
-#if ENABLE_INPUT_SYSTEM
-    [RequireComponent(typeof(PlayerInput))]
-#endif
     public class PlayerController : MonoBehaviour
     {
         [Header("Spline")]
@@ -20,24 +13,17 @@ namespace StarterAssets
         [Range(0f, 1f)]
         public float startT = 0f;
 
-        [Header("Movement")]
-        public float idleSpeed = 0.5f;
-        public float acceleration = 6f;
-        public float deceleration = 4f;
-        public float rotationSmoothTime = 0.12f;
-
         [Header("Junction")]
         public float knotThreshold = 0.8f;
         public float minDecisionDot = 0.3f;
 
         PlayerStatsAggregator _stats;
         CharacterController _controller;
-        StarterAssetsInputs _input;
+        PlayerInputReader _input;
 
         Spline _currentSpline;
         int _currentSplineIndex;
         float _currentT;
-        float _distance;
         float _splineLength;
         float _currentSpeed;
         float _lastDirection = 1f;
@@ -45,23 +31,21 @@ namespace StarterAssets
         bool _movementLocked = false;
 
         public int CurrentSplineIndex => _currentSplineIndex;
-        public Vector2 RawInput => _input.move;
         public float LastDirection => _lastDirection;
         public float CurrentSpeed => _currentSpeed;
-
-        void Awake() => _stats = GetComponent<PlayerStatsAggregator>();
+        public Vector2 RawInput => _input.Move;
 
         void Start()
         {
             _controller = GetComponent<CharacterController>();
-            _input = GetComponent<StarterAssetsInputs>();
+            _input = GetComponent<PlayerInputReader>();
+            _stats = GetComponent<PlayerStatsAggregator>();
 
             _currentSplineIndex = 0;
             _currentSpline = splineContainer.Splines.First();
             _splineLength = CalcLength(_currentSpline);
             _currentT = startT;
-            _distance = _currentT * _splineLength;
-            _currentSpeed = idleSpeed;
+            _currentSpeed = _stats.IdleSpeed;
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -79,8 +63,7 @@ namespace StarterAssets
 
         public Vector3 GetInputDir()
         {
-            Vector2 v = _input.move;
-            return new Vector3(v.x, 0f, v.y).normalized;
+            return new Vector3(_input.Move.x, 0f, _input.Move.y).normalized;
         }
 
         Vector3 GetTangent()
@@ -95,8 +78,8 @@ namespace StarterAssets
         {
             if (inputDir.sqrMagnitude < 0.001f)
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, idleSpeed,
-                                            Time.deltaTime * deceleration);
+                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.IdleSpeed,
+                                            Time.deltaTime * _stats.Deceleration);
                 return;
             }
 
@@ -105,19 +88,19 @@ namespace StarterAssets
             if (dot > 0.4f)
             {
                 _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed,
-                                             Time.deltaTime * acceleration);
+                                             Time.deltaTime * _stats.Acceleration);
                 _lastDirection = 1f;
             }
             else if (dot < -0.4f)
             {
                 _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.MoveSpeed,
-                                             Time.deltaTime * acceleration);
+                                             Time.deltaTime * _stats.Acceleration);
                 _lastDirection = -1f;
             }
             else
             {
-                _currentSpeed = Mathf.Lerp(_currentSpeed, idleSpeed,
-                                            Time.deltaTime * deceleration);
+                _currentSpeed = Mathf.Lerp(_currentSpeed, _stats.IdleSpeed,
+                                            Time.deltaTime * _stats.Deceleration);
             }
         }
 
@@ -131,8 +114,6 @@ namespace StarterAssets
             else
                 _currentT = Mathf.Clamp01(_currentT);
 
-            _distance = _currentT * _splineLength;
-
             Vector3 pos = splineContainer.transform.TransformPoint(
                               _currentSpline.EvaluatePosition(_currentT));
             _controller.Move(pos - transform.position);
@@ -143,17 +124,18 @@ namespace StarterAssets
             if (tangent.sqrMagnitude < 0.001f) return;
             float targetY = Quaternion.LookRotation(tangent * _lastDirection).eulerAngles.y;
             float y = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetY,
-                                             ref _rotationVelocity, rotationSmoothTime);
+                                             ref _rotationVelocity, _stats.RotationSmoothTime);
             transform.rotation = Quaternion.Euler(0f, y, 0f);
         }
 
+        float CalcLength(Spline s) =>
+            SplineUtility.CalculateLength(s, splineContainer.transform.localToWorldMatrix);
 
         public void SwitchToSplineIndex(int splineIndex, float direction, float speedOverride)
         {
             if (splineIndex < 0 || splineIndex >= splineContainer.Splines.Count) return;
 
             Spline newSpline = splineContainer.Splines[splineIndex];
-
 
             float3 localPos = splineContainer.transform.InverseTransformPoint(transform.position);
             SplineUtility.GetNearestPoint(newSpline, localPos, out _, out float nearestT);
@@ -164,19 +146,12 @@ namespace StarterAssets
             _currentT = nearestT;
             _currentSpeed = speedOverride;
             _splineLength = CalcLength(newSpline);
-            _distance = _currentT * _splineLength;
         }
-
-        float CalcLength(Spline s) =>
-            SplineUtility.CalculateLength(s, splineContainer.transform.localToWorldMatrix);
 
         public void SetMovementLocked(bool locked)
         {
             _movementLocked = locked;
             if (locked) _currentSpeed = 0f;
         }
-
-        public void SpendCoins(int amount) =>
-            _stats.Coins = Mathf.Max(0, _stats.Coins - amount);
     }
 }

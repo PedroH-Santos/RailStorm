@@ -11,7 +11,7 @@ public class WeaponDefinition : ScriptableObject, IDrawable
     public string description = "";
 
     [Header("Raridade  (mesmo enum das Skills)")]
-    public SkillRarity rarity;
+    public ESkillRarity rarity;
 
     [Header("Stats de Combate")]
     public int damage = 10;
@@ -20,7 +20,7 @@ public class WeaponDefinition : ScriptableObject, IDrawable
 
     public string DisplayName => weaponName;
     public Sprite Icon => icon;
-    public SkillRarity Rarity => rarity;
+    public ESkillRarity Rarity => rarity;
 
     static readonly float WeightCommon = 70f;
     static readonly float WeightUncommon = 20f;
@@ -34,9 +34,9 @@ public class WeaponDefinition : ScriptableObject, IDrawable
 
         return rarity switch
         {
-            SkillRarity.Common => common,
-            SkillRarity.Uncommon => uncommon,
-            SkillRarity.Rare => rare,
+            ESkillRarity.Common => common,
+            ESkillRarity.Uncommon => uncommon,
+            ESkillRarity.Rare => rare,
             _ => 0f
         };
     }
