@@ -15,7 +15,7 @@ MonoBehaviour:
   weaponName: Nova Arma 01
   icon: {fileID: 0}
   description: 'Arma 01 '
-  rarity: 1
+  rarity: 0
   damage: 10
   fireRate: 1
   range: 15
