@@ -1,22 +1,32 @@
+using Assets.Scripts.Systems.Rarity;
 
 public class SkillCardData
 {
     public IDrawable drawable;
-
-    public int targetLevel;
+    public int targetRarityHelper;
+    public bool isWeaponUpgrade;
 
     public string DisplayName => drawable.DisplayName;
-    public ESkillRarity Rarity => drawable.Rarity;
+    public string RarityDisplay => RarityHelper.DisplayName(targetRarityHelper);
 
-    public SkillCardData(SkillDefinition skill, int targetLevel)
+    public SkillCardData(SkillDefinition skill, int targetRarityHelper)
     {
-        this.drawable = skill;
-        this.targetLevel = targetLevel;
+        drawable = skill;
+        this.targetRarityHelper = targetRarityHelper;
+        isWeaponUpgrade = false;
     }
 
-    public SkillCardData(WeaponDefinition weapon)
+    public SkillCardData(WeaponDefinition weapon, int targetRarityHelper)
     {
-        this.drawable = weapon;
-        this.targetLevel = 0;
+        drawable = weapon;
+        this.targetRarityHelper = targetRarityHelper;
+        isWeaponUpgrade = false;
+    }
+
+    public SkillCardData(WeaponDefinition weapon, int nextRarityHelper, bool upgrade)
+    {
+        drawable = weapon;
+        targetRarityHelper = nextRarityHelper;
+        isWeaponUpgrade = upgrade;
     }
 }

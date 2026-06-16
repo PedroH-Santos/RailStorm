@@ -1,7 +1,7 @@
+// SkillOrb.cs
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
 
 public class SkillOrb : MonoBehaviour
 {
@@ -26,22 +26,12 @@ public class SkillOrb : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    void OnDestroy()
-    {
-        EnemySpawner.OnWaveCleared -= Activate;
-    }
+    void OnDestroy() => EnemySpawner.OnWaveCleared -= Activate;
 
-
-    void Activate()
-    {
-        _active = true;
-        gameObject.SetActive(true);
-    }
+    void Activate() { _active = true; gameObject.SetActive(true); }
 
     void Update()
     {
-        // if (!_active) return;
-
         float dist = Vector3.Distance(player.position, transform.position);
         _playerInRange = dist <= interactRadius;
 
@@ -55,37 +45,20 @@ public class SkillOrb : MonoBehaviour
         var controller = player.GetComponent<StarterAssets.PlayerController>();
         var weaponHandler = player.GetComponent<CarWeaponHandler>();
 
-        List<SkillCardData> drawn = SkillDrawer.Draw(
-            skillPool, weaponPool,
-            skillHandler, weaponHandler,
-            skillChoices);
+        var drawn = SkillDrawer.Draw(
+            skillPool, weaponPool, skillHandler, weaponHandler, skillChoices);
 
         skillUI.Show(
-            drawn,
-            skillPool, weaponPool,
+            drawn, skillPool, weaponPool,
             controller, skillHandler, weaponHandler,
-            OnSkillChosen, OnPassed, OnClosed);
+            OnPassed, OnClosed);
 
         _active = false;
     }
 
-    void OnSkillChosen(SkillDefinition skill)
-    {
-        player.GetComponent<StarterAssets.PlayerSkillHandler>()?.ApplySkill(skill);
-        EnemySpawner.NotifyReady(); 
-    }
+    void OnPassed() { gameObject.SetActive(false); EnemySpawner.NotifyReady(); }
+    void OnClosed() { _active = false; gameObject.SetActive(false); EnemySpawner.NotifyReady(); }
 
-    void OnPassed()
-    {
-        gameObject.SetActive(false);
-        EnemySpawner.NotifyReady();
-    }
-    void OnClosed()  
-    {
-        _active = false;
-        gameObject.SetActive(false);
-        EnemySpawner.NotifyReady();
-    }
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.2f);

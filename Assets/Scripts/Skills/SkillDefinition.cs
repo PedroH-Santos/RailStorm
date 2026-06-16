@@ -1,8 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-
-
 [CreateAssetMenu(fileName = "NewSkill", menuName = "Skills/Skill Definition")]
 public class SkillDefinition : ScriptableObject, IDrawable
 {
@@ -10,43 +8,24 @@ public class SkillDefinition : ScriptableObject, IDrawable
     public string skillName = "Nova Skill";
     public Sprite icon;
 
-    [Header("Raridade")]
-    public ESkillRarity rarity;
-
     [Header("Atributo afetado")]
     public EStatTarget statTarget;
 
-    [Header("Níveis")]
+    [Header("Níveis (um por raridade — ordem segue o RarityConfig)")]
     public List<SkillLevel> levels = new();
 
     public string DisplayName => skillName;
     public Sprite Icon => icon;
-    public ESkillRarity Rarity => rarity;
 
-    public int MaxLevel => levels.Count;
+    public int RarityHelper => 0;
 
-    public SkillLevel GetLevel(int level)
+    public int MaxLevelIndex => levels.Count - 1;
+
+    public SkillLevel GetLevelForRarity(int RarityHelper)
     {
-        int index = Mathf.Clamp(level - 1, 0, levels.Count - 1);
-        return levels[index];
+        if (levels.Count == 0) return new SkillLevel();
+        return levels[Mathf.Clamp(RarityHelper, 0, levels.Count - 1)];
     }
 
-    static readonly float WeightCommon = 70f;
-    static readonly float WeightUncommon = 20f;
-    static readonly float WeightRare = 10f;
-
-    public float GetWeight(float luckPercent)
-    {
-        float common = Mathf.Max(0f, WeightCommon - luckPercent * 0.6f);
-        float uncommon = WeightUncommon + luckPercent * 0.3f;
-        float rare = WeightRare + luckPercent * 0.3f;
-
-        return rarity switch
-        {
-            ESkillRarity.Common => common,
-            ESkillRarity.Uncommon => uncommon,
-            ESkillRarity.Rare => rare,
-            _ => 0f
-        };
-    }
+    public bool CanLevelUp(int currentRarityHelper) => currentRarityHelper < MaxLevelIndex;
 }

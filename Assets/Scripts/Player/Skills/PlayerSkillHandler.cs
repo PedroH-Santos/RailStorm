@@ -1,3 +1,5 @@
+// PlayerSkillHandler.cs
+using Assets.Scripts.Systems.Rarity;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,9 +8,11 @@ namespace StarterAssets
     public class PlayerSkillHandler : MonoBehaviour
     {
         PlayerStatsAggregator _stats;
+        CarWeaponHandler _weaponHandler;
 
-        Dictionary<SkillDefinition, int> _skillLevels = new();
-        public IReadOnlyDictionary<SkillDefinition, int> AcquiredSkills => _skillLevels;
+        readonly Dictionary<SkillDefinition, int> _skillRarities = new();
+        public IReadOnlyDictionary<SkillDefinition, int> AcquiredSkills => _skillRarities;
+
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
 
         public float luckPercent => _stats != null ? _stats.LuckPercent : 0f;
@@ -16,42 +20,37 @@ namespace StarterAssets
         void Awake()
         {
             _stats = GetComponent<PlayerStatsAggregator>();
+            _weaponHandler = GetComponent<CarWeaponHandler>()
+                          ?? FindFirstObjectByType<CarWeaponHandler>();
         }
 
-        public int GetSkillLevel(SkillDefinition skill)
-            => _skillLevels.TryGetValue(skill, out int lvl) ? lvl : 0;
+        public int GetSkillRarityHelper(SkillDefinition skill) =>
+            _skillRarities.TryGetValue(skill, out int ri) ? ri : -1;
 
-        public bool HasSkill(SkillDefinition skill) => _skillLevels.ContainsKey(skill);
+        public bool HasSkill(SkillDefinition skill) => _skillRarities.ContainsKey(skill);
+        public bool IsExiled(SkillDefinition skill) => ExiledSkills.Contains(skill);
 
-        public bool CanLevelUp(SkillDefinition skill)
+        public void ApplySkill(SkillDefinition skill, int rarityHelper)
         {
-            int current = GetSkillLevel(skill);
-            return current > 0 && current < skill.MaxLevel;
-        }
+            int current = GetSkillRarityHelper(skill);
 
-        public void ApplySkill(SkillDefinition skill)
-        {
-            int currentLevel = GetSkillLevel(skill);
-            int nextLevel = currentLevel + 1;
-
-            if (nextLevel > skill.MaxLevel)
+            if (rarityHelper <= current)
             {
-                Debug.Log($"[Skills] {skill.skillName} já está no nível máximo.");
+                Debug.LogWarning($"[Skills] {skill.skillName}: RarityHelper {rarityHelper} não supera o atual {current}.");
                 return;
             }
 
-            _skillLevels[skill] = nextLevel;
+            _skillRarities[skill] = rarityHelper;
+            ApplyStat(skill, rarityHelper);
 
-            ApplyStat(skill, nextLevel);
-
-            Debug.Log($"[Skills] {skill.skillName} → Nível {nextLevel}");
+            Debug.Log($"[Skills] {skill.skillName} → {RarityHelper.DisplayName(rarityHelper)}");
         }
 
-        void ApplyStat(SkillDefinition skill, int level)
+        void ApplyStat(SkillDefinition skill, int RarityHelper)
         {
             if (_stats == null) return;
 
-            SkillLevel data = skill.GetLevel(level);
+            SkillLevel data = skill.GetLevelForRarity(RarityHelper);
 
             switch (skill.statTarget)
             {
@@ -61,25 +60,56 @@ namespace StarterAssets
                         : _stats.MoveSpeed + data.statValue;
                     break;
 
-                case EStatTarget.Coins:
-                    _stats.Coins = data.isMultiplier
-                        ? _stats.Coins * (int)data.statValue
-                        : _stats.Coins + (int)data.statValue;
-                    break;
                 case EStatTarget.MaxHP:
                     _stats.MaxHP = data.isMultiplier
                         ? _stats.MaxHP * (int)data.statValue
                         : _stats.MaxHP + (int)data.statValue;
                     break;
+
+                case EStatTarget.Coins:
+                    _stats.Coins = data.isMultiplier
+                        ? _stats.Coins * (int)data.statValue
+                        : _stats.Coins + (int)data.statValue;
+                    break;
+
+                case EStatTarget.LuckPercent:
+                    _stats.LuckPercent = data.isMultiplier
+                        ? _stats.LuckPercent * data.statValue
+                        : _stats.LuckPercent + data.statValue;
+                    break;
+
+                case EStatTarget.CarWeaponDamage:
+                    ApplyToAllWeapons(d => d.damage = data.isMultiplier
+                        ? (int)(d.damage * data.statValue)
+                        : d.damage + (int)data.statValue);
+                    break;
+
+                case EStatTarget.CarFireRate:
+                    ApplyToAllWeapons(d => d.fireRate = data.isMultiplier
+                        ? d.fireRate * data.statValue
+                        : d.fireRate + data.statValue);
+                    break;
+
+                case EStatTarget.CarRange:
+                    ApplyToAllWeapons(d => d.range = data.isMultiplier
+                        ? d.range * data.statValue
+                        : d.range + data.statValue);
+                    break;
             }
+        }
+
+        void ApplyToAllWeapons(System.Action<WeaponLevelData> modifier)
+        {
+            if (_weaponHandler == null) return;
+            foreach (var w in _weaponHandler.AcquiredWeapons)
+                modifier(w.CurrentStats);
+            // _weaponHandler.OnWeaponsChanged?.Invoke();
         }
 
         public void ExileSkill(SkillDefinition skill)
         {
             ExiledSkills.Add(skill);
-            Debug.Log($"[Skills] {skill.skillName} foi exilada permanentemente.");
+            Debug.Log($"[Skills] {skill.skillName} exilada.");
         }
-
-        public bool IsExiled(SkillDefinition skill) => ExiledSkills.Contains(skill);
     }
 }

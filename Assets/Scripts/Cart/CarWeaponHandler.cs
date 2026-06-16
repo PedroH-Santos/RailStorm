@@ -1,6 +1,7 @@
+// CarWeaponHandler.cs
+using Assets.Scripts.Systems.Rarity;
 using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class CarWeaponHandler : MonoBehaviour
@@ -21,14 +22,15 @@ public class CarWeaponHandler : MonoBehaviour
     public bool IsExiled(WeaponDefinition w) => _exiled.Contains(w);
     public bool CanUpgrade(WeaponDefinition w) => HasWeapon(w) && w.CanUpgrade;
 
-    public bool AcquireWeapon(WeaponDefinition weapon)
+    public bool AcquireWeapon(WeaponDefinition weapon, int rarityHelper)
     {
-        if (weapon == null || IsFull || HasWeapon(weapon)) return false;
+        if (weapon == null || IsFull || HasWeapon(weapon) || IsExiled(weapon))
+            return false;
 
-        weapon.Acquire();
+        weapon.Acquire(rarityHelper);
         _acquired.Add(weapon);
 
-        Debug.Log($"[Car] '{weapon.weaponName}' adquirida → Nível 1 (Common)");
+        Debug.Log($"[Car] '{weapon.weaponName}' adquirida → {RarityHelper.DisplayName(rarityHelper)}");
         OnWeaponsChanged?.Invoke();
         return true;
     }
@@ -38,8 +40,7 @@ public class CarWeaponHandler : MonoBehaviour
         if (!CanUpgrade(weapon)) return false;
 
         weapon.Upgrade();
-
-        Debug.Log($"[Car] '{weapon.weaponName}' → Nível {weapon.CurrentLevel} ({weapon.Rarity.DisplayName()})");
+        Debug.Log($"[Car] '{weapon.weaponName}' → {RarityHelper.DisplayName(weapon.RarityHelper)}");
         OnWeaponsChanged?.Invoke();
         return true;
     }
@@ -47,7 +48,7 @@ public class CarWeaponHandler : MonoBehaviour
     public void ExileWeapon(WeaponDefinition weapon)
     {
         _exiled.Add(weapon);
-        Debug.Log($"[Car] '{weapon.weaponName}' banida permanentemente.");
+        Debug.Log($"[Car] '{weapon.weaponName}' banida.");
         OnWeaponsChanged?.Invoke();
     }
 }

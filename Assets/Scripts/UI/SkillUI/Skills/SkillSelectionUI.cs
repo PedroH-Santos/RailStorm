@@ -1,3 +1,4 @@
+// SkillSelectionUI.cs
 using System;
 using System.Collections.Generic;
 using TMPro;
@@ -8,24 +9,19 @@ public class SkillSelectionUI : MonoBehaviour
 {
     [Header("Painéis")]
     public GameObject parentPanel;
-    private GameObject panel;
     public Image gameBackground;
 
-    [Header("Cards de melhoria")]
+    [Header("Cards")]
     public List<SkillCardUI> cards;
 
-    [Header("Inventário")]
+    [Header("Inventário / Stats")]
     public InventoryUI inventoryUI;
-
-    [Header("Stats")]
     public StatsUI statsUI;
 
     [Header("Botões")]
     public Button btnExile;
     public Button btnPass;
     public Button btnRefresh;
-
-    [Header("Badges dos Botões")]
     public TMP_Text exileCountText;
     public TMP_Text refreshCountText;
 
@@ -48,14 +44,11 @@ public class SkillSelectionUI : MonoBehaviour
     int _exilesLeft;
     bool _exileMode;
 
-    Action<SkillDefinition> _onChosen;
     Action _onPassed;
     Action _onClosed;
 
-
     void Awake()
     {
-        panel = gameObject;
         btnExile.onClick.AddListener(OnExile);
         btnPass.onClick.AddListener(OnPass);
         btnRefresh.onClick.AddListener(OnRefresh);
@@ -74,7 +67,6 @@ public class SkillSelectionUI : MonoBehaviour
         StarterAssets.PlayerController playerController,
         StarterAssets.PlayerSkillHandler skillHandler,
         CarWeaponHandler weaponHandler,
-        Action<SkillDefinition> onChosen,
         Action onPassed = null,
         Action onClosed = null)
     {
@@ -84,12 +76,11 @@ public class SkillSelectionUI : MonoBehaviour
         _playerController = playerController;
         _skillHandler = skillHandler;
         _weaponHandler = weaponHandler;
-        _onChosen = onChosen;
         _onPassed = onPassed;
+        _onClosed = onClosed;
         _refreshesLeft = maxRefreshes;
         _exilesLeft = maxExiles;
         _exileMode = false;
-        _onClosed = onClosed;
 
         parentPanel.SetActive(true);
         if (gameBackground != null) gameBackground.gameObject.SetActive(true);
@@ -101,7 +92,6 @@ public class SkillSelectionUI : MonoBehaviour
         UpdateButtons();
 
         statsUI?.Bind(playerController.GetComponent<StarterAssets.PlayerStatsAggregator>());
-
         inventoryUI?.gameObject.SetActive(true);
     }
 
@@ -132,32 +122,26 @@ public class SkillSelectionUI : MonoBehaviour
             _exileMode = false;
             SetBackground(false);
 
-            if (data.drawable is SkillDefinition skill)
-                _skillHandler.ExileSkill(skill);
-            else if (data.drawable is WeaponDefinition weapon)
-                _weaponHandler?.ExileWeapon(weapon);
+            if (data.drawable is SkillDefinition s) _skillHandler.ExileSkill(s);
+            if (data.drawable is WeaponDefinition w) _weaponHandler?.ExileWeapon(w);
 
             _currentOptions.RemoveAt(index);
-
-            SkillCardData replacement = DrawReplacement();
-            if (replacement != null)
-                _currentOptions.Add(replacement);
+            var rep = DrawReplacement();
+            if (rep != null) _currentOptions.Add(rep);
 
             RenderCards();
             UpdateButtons();
+            return;
         }
-        else
+
+        Close();
+
+        if (data.drawable is SkillDefinition skill)
+            _skillHandler.ApplySkill(skill, data.targetRarityHelper);
+        else if (data.drawable is WeaponDefinition weapon)
         {
-            if (data.drawable is SkillDefinition chosenSkill)
-            {
-                Close();
-                _onChosen?.Invoke(chosenSkill);
-            }
-            else if (data.drawable is WeaponDefinition chosenWeapon)
-            {
-                Close();
-                _weaponHandler?.AcquireWeapon(chosenWeapon);
-            }
+            if (data.isWeaponUpgrade) _weaponHandler?.UpgradeWeapon(weapon);
+            else _weaponHandler?.AcquireWeapon(weapon, data.targetRarityHelper);
         }
     }
 
@@ -169,22 +153,14 @@ public class SkillSelectionUI : MonoBehaviour
         UpdateButtons();
     }
 
-    void OnPass()
-    {
-        Close();
-        _onPassed?.Invoke();
-    }
+    void OnPass() { Close(); _onPassed?.Invoke(); }
 
     void OnRefresh()
     {
         if (_refreshesLeft <= 0) return;
-
         _refreshesLeft--;
         _currentOptions = SkillDrawer.Draw(
-            _fullSkillPool, _fullWeaponPool,
-            _skillHandler, _weaponHandler,
-            cards.Count);
-
+            _fullSkillPool, _fullWeaponPool, _skillHandler, _weaponHandler, cards.Count);
         RenderCards();
         UpdateButtons();
     }
@@ -193,26 +169,21 @@ public class SkillSelectionUI : MonoBehaviour
     {
         btnExile.interactable = _exilesLeft > 0;
         btnRefresh.interactable = _refreshesLeft > 0;
-
         if (exileCountText != null) exileCountText.text = $"{_exilesLeft}";
         if (refreshCountText != null) refreshCountText.text = $"{_refreshesLeft}";
     }
 
-    void SetBackground(bool exileMode)
+    void SetBackground(bool exile)
     {
         if (gameBackground == null) return;
-        gameBackground.color = exileMode ? _exileBgColor : _normalBgColor;
+        gameBackground.color = exile ? _exileBgColor : _normalBgColor;
     }
 
     SkillCardData DrawReplacement()
     {
-        var result = SkillDrawer.Draw(
-            _fullSkillPool, _fullWeaponPool,
-            _skillHandler, _weaponHandler,
-            1,
-            _currentOptions);
-
-        return result.Count > 0 ? result[0] : null;
+        var r = SkillDrawer.Draw(
+            _fullSkillPool, _fullWeaponPool, _skillHandler, _weaponHandler, 1, _currentOptions);
+        return r.Count > 0 ? r[0] : null;
     }
 
     void Close()
@@ -221,6 +192,6 @@ public class SkillSelectionUI : MonoBehaviour
         parentPanel.SetActive(false);
         if (gameBackground != null) gameBackground.gameObject.SetActive(false);
         Cursor.visible = true;
-        _onClosed?.Invoke(); 
+        _onClosed?.Invoke();
     }
 }
