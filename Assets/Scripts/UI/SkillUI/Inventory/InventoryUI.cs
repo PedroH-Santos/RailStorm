@@ -1,10 +1,8 @@
-// InventoryUI.cs
 using System.Collections.Generic;
 using UnityEngine;
 
 public class InventoryUI : MonoBehaviour
 {
-    [Header("Referências")]
     public Transform entitiesContainer;
     public GameObject slotPrefab;
     public CarWeaponHandler weaponHandler;
@@ -36,7 +34,7 @@ public class InventoryUI : MonoBehaviour
 
         var entries = new List<InventoryEntry>();
         foreach (var w in weaponHandler.AcquiredWeapons)
-            entries.Add(new InventoryEntry(w, w.RarityHelper));
+            entries.Add(new InventoryEntry(w));
 
         SetSection(SectionWeapons, entries);
     }

@@ -31,20 +31,10 @@ namespace Assets.Scripts.Systems.Rarity
 
         public int Count => rarities.Count;
 
-        public RarityDto GetByIndex(int index)
+        public RarityDto GetRaw(int index)
         {
             if (rarities == null || rarities.Count == 0) return null;
             return rarities[Mathf.Clamp(index, 0, rarities.Count - 1)];
         }
-
-        public float GetWeight(int RarityHelper, float luckPercent)
-        {
-            var def = GetByIndex(RarityHelper);
-            if (def == null) return 0f;
-            return Mathf.Max(0f, def.baseWeight + def.weightPerLuck * Mathf.Clamp(luckPercent, 0f, 100f));
-        }
-
-        public string GetDisplayName(int RarityHelper) => GetByIndex(RarityHelper)?.displayName ?? "?";
-        public Color GetColor(int RarityHelper) => GetByIndex(RarityHelper)?.color ?? Color.white;
     }
-}
+

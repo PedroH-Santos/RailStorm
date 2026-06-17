@@ -1,5 +1,3 @@
-// PlayerSkillHandler.cs
-using Assets.Scripts.Systems.Rarity;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,9 +7,6 @@ namespace StarterAssets
     {
         PlayerStatsAggregator _stats;
         CarWeaponHandler _weaponHandler;
-
-        readonly Dictionary<SkillDefinition, int> _skillRarities = new();
-        public IReadOnlyDictionary<SkillDefinition, int> AcquiredSkills => _skillRarities;
 
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
 
@@ -24,33 +19,32 @@ namespace StarterAssets
                           ?? FindFirstObjectByType<CarWeaponHandler>();
         }
 
-        public int GetSkillRarityHelper(SkillDefinition skill) =>
-            _skillRarities.TryGetValue(skill, out int ri) ? ri : -1;
-
-        public bool HasSkill(SkillDefinition skill) => _skillRarities.ContainsKey(skill);
+        public bool HasSkill(SkillDefinition skill) => skill.IsAcquired;
         public bool IsExiled(SkillDefinition skill) => ExiledSkills.Contains(skill);
+        public int GetSkillRarityIndex(SkillDefinition skill) => skill.CurrentRarity;
 
-        public void ApplySkill(SkillDefinition skill, int rarityHelper)
+        public void ApplySkill(SkillDefinition skill, int rarityIndex)
         {
-            int current = GetSkillRarityHelper(skill);
-
-            if (rarityHelper <= current)
+            if (rarityIndex <= skill.CurrentRarity)
             {
-                Debug.LogWarning($"[Skills] {skill.skillName}: RarityHelper {rarityHelper} não supera o atual {current}.");
+                Debug.LogWarning($"[Skills] {skill.skillName}: rarityIndex {rarityIndex} não supera o atual {skill.CurrentRarity}.");
                 return;
             }
 
-            _skillRarities[skill] = rarityHelper;
-            ApplyStat(skill, rarityHelper);
+            if (!skill.IsAcquired)
+                skill.Acquire(rarityIndex);
+            else
+                skill.Upgrade();
 
-            Debug.Log($"[Skills] {skill.skillName} → {RarityHelper.DisplayName(rarityHelper)}");
+            ApplyStat(skill, skill.CurrentRarity);
+            Debug.Log($"[Skills] {skill.skillName} → {RarityHelper.DisplayName(skill.CurrentRarity)}");
         }
 
-        void ApplyStat(SkillDefinition skill, int RarityHelper)
+        void ApplyStat(SkillDefinition skill, int rarityIndex)
         {
             if (_stats == null) return;
 
-            SkillLevel data = skill.GetLevelForRarity(RarityHelper);
+            SkillLevel data = skill.GetLevelForRarity(rarityIndex);
 
             switch (skill.statTarget)
             {
@@ -103,7 +97,7 @@ namespace StarterAssets
             if (_weaponHandler == null) return;
             foreach (var w in _weaponHandler.AcquiredWeapons)
                 modifier(w.CurrentStats);
-            // _weaponHandler.OnWeaponsChanged?.Invoke();
+            //_weaponHandler.OnWeaponsChanged?.Invoke();
         }
 
         public void ExileSkill(SkillDefinition skill)
