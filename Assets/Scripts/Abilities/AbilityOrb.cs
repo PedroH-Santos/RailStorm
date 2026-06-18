@@ -48,8 +48,8 @@ public class AbilityOrb : MonoBehaviour
     {
         var skillHandler = player.GetComponent<StarterAssets.PlayerSkillHandler>();
         var controller = player.GetComponent<StarterAssets.PlayerController>();
-        var weaponHandler = player.GetComponent<CarWeaponHandler>()
-                         ?? FindFirstObjectByType<CarWeaponHandler>();
+        var weaponHandler = player.GetComponent<PlayerCartWeaponHandler>()
+                         ?? FindFirstObjectByType<PlayerCartWeaponHandler>();
 
         var drawn = AbilityDrawer.Draw(
             _skillPool, _weaponPool, skillHandler, weaponHandler, abilityChoices);

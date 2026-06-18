@@ -11,13 +11,13 @@ public class SkillDefinition : ScriptableObject, IDrawable
 
     [SerializeField] private int currentRarity = -1;
 
-    public List<SkillLevel> levels = new()
+    public List<SkillLevelData> levels = new()
     {
-        new SkillLevel { statValue = 5f,  isMultiplier = false },
-        new SkillLevel { statValue = 10f, isMultiplier = false },
-        new SkillLevel { statValue = 15f, isMultiplier = false },
-        new SkillLevel { statValue = 20f, isMultiplier = false },
-        new SkillLevel { statValue = 25f, isMultiplier = false },
+        new SkillLevelData { statValue = 5f,  isMultiplier = false },
+        new SkillLevelData { statValue = 10f, isMultiplier = false },
+        new SkillLevelData { statValue = 15f, isMultiplier = false },
+        new SkillLevelData { statValue = 20f, isMultiplier = false },
+        new SkillLevelData { statValue = 25f, isMultiplier = false },
     };
 
     public string DisplayName => skillName;
@@ -29,9 +29,9 @@ public class SkillDefinition : ScriptableObject, IDrawable
     public int MaxRarity => levels.Count - 1;
     public int NextRarity => currentRarity + 1;
 
-    public SkillLevel GetLevelForRarity(int rarityIndex)
+    public SkillLevelData GetLevelForRarity(int rarityIndex)
     {
-        if (levels.Count == 0) return new SkillLevel();
+        if (levels.Count == 0) return new SkillLevelData();
         return levels[Mathf.Clamp(rarityIndex, 0, levels.Count - 1)];
     }
 
@@ -40,10 +40,11 @@ public class SkillDefinition : ScriptableObject, IDrawable
         currentRarity = Mathf.Clamp(rarityIndex, 0, levels.Count - 1);
     }
 
-    public bool Upgrade()
+    public bool Upgrade(int targetRarity)
     {
         if (!CanLevelUp) return false;
-        currentRarity++;
+        if (targetRarity <= currentRarity || targetRarity >= levels.Count) return false;
+        currentRarity = targetRarity;
         return true;
     }
 

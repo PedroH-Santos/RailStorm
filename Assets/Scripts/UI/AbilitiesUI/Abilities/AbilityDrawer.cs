@@ -1,8 +1,7 @@
-using Assets.Scripts.Systems.Rarity;
-using StarterAssets;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using StarterAssets;
 
 public static class AbilityDrawer
 {
@@ -10,7 +9,7 @@ public static class AbilityDrawer
         List<SkillDefinition> skillPool,
         List<WeaponDefinition> weaponPool,
         PlayerSkillHandler skillHandler,
-        CarWeaponHandler weaponHandler,
+        PlayerCartWeaponHandler weaponHandler,
         int count,
         IEnumerable<AbilityCardData> exclude = null)
     {
@@ -56,7 +55,9 @@ public static class AbilityDrawer
                 if (excludedNames.Contains(w.DisplayName)) continue;
                 if (!w.CanUpgrade) continue;
 
-                candidates.Add(new AbilityCardData(w, w.NextRarity, true));
+                int minRarity = w.NextRarity;
+                int targetRi = RollRarity(minRarity, w.levels.Count - 1, luck);
+                candidates.Add(new AbilityCardData(w, targetRi, true));
             }
         }
 

@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [System.Serializable]
-public class SkillLevel
+public class SkillLevelData
 {
     public float statValue;
     public bool isMultiplier;

@@ -6,7 +6,7 @@ namespace StarterAssets
     public class PlayerSkillHandler : MonoBehaviour
     {
         PlayerStatsAggregator _stats;
-        CarWeaponHandler _weaponHandler;
+        PlayerCartWeaponHandler _weaponHandler;
 
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
 
@@ -15,8 +15,8 @@ namespace StarterAssets
         void Awake()
         {
             _stats = GetComponent<PlayerStatsAggregator>();
-            _weaponHandler = GetComponent<CarWeaponHandler>()
-                          ?? FindFirstObjectByType<CarWeaponHandler>();
+            _weaponHandler = GetComponent<PlayerCartWeaponHandler>()
+                          ?? FindFirstObjectByType<PlayerCartWeaponHandler>();
         }
 
         public bool HasSkill(SkillDefinition skill) => skill.IsAcquired;
@@ -34,7 +34,7 @@ namespace StarterAssets
             if (!skill.IsAcquired)
                 skill.Acquire(rarityIndex);
             else
-                skill.Upgrade();
+                skill.Upgrade(rarityIndex);
 
             ApplyStat(skill, skill.CurrentRarity);
             Debug.Log($"[Skills] {skill.skillName} → {RarityHelper.DisplayName(skill.CurrentRarity)}");
@@ -44,7 +44,7 @@ namespace StarterAssets
         {
             if (_stats == null) return;
 
-            SkillLevel data = skill.GetLevelForRarity(rarityIndex);
+            SkillLevelData data = skill.GetLevelForRarity(rarityIndex);
 
             switch (skill.statTarget)
             {

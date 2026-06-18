@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CarWeaponHandler : MonoBehaviour
+public class PlayerCartWeaponHandler : MonoBehaviour
 {
     public int maxWeapons = 3;
 
@@ -11,7 +11,7 @@ public class CarWeaponHandler : MonoBehaviour
 
     readonly List<WeaponDefinition> _acquired = new();
     readonly HashSet<WeaponDefinition> _exiled = new();
-
+     
     public IReadOnlyList<WeaponDefinition> AcquiredWeapons => _acquired;
     public IReadOnlyCollection<WeaponDefinition> ExiledWeapons => _exiled;
 
@@ -33,11 +33,10 @@ public class CarWeaponHandler : MonoBehaviour
         return true;
     }
 
-    public bool UpgradeWeapon(WeaponDefinition weapon)
+    public bool UpgradeWeapon(WeaponDefinition weapon, int targetRarity)
     {
         if (!CanUpgrade(weapon)) return false;
-
-        weapon.Upgrade();
+        weapon.Upgrade(targetRarity);
         Debug.Log($"[Car] '{weapon.weaponName}' → {RarityHelper.DisplayName(weapon.CurrentRarity)}");
         OnWeaponsChanged?.Invoke();
         return true;

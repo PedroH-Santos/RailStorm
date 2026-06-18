@@ -37,4 +37,5 @@ namespace Assets.Scripts.Systems.Rarity
             return rarities[Mathf.Clamp(index, 0, rarities.Count - 1)];
         }
     }
+}
 

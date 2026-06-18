@@ -1,31 +1,21 @@
-// SkillSelectionUI.cs
 using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class SkillSelectionUI : MonoBehaviour
+public class AbilitySelectionUI : MonoBehaviour
 {
-    [Header("Painéis")]
     public GameObject parentPanel;
     public Image gameBackground;
-
-    [Header("Cards")]
-    public List<SkillCardUI> cards;
-
-    [Header("Inventário / Stats")]
+    public List<AbilityCardUI> cards;
     public InventoryUI inventoryUI;
     public StatsUI statsUI;
-
-    [Header("Botões")]
     public Button btnExile;
     public Button btnPass;
     public Button btnRefresh;
     public TMP_Text exileCountText;
     public TMP_Text refreshCountText;
-
-    [Header("Config")]
     public int maxRefreshes = 2;
     public int maxExiles = 3;
 
@@ -34,9 +24,9 @@ public class SkillSelectionUI : MonoBehaviour
 
     StarterAssets.PlayerController _playerController;
     StarterAssets.PlayerSkillHandler _skillHandler;
-    CarWeaponHandler _weaponHandler;
+    PlayerCartWeaponHandler _weaponHandler;
 
-    List<SkillCardData> _currentOptions = new();
+    List<AbilityCardData> _currentOptions = new();
     List<SkillDefinition> _fullSkillPool = new();
     List<WeaponDefinition> _fullWeaponPool = new();
 
@@ -61,16 +51,16 @@ public class SkillSelectionUI : MonoBehaviour
     }
 
     public void Show(
-        List<SkillCardData> options,
+        List<AbilityCardData> options,
         List<SkillDefinition> fullSkillPool,
         List<WeaponDefinition> fullWeaponPool,
         StarterAssets.PlayerController playerController,
         StarterAssets.PlayerSkillHandler skillHandler,
-        CarWeaponHandler weaponHandler,
+        PlayerCartWeaponHandler weaponHandler,
         Action onPassed = null,
         Action onClosed = null)
     {
-        _currentOptions = new List<SkillCardData>(options);
+        _currentOptions = new List<AbilityCardData>(options);
         _fullSkillPool = fullSkillPool;
         _fullWeaponPool = fullWeaponPool;
         _playerController = playerController;
@@ -114,7 +104,7 @@ public class SkillSelectionUI : MonoBehaviour
 
     void OnCardClicked(int index)
     {
-        SkillCardData data = _currentOptions[index];
+        AbilityCardData data = _currentOptions[index];
 
         if (_exileMode)
         {
@@ -137,11 +127,11 @@ public class SkillSelectionUI : MonoBehaviour
         Close();
 
         if (data.drawable is SkillDefinition skill)
-            _skillHandler.ApplySkill(skill, data.targetRarityHelper);
+            _skillHandler.ApplySkill(skill, data.targetRarity);
         else if (data.drawable is WeaponDefinition weapon)
         {
-            if (data.isWeaponUpgrade) _weaponHandler?.UpgradeWeapon(weapon);
-            else _weaponHandler?.AcquireWeapon(weapon, data.targetRarityHelper);
+            if (data.isUpgrade) _weaponHandler?.UpgradeWeapon(weapon, data.targetRarity);
+            else _weaponHandler?.AcquireWeapon(weapon, data.targetRarity);
         }
     }
 
@@ -159,7 +149,7 @@ public class SkillSelectionUI : MonoBehaviour
     {
         if (_refreshesLeft <= 0) return;
         _refreshesLeft--;
-        _currentOptions = SkillDrawer.Draw(
+        _currentOptions = AbilityDrawer.Draw(
             _fullSkillPool, _fullWeaponPool, _skillHandler, _weaponHandler, cards.Count);
         RenderCards();
         UpdateButtons();
@@ -179,9 +169,9 @@ public class SkillSelectionUI : MonoBehaviour
         gameBackground.color = exile ? _exileBgColor : _normalBgColor;
     }
 
-    SkillCardData DrawReplacement()
+    AbilityCardData DrawReplacement()
     {
-        var r = SkillDrawer.Draw(
+        var r = AbilityDrawer.Draw(
             _fullSkillPool, _fullWeaponPool, _skillHandler, _weaponHandler, 1, _currentOptions);
         return r.Count > 0 ? r[0] : null;
     }

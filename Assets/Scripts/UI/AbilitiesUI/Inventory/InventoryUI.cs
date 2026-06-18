@@ -5,7 +5,7 @@ public class InventoryUI : MonoBehaviour
 {
     public Transform entitiesContainer;
     public GameObject slotPrefab;
-    public CarWeaponHandler weaponHandler;
+    public PlayerCartWeaponHandler weaponHandler;
 
     const string SectionWeapons = "Weapons";
     readonly Dictionary<string, InventorySection> _sections = new();
@@ -13,7 +13,7 @@ public class InventoryUI : MonoBehaviour
     void Awake()
     {
         if (weaponHandler == null)
-            weaponHandler = FindFirstObjectByType<CarWeaponHandler>();
+            weaponHandler = FindFirstObjectByType<PlayerCartWeaponHandler>();
         RegisterSection(SectionWeapons);
     }
 

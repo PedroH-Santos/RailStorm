@@ -5,8 +5,11 @@ using System.Collections.Generic;
 public class WeaponDefinition : ScriptableObject, IDrawable
 {
     public string weaponName = "Nova Arma";
+    
     public Sprite icon;
+    
     [TextArea] public string description = "";
+
     public EWeaponType weaponType = EWeaponType.None;
 
     [SerializeField] private int currentRarity = -1;
@@ -42,10 +45,11 @@ public class WeaponDefinition : ScriptableObject, IDrawable
         currentRarity = Mathf.Clamp(rarityIndex, 0, levels.Count - 1);
     }
 
-    public bool Upgrade()
+    public bool Upgrade(int targetRarity)
     {
         if (!CanUpgrade) return false;
-        currentRarity++;
+        if (targetRarity <= currentRarity || targetRarity >= levels.Count) return false;
+        currentRarity = targetRarity;
         return true;
     }
 

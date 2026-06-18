@@ -1,4 +1,3 @@
-using Assets.Scripts.Systems.Rarity;
 using System;
 using TMPro;
 using UnityEngine;
@@ -11,7 +10,7 @@ public class AbilityCardUI : MonoBehaviour
     public TMP_Text nameText;
     public TMP_Text descriptionText;
     public TMP_Text rarityText;
-    public GameObject selectedBorder;
+    public TMP_Text levelText;
     public Image cardBackground;
 
     Action _onClick;
@@ -31,6 +30,7 @@ public class AbilityCardUI : MonoBehaviour
 
         if (rarityText != null) rarityText.text = RarityHelper.DisplayName(ri);
         if (cardBackground != null) cardBackground.color = RarityHelper.Color(ri);
+        if (levelText != null) levelText.text = $"Nível {ri + 1}";
 
         if (d is SkillDefinition skill)
         {
@@ -58,13 +58,9 @@ public class AbilityCardUI : MonoBehaviour
         _selfButton.onClick.RemoveAllListeners();
         _selfButton.onClick.AddListener(() => _onClick?.Invoke());
 
-        SetSelected(false);
     }
 
-    public void SetSelected(bool selected)
-    {
-        if (selectedBorder != null) selectedBorder.SetActive(selected);
-    }
+
 
     public void OnPointerClick(PointerEventData e) => _onClick?.Invoke();
 }
