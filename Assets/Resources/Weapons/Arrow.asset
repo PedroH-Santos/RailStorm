@@ -10,12 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5600360c09529374bb65f8b4d0ed2fcb, type: 3}
-  m_Name: Weapon1
+  m_Name: Arrow
   m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
-  weaponName: Nova Arma 01
+  weaponName: Flechas
   icon: {fileID: 0}
-  description: 'Arma 01 '
-  rarity: 0
-  damage: 10
-  fireRate: 1
-  range: 15
+  description: "Flechas que disparam de forma aleat\xF3ria"
+  weaponType: 1
+  currentRarity: -1
+  levels:
+  - damage: 5
+    fireRate: 1
+    range: 15
+  - damage: 10
+    fireRate: 1.2
+    range: 18
+  - damage: 15
+    fireRate: 1.4
+    range: 21
+  - damage: 20
+    fireRate: 1.6
+    range: 24
+  - damage: 25
+    fireRate: 1.8
+    range: 27
