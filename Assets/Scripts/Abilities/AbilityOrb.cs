@@ -8,6 +8,7 @@ public class AbilityOrb : MonoBehaviour
     public int abilityChoices = 3;
 
     public Transform player;
+    public Transform playerCart;
     public AbilitySelectionUI abilityUI;
 
     List<SkillDefinition> _skillPool = new();
@@ -48,8 +49,7 @@ public class AbilityOrb : MonoBehaviour
     {
         var skillHandler = player.GetComponent<StarterAssets.PlayerSkillHandler>();
         var controller = player.GetComponent<StarterAssets.PlayerController>();
-        var weaponHandler = player.GetComponent<PlayerCartWeaponHandler>()
-                         ?? FindFirstObjectByType<PlayerCartWeaponHandler>();
+        var weaponHandler = playerCart.GetComponent<PlayerCartWeaponHandler>();
 
         var drawn = AbilityDrawer.Draw(
             _skillPool, _weaponPool, skillHandler, weaponHandler, abilityChoices);

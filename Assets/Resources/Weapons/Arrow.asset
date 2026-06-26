@@ -18,18 +18,46 @@ MonoBehaviour:
   weaponType: 1
   currentRarity: -1
   levels:
-  - damage: 5
-    fireRate: 1
-    range: 15
-  - damage: 10
-    fireRate: 1.2
-    range: 18
-  - damage: 15
-    fireRate: 1.4
-    range: 21
-  - damage: 20
-    fireRate: 1.6
-    range: 24
-  - damage: 25
-    fireRate: 1.8
-    range: 27
+  - rid: 4790389143183556691
+  - rid: 4790389143183556692
+  - rid: 4790389143183556693
+  - rid: 4790389143183556694
+  - rid: 4790389143183556695
+  references:
+    version: 2
+    RefIds:
+    - rid: 4790389143183556691
+      type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
+      data:
+        damage: 10
+        attackRate: 1
+        range: 15
+        speed: 20
+    - rid: 4790389143183556692
+      type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
+      data:
+        damage: 10
+        attackRate: 1
+        range: 15
+        speed: 20
+    - rid: 4790389143183556693
+      type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
+      data:
+        damage: 10
+        attackRate: 1
+        range: 15
+        speed: 20
+    - rid: 4790389143183556694
+      type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
+      data:
+        damage: 10
+        attackRate: 1
+        range: 15
+        speed: 20
+    - rid: 4790389143183556695
+      type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
+      data:
+        damage: 10
+        attackRate: 1
+        range: 15
+        speed: 20

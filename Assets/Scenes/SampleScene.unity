@@ -3700,8 +3700,6 @@ GameObject:
   - component: {fileID: 337154712}
   - component: {fileID: 337154713}
   - component: {fileID: 337154715}
-  - component: {fileID: 337154717}
-  - component: {fileID: 337154718}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -3970,38 +3968,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0318bc19c9386b47a1e0742cd810c1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
---- !u!114 &337154717
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 337154703}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0676a1381d3f0714d81d24325944e577, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerCartWeaponHandler
-  maxWeapons: 3
---- !u!114 &337154718
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 337154703}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d492122d7770ddd49867f39a7c3cbea7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ArrowWeaponController
-  arrowPrefab: {fileID: 124024227272052564, guid: 2632de04f9679154bb25e6e0df3ad79b, type: 3}
-  leftFirePoints:
-  - {fileID: 1803106571}
-  - {fileID: 1199526842}
-  rightFirePoints:
-  - {fileID: 425008362}
-  - {fileID: 1906655906}
 --- !u!1 &337756826
 GameObject:
   m_ObjectHideFlags: 0
@@ -13681,6 +13647,38 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: cdeebfda32d27a94bbb940d81e50e70f, type: 3}
   m_PrefabInstance: {fileID: 1026710563}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1039790204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 610072094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d492122d7770ddd49867f39a7c3cbea7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ArrowWeaponController
+  arrowPrefab: {fileID: 124024227272052564, guid: 2632de04f9679154bb25e6e0df3ad79b, type: 3}
+  leftFirePoints:
+  - {fileID: 1803106571}
+  - {fileID: 425008362}
+  rightFirePoints:
+  - {fileID: 1199526842}
+  - {fileID: 1906655906}
+--- !u!114 &1039790205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 610072094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0676a1381d3f0714d81d24325944e577, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCartWeaponHandler
+  maxWeapons: 3
 --- !u!1001 &1044593508
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17525,6 +17523,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1334108389}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1039790205}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1039790204}
     - targetCorrespondingSourceObject: {fileID: 2838469635915673425, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1334108392}
@@ -19353,6 +19357,7 @@ MonoBehaviour:
   interactRadius: 2
   abilityChoices: 3
   player: {fileID: 337154709}
+  playerCart: {fileID: 1334108388}
   abilityUI: {fileID: 2098283833}
 --- !u!1 &1534782077
 GameObject:

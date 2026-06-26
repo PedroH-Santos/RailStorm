@@ -18,11 +18,11 @@ public class ArrowWeaponController : MonoBehaviour
     private PlayerCartWeaponHandler _weaponHandler;
 
     private WeaponDefinition _weaponDefinition;
+    private ArrowLevelData _currentStats;
 
-    private bool _active;           // true only when the arrow weapon is equipped
+    private bool _active;          
     private float _fireTimer;
 
-    // ── Unity lifecycle ───────────────────────────────────────────────────────
 
     private void Awake()
     {
@@ -43,10 +43,9 @@ public class ArrowWeaponController : MonoBehaviour
     {
         if (!_active) return;
 
-        // fireRate is in salvos-per-second; interval = 1 / fireRate.
         _fireTimer += Time.deltaTime;
 
-        float interval = 1f / Mathf.Max(0.01f, _weaponDefinition.CurrentStats.fireRate);
+        float interval = 1f / Mathf.Max(0.01f, _currentStats.attackRate);
 
         if (_fireTimer >= interval)
         {
@@ -55,34 +54,28 @@ public class ArrowWeaponController : MonoBehaviour
         }
     }
 
-    // ── Event handler ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Reacts to any change in the weapon list.
-    /// Searches for a weapon of type Arrow and enables/disables accordingly.
-    /// </summary>
     private void HandleWeaponsChanged()
     {
         WeaponDefinition found = FindArrowWeapon();
 
         if (found == null)
         {
-            // Arrow was exiled or not yet acquired — disable silently.
             Deactivate();
             return;
         }
 
         if (!_active)
         {
-            // First acquisition.
             _weaponDefinition = found;
-            _fireTimer = 1f / Mathf.Max(0.01f, _weaponDefinition.CurrentStats.fireRate); // fire immediately
+            _currentStats = _weaponDefinition.CurrentStats as ArrowLevelData;
+            _fireTimer = 1f / Mathf.Max(0.01f, _weaponDefinition.CurrentStats.attackRate); 
             _active = true;
             Debug.Log($"[ArrowWeaponBehaviour] Activated — rarity {_weaponDefinition.CurrentRarity}, " +
-                      $"DMG {_weaponDefinition.CurrentStats.damage}, " +
-                      $"rate {_weaponDefinition.CurrentStats.fireRate}/s, " +
-                      $"range {_weaponDefinition.CurrentStats.range}, " +
-                      $"speed {_weaponDefinition.CurrentStats.speed}");
+                      $"DMG {_currentStats.damage}, " +
+                      $"rate {_currentStats.attackRate}/s, " +
+                      $"range {_currentStats.range}, " +
+                      $"speed {_currentStats.speed}");
         }
         else
         {
@@ -115,37 +108,24 @@ public class ArrowWeaponController : MonoBehaviour
         Debug.Log("[ArrowWeaponBehaviour] Deactivated.");
     }
 
-    /// <summary>
-    /// Fires one salvo: 2 arrows to the left, 2 to the right.
-    /// All values come from <see cref="WeaponDefinition.CurrentStats"/>.
-    /// </summary>
+
     private void FireSalvo()
     {
-        WeaponLevelData stats = _weaponDefinition.CurrentStats;
+        var stats = _weaponDefinition.GetStats<ArrowLevelData>(_weaponDefinition.CurrentRarity);
+        if (stats == null) return;
 
         SpawnArrows(leftFirePoints, -transform.right, stats);
         SpawnArrows(rightFirePoints, transform.right, stats);
     }
 
-    /// <summary>Spawns one arrow per fire point in the given lateral direction.</summary>
-    private void SpawnArrows(Transform[] firePoints, Vector3 direction, WeaponLevelData stats)
+    private void SpawnArrows(Transform[] firePoints, Vector3 direction, ArrowLevelData stats)
     {
-        if (arrowPrefab == null)
-        {
-            Debug.LogWarning("[ArrowWeaponBehaviour] arrowPrefab is not assigned.");
-            return;
-        }
-
         foreach (Transform fp in firePoints)
         {
             if (fp == null) continue;
-
-            GameObject obj = Instantiate(arrowPrefab, fp.position, fp.rotation);
-
+            var obj = Instantiate(arrowPrefab, fp.position, fp.rotation);
             if (obj.TryGetComponent<ArrowProjectile>(out var arrow))
                 arrow.Init(direction, stats.speed, stats.range, stats.damage);
-            else
-                Debug.LogWarning("[ArrowWeaponBehaviour] arrowPrefab is missing ArrowProjectile component.");
         }
     }
 }

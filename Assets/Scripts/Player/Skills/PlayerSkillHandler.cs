@@ -79,9 +79,9 @@ namespace StarterAssets
                     break;
 
                 case EStatTarget.CarFireRate:
-                    ApplyToAllWeapons(d => d.fireRate = data.isMultiplier
-                        ? d.fireRate * data.statValue
-                        : d.fireRate + data.statValue);
+                    ApplyToAllWeapons(d => d.attackRate = data.isMultiplier
+                        ? d.attackRate * data.statValue
+                        : d.attackRate + data.statValue);
                     break;
 
                 case EStatTarget.CarRange:

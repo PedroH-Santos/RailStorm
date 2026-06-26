@@ -41,7 +41,7 @@ public class AbilityCardUI : MonoBehaviour
             var stats = weapon.GetStatsForRarity(ri);
             descriptionText.text = !string.IsNullOrEmpty(weapon.description)
                 ? weapon.description
-                : $"DMG {stats.damage}  |  {stats.fireRate:F1}/s  |  Alc. {stats.range:F0}m";
+                : $"DMG {stats.damage}  |  {stats.attackRate:F1}/s  |  Alc. {stats.range:F0}m";
         }
         else if (d is WeaponDefinition wu && data.isUpgrade)
         {
@@ -50,7 +50,7 @@ public class AbilityCardUI : MonoBehaviour
             descriptionText.text = !string.IsNullOrEmpty(wu.description)
                 ? wu.description
                 : $"DMG {prev.damage}→{next.damage}" +
-                  $"  |  {prev.fireRate:F1}→{next.fireRate:F1}/s" +
+                  $"  |  {prev.attackRate:F1}→{next.attackRate:F1}/s" +
                   $"  |  Alc. {prev.range:F0}→{next.range:F0}m";
         }
 
