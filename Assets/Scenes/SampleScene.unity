@@ -3860,6 +3860,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1334108388}
+  - {fileID: 1006739423}
   - {fileID: 1564287846}
   - {fileID: 824333999}
   m_Father: {fileID: 0}
@@ -5002,11 +5003,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WheelSpin
   radius: 0.2
   _player: {fileID: 337154705}
---- !u!4 &425008362 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4954775791890782122, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
-  m_PrefabInstance: {fileID: 1334108387}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &427513691
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9704,6 +9700,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: cdeebfda32d27a94bbb940d81e50e70f, type: 3}
   m_PrefabInstance: {fileID: 725654120}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &730954096
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 730954097}
+  m_Layer: 6
+  m_Name: Firepoint_R
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &730954097
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 730954096}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.635, y: 0.284, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1257058163}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &732526163
 GameObject:
   m_ObjectHideFlags: 0
@@ -13491,6 +13518,69 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: cdeebfda32d27a94bbb940d81e50e70f, type: 3}
   m_PrefabInstance: {fileID: 1005936585}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1006739422
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1006739423}
+  m_Layer: 6
+  m_Name: WeaponsCart
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1006739423
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1006739422}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1257058163}
+  m_Father: {fileID: 337154709}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1011159520
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1011159521}
+  m_Layer: 6
+  m_Name: Firepoint_L
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1011159521
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1011159520}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.635, y: 0.284, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1257058163}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1018341731
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13660,12 +13750,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ArrowWeaponController
   arrowPrefab: {fileID: 124024227272052564, guid: 2632de04f9679154bb25e6e0df3ad79b, type: 3}
-  leftFirePoints:
-  - {fileID: 1803106571}
-  - {fileID: 425008362}
-  rightFirePoints:
-  - {fileID: 1199526842}
-  - {fileID: 1906655906}
+  leftFirePoint: {fileID: 1011159521}
+  rightFirePoint: {fileID: 730954097}
 --- !u!114 &1039790205
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15323,11 +15409,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WheelSpin
   radius: 0.2
   _player: {fileID: 337154705}
---- !u!4 &1199526842 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -1073277153360958842, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
-  m_PrefabInstance: {fileID: 1334108387}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1202203578
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16070,6 +16151,39 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: cdeebfda32d27a94bbb940d81e50e70f, type: 3}
   m_PrefabInstance: {fileID: 1244356307}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1257058162
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1257058163}
+  m_Layer: 6
+  m_Name: Arrow
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1257058163
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1257058162}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1011159521}
+  - {fileID: 730954097}
+  m_Father: {fileID: 1006739423}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1265189066
 GameObject:
   m_ObjectHideFlags: 0
@@ -22969,11 +23083,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WheelSpin
   radius: 0.2
   _player: {fileID: 337154705}
---- !u!4 &1803106571 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -7751057570222788030, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
-  m_PrefabInstance: {fileID: 1334108387}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1805617182
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -24104,11 +24213,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WheelSpin
   radius: 0.2
   _player: {fileID: 337154705}
---- !u!4 &1906655906 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -1156930934964317307, guid: e580ceb1b0b863b46baf8bed9ccba4d2, type: 3}
-  m_PrefabInstance: {fileID: 1334108387}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1909886826
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -3,26 +3,19 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerCartWeaponHandler))]
 public class ArrowWeaponController : MonoBehaviour
 {
-
-    [Header("Arrow Prefab")]
-    [Tooltip("Prefab that contains ArrowProjectile + Rigidbody + Collider (isTrigger).")]
     [SerializeField] private GameObject arrowPrefab;
 
-    [Header("Fire Points — Left Side (front → rear)")]
-    [SerializeField] private Transform[] leftFirePoints = new Transform[2];
+    [SerializeField] private Transform leftFirePoint;
+    [SerializeField] private Transform rightFirePoint;
 
-    [Header("Fire Points — Right Side (front → rear)")]
-    [SerializeField] private Transform[] rightFirePoints = new Transform[2];
-
+    [SerializeField][Range(0f, 0.5f)] private float edgeMarginPercent = 0.1f;
 
     private PlayerCartWeaponHandler _weaponHandler;
-
     private WeaponDefinition _weaponDefinition;
     private ArrowLevelData _currentStats;
-
-    private bool _active;          
+    private bool _active;
     private float _fireTimer;
-
+    private float _cartLength = -1f;
 
     private void Awake()
     {
@@ -43,6 +36,9 @@ public class ArrowWeaponController : MonoBehaviour
     {
         if (!_active) return;
 
+        _currentStats = _weaponDefinition.GetStats<ArrowLevelData>(_weaponDefinition.CurrentRarity);
+        if (_currentStats == null) return;
+
         _fireTimer += Time.deltaTime;
 
         float interval = 1f / Mathf.Max(0.01f, _currentStats.attackRate);
@@ -54,78 +50,75 @@ public class ArrowWeaponController : MonoBehaviour
         }
     }
 
-
     private void HandleWeaponsChanged()
     {
         WeaponDefinition found = FindArrowWeapon();
 
-        if (found == null)
-        {
-            Deactivate();
-            return;
-        }
+        if (found == null) { Deactivate(); return; }
+
+        _weaponDefinition = found;
+        _currentStats = _weaponDefinition.GetStats<ArrowLevelData>(_weaponDefinition.CurrentRarity);
 
         if (!_active)
         {
-            _weaponDefinition = found;
-            _currentStats = _weaponDefinition.CurrentStats as ArrowLevelData;
-            _fireTimer = 1f / Mathf.Max(0.01f, _weaponDefinition.CurrentStats.attackRate); 
+            _fireTimer = 1f / Mathf.Max(0.01f, _currentStats.attackRate);
             _active = true;
-            Debug.Log($"[ArrowWeaponBehaviour] Activated — rarity {_weaponDefinition.CurrentRarity}, " +
-                      $"DMG {_currentStats.damage}, " +
-                      $"rate {_currentStats.attackRate}/s, " +
-                      $"range {_currentStats.range}, " +
-                      $"speed {_currentStats.speed}");
-        }
-        else
-        {
-            // Upgrade: the WeaponDefinition already updated currentRarity via Upgrade(),
-            // so CurrentStats already reflects the new level — nothing else needed.
-            Debug.Log($"[ArrowWeaponBehaviour] Upgraded → rarity {_weaponDefinition.CurrentRarity}");
         }
     }
-
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Iterates the acquired weapon list and returns the first Arrow weapon, or null.
-    /// </summary>
-    private WeaponDefinition FindArrowWeapon()
-    {
-        foreach (WeaponDefinition weapon in _weaponHandler.AcquiredWeapons)
-            if (weapon.weaponType == EWeaponType.Arrow)
-                return weapon;
-
-        return null;
-    }
-
-    private void Deactivate()
-    {
-        if (!_active) return;
-
-        _active = false;
-        _weaponDefinition = null;
-        Debug.Log("[ArrowWeaponBehaviour] Deactivated.");
-    }
-
 
     private void FireSalvo()
     {
         var stats = _weaponDefinition.GetStats<ArrowLevelData>(_weaponDefinition.CurrentRarity);
         if (stats == null) return;
 
-        SpawnArrows(leftFirePoints, -transform.right, stats);
-        SpawnArrows(rightFirePoints, transform.right, stats);
+        SpawnArrowFan(leftFirePoint, -transform.right, stats);
+        SpawnArrowFan(rightFirePoint, transform.right, stats);
     }
 
-    private void SpawnArrows(Transform[] firePoints, Vector3 direction, ArrowLevelData stats)
+    private void SpawnArrowFan(Transform firePoint, Vector3 direction, ArrowLevelData stats)
     {
-        foreach (Transform fp in firePoints)
+        if (firePoint == null) return;
+
+        int count = Mathf.Max(1, stats.arrowCount);
+        Vector3 spreadAxis = transform.forward;
+
+        float usableLength = GetCartLength() * (1f - edgeMarginPercent * 2f);
+        float actualSpacing = count > 1 ? usableLength / (count - 1) : 0f;
+
+        for (int i = 0; i < count; i++)
         {
-            if (fp == null) continue;
-            var obj = Instantiate(arrowPrefab, fp.position, fp.rotation);
+            float offsetFactor = i - (count - 1) / 2f;
+            Vector3 offset = spreadAxis * (offsetFactor * actualSpacing);
+
+            var obj = Instantiate(arrowPrefab, firePoint.position + offset, firePoint.rotation);
             if (obj.TryGetComponent<ArrowProjectile>(out var arrow))
                 arrow.Init(direction, stats.speed, stats.range, stats.damage);
         }
+    }
+
+    private float GetCartLength()
+    {
+        if (_cartLength > 0f) return _cartLength;
+
+        var renderer = GetComponent<Renderer>();
+
+        _cartLength = renderer.bounds.size.z;
+    
+        return _cartLength;
+    }
+
+    private void Deactivate()
+    {
+        if (!_active) return;
+        _active = false;
+        _weaponDefinition = null;
+    }
+
+    private WeaponDefinition FindArrowWeapon()
+    {
+        foreach (var w in _weaponHandler.AcquiredWeapons)
+            if (w.weaponType == EWeaponType.Arrow)
+                return w;
+        return null;
     }
 }

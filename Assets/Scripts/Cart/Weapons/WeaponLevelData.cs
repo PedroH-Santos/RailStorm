@@ -12,6 +12,8 @@ public abstract class WeaponLevelData
 public class ArrowLevelData : WeaponLevelData
 {
     public float speed = 20f;
+    public int arrowCount = 1;
+
 }
 
 [System.Serializable]
