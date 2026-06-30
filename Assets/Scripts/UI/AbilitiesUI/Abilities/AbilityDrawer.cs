@@ -8,6 +8,7 @@ public static class AbilityDrawer
     public static List<AbilityCardData> Draw(
         List<SkillDefinition> skillPool,
         List<WeaponDefinition> weaponPool,
+        List<WeaponSkillDefinition> weaponSkillPool,
         PlayerSkillHandler skillHandler,
         PlayerCartWeaponHandler weaponHandler,
         int count,
@@ -58,6 +59,26 @@ public static class AbilityDrawer
                 int minRarity = w.NextRarity;
                 int targetRi = RollRarity(minRarity, w.levels.Count - 1, luck);
                 candidates.Add(new AbilityCardData(w, targetRi, true));
+            }
+        }
+
+        if (weaponSkillPool != null && weaponHandler != null)
+        {
+            foreach (var ws in weaponSkillPool)
+            {
+                if (excludedNames.Contains(ws.DisplayName)) continue;
+                if (!ws.CanLevelUp && ws.IsAcquired) continue;
+
+                WeaponDefinition owner = null;
+                foreach (var w in weaponHandler.AcquiredWeapons)
+                {
+                    if (w.weaponType == ws.weaponType) { owner = w; break; }
+                }
+                if (owner == null) continue;
+
+                int minRarity = ws.IsAcquired ? ws.NextRarity : 0;
+                int targetRi = RollRarity(minRarity, ws.MaxRarity, luck);
+                candidates.Add(new AbilityCardData(ws, targetRi, owner));
             }
         }
 

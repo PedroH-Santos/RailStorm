@@ -5,6 +5,7 @@ public class AbilityCardData
     public IDrawable drawable;
     public int targetRarity;
     public bool isUpgrade;
+    public WeaponDefinition targetWeapon;
 
     public string DisplayName => drawable.DisplayName;
     public string RarityDisplay => RarityHelper.DisplayName(targetRarity);
@@ -21,5 +22,13 @@ public class AbilityCardData
         drawable = weapon;
         this.targetRarity = targetRarity;
         isUpgrade = upgrade;
+    }
+
+    public AbilityCardData(WeaponSkillDefinition weaponSkill, int targetRarity, WeaponDefinition owner)
+    {
+        drawable = weaponSkill;
+        this.targetRarity = targetRarity;
+        isUpgrade = false;
+        targetWeapon = owner;
     }
 }

@@ -13,6 +13,7 @@ public class AbilityOrb : MonoBehaviour
 
     List<SkillDefinition> _skillPool = new();
     List<WeaponDefinition> _weaponPool = new();
+    List<WeaponSkillDefinition> _weaponSkillPool = new();
 
     bool _active = false;
     bool _playerInRange = false;
@@ -30,8 +31,9 @@ public class AbilityOrb : MonoBehaviour
     {
         _skillPool = new List<SkillDefinition>(Resources.LoadAll<SkillDefinition>("Skills"));
         _weaponPool = new List<WeaponDefinition>(Resources.LoadAll<WeaponDefinition>("Weapons"));
+        _weaponSkillPool = new List<WeaponSkillDefinition>(Resources.LoadAll<WeaponSkillDefinition>("WeaponSkills"));
 
-        Debug.Log($"[AbilitiesOrb] {_skillPool.Count} skills, {_weaponPool.Count} weapons carregadas.");
+        Debug.Log($"[AbilitiesOrb] {_skillPool.Count} skills, {_weaponPool.Count} weapons, {_weaponSkillPool.Count} weapon skills carregadas.");
     }
 
     void Activate() { _active = true; gameObject.SetActive(true); }
@@ -52,10 +54,10 @@ public class AbilityOrb : MonoBehaviour
         var weaponHandler = playerCart.GetComponent<PlayerCartWeaponHandler>();
 
         var drawn = AbilityDrawer.Draw(
-            _skillPool, _weaponPool, skillHandler, weaponHandler, abilityChoices);
+            _skillPool, _weaponPool, _weaponSkillPool, skillHandler, weaponHandler, abilityChoices);
 
         abilityUI.Show(
-            drawn, _skillPool, _weaponPool,
+            drawn, _skillPool, _weaponPool, _weaponSkillPool,
             controller, skillHandler, weaponHandler,
             OnPassed, OnClosed);
 

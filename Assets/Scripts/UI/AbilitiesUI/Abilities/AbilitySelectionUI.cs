@@ -29,6 +29,7 @@ public class AbilitySelectionUI : MonoBehaviour
     List<AbilityCardData> _currentOptions = new();
     List<SkillDefinition> _fullSkillPool = new();
     List<WeaponDefinition> _fullWeaponPool = new();
+    List<WeaponSkillDefinition> _fullWeaponSkillPool = new();
 
     int _refreshesLeft;
     int _exilesLeft;
@@ -54,6 +55,7 @@ public class AbilitySelectionUI : MonoBehaviour
         List<AbilityCardData> options,
         List<SkillDefinition> fullSkillPool,
         List<WeaponDefinition> fullWeaponPool,
+        List<WeaponSkillDefinition> fullWeaponSkillPool,
         StarterAssets.PlayerController playerController,
         StarterAssets.PlayerSkillHandler skillHandler,
         PlayerCartWeaponHandler weaponHandler,
@@ -63,6 +65,7 @@ public class AbilitySelectionUI : MonoBehaviour
         _currentOptions = new List<AbilityCardData>(options);
         _fullSkillPool = fullSkillPool;
         _fullWeaponPool = fullWeaponPool;
+        _fullWeaponSkillPool = fullWeaponSkillPool;
         _playerController = playerController;
         _skillHandler = skillHandler;
         _weaponHandler = weaponHandler;
@@ -128,6 +131,8 @@ public class AbilitySelectionUI : MonoBehaviour
 
         if (data.drawable is SkillDefinition skill)
             _skillHandler.ApplySkill(skill, data.targetRarity);
+        else if (data.drawable is WeaponSkillDefinition weaponSkill)
+            data.targetWeapon?.ApplyWeaponSkill(weaponSkill, data.targetRarity);
         else if (data.drawable is WeaponDefinition weapon)
         {
             if (data.isUpgrade) _weaponHandler?.UpgradeWeapon(weapon, data.targetRarity);
@@ -150,7 +155,7 @@ public class AbilitySelectionUI : MonoBehaviour
         if (_refreshesLeft <= 0) return;
         _refreshesLeft--;
         _currentOptions = AbilityDrawer.Draw(
-            _fullSkillPool, _fullWeaponPool, _skillHandler, _weaponHandler, cards.Count);
+            _fullSkillPool, _fullWeaponPool, _fullWeaponSkillPool, _skillHandler, _weaponHandler, cards.Count);
         RenderCards();
         UpdateButtons();
     }
@@ -172,7 +177,7 @@ public class AbilitySelectionUI : MonoBehaviour
     AbilityCardData DrawReplacement()
     {
         var r = AbilityDrawer.Draw(
-            _fullSkillPool, _fullWeaponPool, _skillHandler, _weaponHandler, 1, _currentOptions);
+            _fullSkillPool, _fullWeaponPool, _fullWeaponSkillPool, _skillHandler, _weaponHandler, 1, _currentOptions);
         return r.Count > 0 ? r[0] : null;
     }
 
