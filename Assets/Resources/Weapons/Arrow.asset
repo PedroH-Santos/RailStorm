@@ -18,15 +18,16 @@ MonoBehaviour:
   weaponType: 1
   currentRarity: -1
   levels:
-  - rid: 4790389143183556691
-  - rid: 4790389143183556692
-  - rid: 4790389143183556693
-  - rid: 4790389143183556694
-  - rid: 4790389143183556695
+  - rid: 3924746370941190222
+  - rid: 3924746370941190223
+  - rid: 3924746370941190224
+  - rid: 3924746370941190225
+  - rid: 3924746370941190226
+  _appliedSkills: []
   references:
     version: 2
     RefIds:
-    - rid: 4790389143183556691
+    - rid: 3924746370941190222
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
         damage: 10
@@ -34,8 +35,7 @@ MonoBehaviour:
         range: 15
         speed: 20
         arrowCount: 1
-        arrowSpacing: 1
-    - rid: 4790389143183556692
+    - rid: 3924746370941190223
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
         damage: 10
@@ -43,8 +43,7 @@ MonoBehaviour:
         range: 15
         speed: 20
         arrowCount: 2
-        arrowSpacing: 1
-    - rid: 4790389143183556693
+    - rid: 3924746370941190224
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
         damage: 10
@@ -52,8 +51,7 @@ MonoBehaviour:
         range: 15
         speed: 20
         arrowCount: 3
-        arrowSpacing: 1
-    - rid: 4790389143183556694
+    - rid: 3924746370941190225
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
         damage: 10
@@ -61,8 +59,7 @@ MonoBehaviour:
         range: 15
         speed: 20
         arrowCount: 4
-        arrowSpacing: 1
-    - rid: 4790389143183556695
+    - rid: 3924746370941190226
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
         damage: 10
@@ -70,4 +67,3 @@ MonoBehaviour:
         range: 15
         speed: 20
         arrowCount: 5
-        arrowSpacing: 1

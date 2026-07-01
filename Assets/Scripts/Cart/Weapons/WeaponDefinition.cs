@@ -12,9 +12,9 @@ public class WeaponDefinition : ScriptableObject, IDrawable
     [SerializeField] private int currentRarity = -1;
 
     [SerializeReference]
-    public List<WeaponLevelData> levels = new();
+    public List<WeaponLevelData> levels = new(); 
 
-    [SerializeField] private List<WeaponSkillDefinition> _appliedSkills = new();
+    private List<WeaponSkillDefinition> _appliedSkills = new();
 
     WeaponLevelData _effectiveCache;
     int _effectiveCacheRarity = int.MinValue;

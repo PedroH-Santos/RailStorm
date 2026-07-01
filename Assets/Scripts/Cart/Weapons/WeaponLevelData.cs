@@ -1,5 +1,7 @@
+using System;
 using UnityEngine;
 
+[Serializable]
 public abstract class WeaponLevelData
 {
     public int damage = 10;
@@ -25,7 +27,7 @@ public abstract class WeaponLevelData
     }
 }
 
-[System.Serializable]
+[Serializable]
 public class ArrowLevelData : WeaponLevelData
 {
     public float speed = 20f;
@@ -55,7 +57,7 @@ public class ArrowLevelData : WeaponLevelData
     }
 }
 
-[System.Serializable]
+[Serializable]
 public class MagicLevelData : WeaponLevelData
 {
     public float area = 3f;

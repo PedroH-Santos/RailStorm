@@ -6,9 +6,9 @@ using UnityEngine;
 public class ArrowProjectile : MonoBehaviour
 {
     private Rigidbody _rb;
-    private int _damage;
-    private float _speed;
-    private float _range;
+    [SerializeField] private int _damage;
+    [SerializeField] private float _speed;
+    [SerializeField] private float _range;
     private Vector3 _origin;
     private bool _initialized;
 

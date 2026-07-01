@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerCartWeaponHandler : MonoBehaviour
-{
+{ 
     public int maxWeapons = 3;
 
     public event Action OnWeaponsChanged;
