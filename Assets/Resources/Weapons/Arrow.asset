@@ -23,7 +23,6 @@ MonoBehaviour:
   - rid: 3924746370941190224
   - rid: 3924746370941190225
   - rid: 3924746370941190226
-  _appliedSkills: []
   references:
     version: 2
     RefIds:
@@ -38,7 +37,7 @@ MonoBehaviour:
     - rid: 3924746370941190223
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
-        damage: 10
+        damage: 15
         attackRate: 1
         range: 15
         speed: 20
@@ -46,7 +45,7 @@ MonoBehaviour:
     - rid: 3924746370941190224
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
-        damage: 10
+        damage: 20
         attackRate: 1
         range: 15
         speed: 20
@@ -54,7 +53,7 @@ MonoBehaviour:
     - rid: 3924746370941190225
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
-        damage: 10
+        damage: 25
         attackRate: 1
         range: 15
         speed: 20
@@ -62,7 +61,7 @@ MonoBehaviour:
     - rid: 3924746370941190226
       type: {class: ArrowLevelData, ns: , asm: Assembly-CSharp}
       data:
-        damage: 10
+        damage: 30
         attackRate: 1
         range: 15
         speed: 20

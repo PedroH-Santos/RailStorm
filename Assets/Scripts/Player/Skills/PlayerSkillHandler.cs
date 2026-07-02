@@ -6,7 +6,6 @@ namespace StarterAssets
     public class PlayerSkillHandler : MonoBehaviour
     {
         PlayerStatsAggregator _stats;
-        PlayerCartWeaponHandler _weaponHandler;
 
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
 
@@ -15,8 +14,7 @@ namespace StarterAssets
         void Awake()
         {
             _stats = GetComponent<PlayerStatsAggregator>();
-            _weaponHandler = GetComponent<PlayerCartWeaponHandler>()
-                          ?? FindFirstObjectByType<PlayerCartWeaponHandler>();
+
         }
 
         public bool HasSkill(SkillDefinition skill) => skill.IsAcquired;
@@ -72,34 +70,8 @@ namespace StarterAssets
                         : _stats.LuckPercent + data.statValue;
                     break;
 
-                case EStatTarget.CarWeaponDamage:
-                    ApplyToAllWeapons(d => d.damage = data.isMultiplier
-                        ? (int)(d.damage * data.statValue)
-                        : d.damage + (int)data.statValue);
-                    break;
-
-                case EStatTarget.CarFireRate:
-                    ApplyToAllWeapons(d => d.attackRate = data.isMultiplier
-                        ? d.attackRate * data.statValue
-                        : d.attackRate + data.statValue);
-                    break;
-
-                case EStatTarget.CarRange:
-                    ApplyToAllWeapons(d => d.range = data.isMultiplier
-                        ? d.range * data.statValue
-                        : d.range + data.statValue);
-                    break;
             }
         }
-
-        void ApplyToAllWeapons(System.Action<WeaponLevelData> modifier)
-        {
-            if (_weaponHandler == null) return;
-            foreach (var w in _weaponHandler.AcquiredWeapons)
-                modifier(w.CurrentStats);
-            //_weaponHandler.OnWeaponsChanged?.Invoke();
-        }
-
         public void ExileSkill(SkillDefinition skill)
         {
             ExiledSkills.Add(skill);

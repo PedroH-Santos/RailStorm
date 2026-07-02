@@ -13752,6 +13752,7 @@ MonoBehaviour:
   arrowPrefab: {fileID: 124024227272052564, guid: 2632de04f9679154bb25e6e0df3ad79b, type: 3}
   leftFirePoint: {fileID: 1011159521}
   rightFirePoint: {fileID: 730954097}
+  edgeMarginPercent: 0.1
 --- !u!114 &1039790205
 MonoBehaviour:
   m_ObjectHideFlags: 0

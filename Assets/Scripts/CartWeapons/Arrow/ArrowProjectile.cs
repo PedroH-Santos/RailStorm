@@ -37,10 +37,6 @@ public class ArrowProjectile : MonoBehaviour
         Destroy(gameObject);
     }
 
-    /// <summary>
-    /// Puts the arrow in motion. Must be called immediately after Instantiate.
-    /// All values come from <see cref="WeaponLevelData"/> via ArrowWeaponBehaviour.
-    /// </summary>
     public void Init(Vector3 direction, float speed, float range, int damage)
     {
         _speed = speed;
