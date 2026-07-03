@@ -11,6 +11,8 @@ public class SplineRuntimeState : MonoBehaviour
 
     readonly HashSet<int> _unlocked = new();
 
+    public static event System.Action<int> OnSplineUnblocked;
+
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -42,6 +44,10 @@ public class SplineRuntimeState : MonoBehaviour
                 yield return entry;
     }
 
+    public void Unblock(int splineIndex)
+    {
+        _unlocked.Add(splineIndex);
+        OnSplineUnblocked?.Invoke(splineIndex);
+    }
 
-    public void Unblock(int splineIndex) => _unlocked.Add(splineIndex);
 }
