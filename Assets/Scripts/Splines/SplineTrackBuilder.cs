@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Splines;
 
@@ -15,6 +16,12 @@ public class SplineTrackBuilder : MonoBehaviour
     public Transform normalRoot;
     public Transform brokenRoot;
 
+    struct SegmentInfo
+    {
+        public Vector3 p0, dir;
+        public float length;
+    }
+
     public void BuildNormal() => Build(plankPrefab, normalRoot);
     public void BuildBroken() => Build(brokenPlankPrefab, brokenRoot);
 
@@ -22,40 +29,70 @@ public class SplineTrackBuilder : MonoBehaviour
     {
         if (splineContainer == null || prefab == null || root == null) return;
 
-        for (int i = root.childCount - 1; i >= 0; i--)
-#if UNITY_EDITOR
-            UnityEditor.Undo.DestroyObjectImmediate(root.GetChild(i).gameObject);
-#else
-            Destroy(root.GetChild(i).gameObject);
-#endif
-
         float pieceLength = GetPieceLength(prefab);
         if (pieceLength <= 0.01f)
         {
-            Debug.LogError("[SplineTrackBuilder] Não consegui medir o tamanho da peça.");
+            Debug.LogError("[SplineTrackBuilder] pieceLength precisa ser maior que zero.");
             return;
         }
 
+        ClearChildren(root);
+
         Spline spline = splineContainer.Splines[splineIndex];
-        float totalLength = SplineUtility.CalculateLength(spline, splineContainer.transform.localToWorldMatrix);
+        int knotCount = spline.Count;
+        int segmentCount = spline.Closed ? knotCount : knotCount - 1;
+
+        // 1. Monta a lista de segmentos e soma o comprimento TOTAL do percurso
+        var segments = new List<SegmentInfo>();
+        float totalLength = 0f;
+
+        for (int k = 0; k < segmentCount; k++)
+        {
+            int nextIndex = (k + 1) % knotCount;
+
+            Vector3 p0 = splineContainer.transform.TransformPoint(spline[k].Position);
+            Vector3 p1 = splineContainer.transform.TransformPoint(spline[nextIndex].Position);
+
+            Vector3 segDir = p1 - p0;
+            float segLength = segDir.magnitude;
+            if (segLength < 0.001f) continue;
+            segDir /= segLength;
+
+            segments.Add(new SegmentInfo { p0 = p0, dir = segDir, length = segLength });
+            totalLength += segLength;
+        }
+
+        if (totalLength < 0.001f || segments.Count == 0) return;
+
+        // 2. Decide quantas peças cabem no percurso INTEIRO (não por segmento)
         int count = Mathf.Max(1, Mathf.RoundToInt(totalLength / pieceLength));
+        float actualSpacing = totalLength / count; // fecha exato, sem sobra
+
+        Debug.Log($"[SplineTrackBuilder] Total={totalLength:F2}  peças={count}  spacing={actualSpacing:F3}");
+
+        // 3. Caminha de forma CONTÍNUA pelos segmentos, sem resetar nos knots
+        int segIdx = 0;
+        float segStartDist = 0f;
 
         for (int i = 0; i < count; i++)
         {
-            // posiciona no MEIO de cada segmento, não na borda,
-            // pra peça ficar centralizada no trecho que ela cobre
-            float distAtCenter = (i + 0.5f) * pieceLength;
-            float t = distAtCenter / totalLength;
-            t = Mathf.Clamp01(t);
+            float distAtCenter = (i + 0.5f) * actualSpacing;
 
-            Vector3 localPos = spline.EvaluatePosition(t);
-            Vector3 worldPos = splineContainer.transform.TransformPoint(localPos);
+            while (segIdx < segments.Count - 1 &&
+                   distAtCenter > segStartDist + segments[segIdx].length)
+            {
+                segStartDist += segments[segIdx].length;
+                segIdx++;
+            }
 
-            Vector3 tangent = splineContainer.transform.TransformDirection(spline.EvaluateTangent(t));
-            tangent.y = 0f;
-            if (tangent.sqrMagnitude < 0.0001f) tangent = Vector3.forward;
+            var seg = segments[segIdx];
+            float localDist = distAtCenter - segStartDist;
+            Vector3 worldPos = seg.p0 + seg.dir * localDist;
 
-            Quaternion rot = Quaternion.LookRotation(tangent.normalized);
+            Vector3 flatDir = seg.dir;
+            flatDir.y = 0f;
+            if (flatDir.sqrMagnitude < 0.0001f) flatDir = Vector3.forward;
+            Quaternion rot = Quaternion.LookRotation(flatDir.normalized);
 
 #if UNITY_EDITOR
             GameObject piece = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab, root);
@@ -67,12 +104,34 @@ public class SplineTrackBuilder : MonoBehaviour
         }
     }
 
+    void ClearChildren(Transform root)
+    {
+        for (int i = root.childCount - 1; i >= 0; i--)
+#if UNITY_EDITOR
+            UnityEditor.Undo.DestroyObjectImmediate(root.GetChild(i).gameObject);
+#else
+            Destroy(root.GetChild(i).gameObject);
+#endif
+    }
+
     float GetPieceLength(GameObject prefab)
     {
-        var renderer = prefab.GetComponentInChildren<Renderer>();
-        if (renderer == null) return 0f;
+        GameObject temp = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+        temp.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
 
-        // assume que o "comprimento" da peça é o eixo Z do bounds local
-        return renderer.bounds.size.z > 0f ? renderer.bounds.size.z : prefab.transform.localScale.z;
+        Renderer[] renderers = temp.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+        {
+            DestroyImmediate(temp);
+            return 0f;
+        }
+
+        Bounds bounds = renderers[0].bounds;
+        foreach (var r in renderers)
+            bounds.Encapsulate(r.bounds);
+
+        float length = bounds.size.z;
+        DestroyImmediate(temp);
+        return length;
     }
 }
