@@ -63,7 +63,7 @@ PrefabInstance:
     - target: {fileID: -5754084199372789682, guid: cdeebfda32d27a94bbb940d81e50e70f, type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: -462981019419857548, guid: 1e1aebbc6eaae15438b9eebfe7ed445a, type: 3}
+      objectReference: {fileID: 3428393151585582139, guid: 1e1aebbc6eaae15438b9eebfe7ed445a, type: 3}
     - target: {fileID: 919132149155446097, guid: cdeebfda32d27a94bbb940d81e50e70f, type: 3}
       propertyPath: m_Name
       value: RailUnlock
