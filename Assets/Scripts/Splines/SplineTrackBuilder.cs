@@ -116,7 +116,7 @@ public class SplineTrackBuilder : MonoBehaviour
 
     float GetPieceLength(GameObject prefab)
     {
-        GameObject temp = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+        GameObject temp = (GameObject) UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
         temp.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
 
         Renderer[] renderers = temp.GetComponentsInChildren<Renderer>();
