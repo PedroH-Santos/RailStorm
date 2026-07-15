@@ -11,8 +11,14 @@ public class SplineEntry
     [Tooltip("Nome do destino exibido no menu de desbloqueio. Ex: 'Floresta Sombria', 'Cidade Alta'")]
     public string destinationName = "";
 
+    [TextArea] public string description = "";
+
     public bool isBlockedByDefault;
     public int unlockCost = 10;
+
+    [Header("Tema visual do totem")]
+    public Color themeColor = Color.white;
+    public Sprite themeIcon;
 }
 
 [CreateAssetMenu(fileName = "SplineManifest", menuName = "Splines/Spline Manifest")]

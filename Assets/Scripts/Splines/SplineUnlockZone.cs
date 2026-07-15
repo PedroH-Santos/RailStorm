@@ -14,6 +14,10 @@ public class SplineUnlockZone : MonoBehaviour
     [Header("Referência ao SplineContainer da cena")]
     [SerializeField] private SplineContainer splineContainer;
 
+    [Header("Totens e Foco")]
+    [SerializeField] private JunctionTotemsController totemsController;
+    [SerializeField] private FocusDimController focusDim;
+
     PlayerController _player;
     PlayerStatsAggregator _stats;
     bool _menuOpen;
@@ -22,6 +26,12 @@ public class SplineUnlockZone : MonoBehaviour
     List<SplineEntry> _blockedHere = new();
 
     readonly Dictionary<int, string> _entryDirections = new();
+
+    int _selectedIndex = -1;
+
+    // Debounce do analógico do gamepad, pra não disparar troca em todo frame
+    bool _stickMovedLeft = false;
+    bool _stickMovedRight = false;
 
     void Awake()
     {
@@ -39,6 +49,12 @@ public class SplineUnlockZone : MonoBehaviour
             .ToList();
 
         bool hasBlocked = _blockedHere.Count > 0;
+
+        // Prompt "Aperte E" — só aparece quando há bloqueio e o menu ainda não abriu
+        if (hasBlocked && !_menuOpen)
+            InteractPromptUI.Instance?.Show();
+        else
+            InteractPromptUI.Instance?.Hide();
 
         if (hasBlocked && !_menuOpen && Keyboard.current.eKey.wasPressedThisFrame)
         {
@@ -59,35 +75,90 @@ public class SplineUnlockZone : MonoBehaviour
 
     void HandleUnlockInput()
     {
-        if (Keyboard.current.digit1Key.wasPressedThisFrame) TryUnlock(0);
-        else if (Keyboard.current.digit2Key.wasPressedThisFrame) TryUnlock(1);
-        else if (Keyboard.current.digit3Key.wasPressedThisFrame) TryUnlock(2);
-        else if (Keyboard.current.digit4Key.wasPressedThisFrame) TryUnlock(3);
+        // Navegação — teclado
+        if (Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.aKey.wasPressedThisFrame)
+            MoveSelection(-1);
+        else if (Keyboard.current.rightArrowKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame)
+            MoveSelection(1);
+
+        // Navegação — gamepad (analógico esquerdo, com debounce)
+        if (Gamepad.current != null)
+        {
+            float stickX = Gamepad.current.leftStick.x.ReadValue();
+
+            if (stickX < -0.5f && !_stickMovedLeft)
+            {
+                MoveSelection(-1);
+                _stickMovedLeft = true;
+            }
+            else if (stickX >= -0.5f)
+            {
+                _stickMovedLeft = false;
+            }
+
+            if (stickX > 0.5f && !_stickMovedRight)
+            {
+                MoveSelection(1);
+                _stickMovedRight = true;
+            }
+            else if (stickX <= 0.5f)
+            {
+                _stickMovedRight = false;
+            }
+        }
+
+        // Confirmar — teclado
+        if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)
+            TryUnlock(_selectedIndex);
+
+        // Confirmar — gamepad (botão X do PlayStation = buttonWest no Input System)
+        if (Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame)
+            TryUnlock(_selectedIndex);
+    }
+
+    void MoveSelection(int dir)
+    {
+        if (_blockedHere.Count <= 1) return;
+
+        // Esconde a UI do totem atual antes de trocar
+        var currentEntry = _blockedHere[_selectedIndex];
+        totemsController.GetView(currentEntry.index)?.Hide();
+
+        _selectedIndex = (_selectedIndex + dir + _blockedHere.Count) % _blockedHere.Count;
+
+        ShowSelected();
     }
 
     void TryUnlock(int menuIndex)
     {
-        if (menuIndex >= _blockedHere.Count) return;
+        if (menuIndex < 0 || menuIndex >= _blockedHere.Count) return;
 
         SplineEntry entry = _blockedHere[menuIndex];
+        var view = totemsController.GetView(entry.index);
 
         if (_stats.Coins < entry.unlockCost)
         {
-            JunctionUIManager.Instance?.ShowInsufficientFunds();
+            view?.PlayDeniedEffect();
             return;
         }
 
-        _stats.Coins -= entry.unlockCost;
-        SplineRuntimeState.Instance.Unblock(entry.index);
+        view?.PlayUnlockEffect(() =>
+        {
+            _stats.Coins -= entry.unlockCost;
+            SplineRuntimeState.Instance.Unblock(entry.index);
 
-        _blockedHere = SplineRuntimeState.Instance
-            .GetBlockedEntriesFrom(_relevantEntries)
-            .ToList();
+            _blockedHere = SplineRuntimeState.Instance
+                .GetBlockedEntriesFrom(_relevantEntries)
+                .ToList();
 
-        if (_blockedHere.Count == 0)
-            CloseMenu();
-        else
-            JunctionUIManager.Instance?.UpdateMenu(BuildMenuEntries(), _stats.Coins);
+            if (_blockedHere.Count == 0)
+                CloseMenu();
+            else
+            {
+                _selectedIndex = 0;
+                ShowSelected();
+            }
+        });
     }
 
     void OpenMenu()
@@ -95,7 +166,25 @@ public class SplineUnlockZone : MonoBehaviour
         _menuOpen = true;
         _player.SetMovementLocked(true);
         Time.timeScale = 0f;
-        JunctionUIManager.Instance?.ShowMenu(BuildMenuEntries(), _stats.Coins);
+
+        InteractPromptUI.Instance?.Hide();
+
+        _selectedIndex = 0;
+        ShowSelected();
+    }
+
+    void ShowSelected()
+    {
+        if (_blockedHere.Count == 0) return;
+
+        var entry = _blockedHere[_selectedIndex];
+        var view = totemsController.GetView(entry.index);
+
+        view.Bind(entry, _stats.Coins >= entry.unlockCost, () => TryUnlock(_selectedIndex));
+        view.Show();
+        view.SetSelected(true);
+
+        focusDim?.SetFocused(true, entry.themeColor);
     }
 
     void CloseMenu()
@@ -103,27 +192,16 @@ public class SplineUnlockZone : MonoBehaviour
         _menuOpen = false;
         _player?.SetMovementLocked(false);
         Time.timeScale = 1f;
-        JunctionUIManager.Instance?.HideMenu();
-    }
 
-    List<JunctionMenuEntry> BuildMenuEntries()
-    {
-        var result = new List<JunctionMenuEntry>();
-        foreach (var entry in _blockedHere)
+        focusDim?.SetFocused(false, Color.white);
+
+        if (_selectedIndex >= 0 && _selectedIndex < _blockedHere.Count)
         {
-            string dir = _entryDirections.TryGetValue(entry.index, out var d) ? d : "?";
-            string dest = !string.IsNullOrEmpty(entry.destinationName)
-                          ? entry.destinationName
-                          : entry.displayName;
-
-            result.Add(new JunctionMenuEntry
-            {
-                DirectionArrow = dir,
-                DestinationName = dest,
-                UnlockCost = entry.unlockCost
-            });
+            var entry = _blockedHere[_selectedIndex];
+            totemsController.GetView(entry.index)?.Hide();
         }
-        return result;
+
+        _selectedIndex = -1;
     }
 
     string GetDirectionArrow(SplineEntry entry)
@@ -248,6 +326,8 @@ public class SplineUnlockZone : MonoBehaviour
         if (!other.CompareTag("Player")) return;
 
         if (_menuOpen) CloseMenu();
+
+        InteractPromptUI.Instance?.Hide();
 
         _player = null;
         _stats = null;

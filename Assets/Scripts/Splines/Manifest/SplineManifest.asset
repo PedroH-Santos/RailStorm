@@ -15,31 +15,37 @@ MonoBehaviour:
   entries:
   - index: 0
     displayName: Spline 0
-    destinationName: 
+    destinationName: Spline 0
+    description: Spline 0
     isBlockedByDefault: 0
     unlockCost: 0
   - index: 1
     displayName: Spline 1
-    destinationName: 
+    destinationName: Spline 1
+    description: Spline 1
     isBlockedByDefault: 1
     unlockCost: 15
   - index: 2
     displayName: Spline 2
-    destinationName: 
+    destinationName: Spline 2
+    description: Spline 2
     isBlockedByDefault: 1
     unlockCost: 15
   - index: 3
     displayName: Spline 3
-    destinationName: 
+    destinationName: Spline 3
+    description: Spline 3
     isBlockedByDefault: 1
     unlockCost: 15
   - index: 4
     displayName: Spline 4
-    destinationName: 
+    destinationName: Spline 4
+    description: Spline 4
     isBlockedByDefault: 1
     unlockCost: 15
   - index: 5
     displayName: Spline 5
-    destinationName: Destino 5
+    destinationName: Spline 5
+    description: Spline 5
     isBlockedByDefault: 1
     unlockCost: 15
