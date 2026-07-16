@@ -15,6 +15,10 @@ public class JunctionTotemsController : MonoBehaviour
 
     public TotemView GetView(int splineIndex)
     {
+        Debug.Log("slots count: " + slots.Count);
+        Debug.Log("splineIndex: " + splineIndex);
+        Debug.Log("slots: " + string.Join(", ", slots.ConvertAll(s => s.splineIndex.ToString())));
+
         var slot = slots.Find(s => s.splineIndex == splineIndex);
         return slot?.view;
     }

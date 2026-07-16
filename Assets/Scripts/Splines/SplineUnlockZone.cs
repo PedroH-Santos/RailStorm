@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using StarterAssets;
@@ -178,6 +179,7 @@ public class SplineUnlockZone : MonoBehaviour
         if (_blockedHere.Count == 0) return;
 
         var entry = _blockedHere[_selectedIndex];
+        Debug.Log($"[SplineUnlockZone] Mostrando menu do totem {entry.destinationName} (índice {entry.index})");
         var view = totemsController.GetView(entry.index);
 
         view.Bind(entry, _stats.Coins >= entry.unlockCost, () => TryUnlock(_selectedIndex));
