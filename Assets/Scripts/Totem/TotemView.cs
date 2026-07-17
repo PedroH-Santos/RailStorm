@@ -79,6 +79,7 @@ public class TotemView : MonoBehaviour
 
         if (unlockButton != null)
         {
+            Debug.Log("cLICK");
             unlockButton.onClick.RemoveAllListeners();
             unlockButton.onClick.AddListener(() => onUnlockClicked?.Invoke());
             unlockButton.interactable = affordable;
@@ -94,7 +95,7 @@ public class TotemView : MonoBehaviour
     {
         if (panelRoot != null) panelRoot.SetActive(false);
         SetSelected(false);
-    }
+    } 
 
     public void SetSelected(bool selected)
     {
