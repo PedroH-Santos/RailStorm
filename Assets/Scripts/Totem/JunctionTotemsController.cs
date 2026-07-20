@@ -15,17 +15,23 @@ public class JunctionTotemsController : MonoBehaviour
 
     public TotemView GetView(int splineIndex)
     {
-        Debug.Log("slots count: " + slots.Count);
-        Debug.Log("splineIndex: " + splineIndex);
-        Debug.Log("slots: " + string.Join(", ", slots.ConvertAll(s => s.splineIndex.ToString())));
-
         var slot = slots.Find(s => s.splineIndex == splineIndex);
         return slot?.view;
     }
 
+    void OnEnable() => SplineRuntimeState.OnSplineUnblocked += HandleUnblocked;
+    void OnDisable() => SplineRuntimeState.OnSplineUnblocked -= HandleUnblocked;
+
+
+    void HandleUnblocked(int splineIndex)
+    {
+        var slot = slots.Find(s => s.splineIndex == splineIndex);
+        if (slot?.view != null)
+            slot.view.gameObject.SetActive(false);
+    }
+
     void Start()
     {
-        // Aplica a cor de tema de cada totem assim que a cena inicia
         foreach (var slot in slots)
         {
             var entry = SplineRuntimeState.Instance?.manifest?.GetEntry(slot.splineIndex);
@@ -33,8 +39,7 @@ public class JunctionTotemsController : MonoBehaviour
                 slot.view.SetThemeColor(entry.themeColor);
         }
 
-        // Opcional: ordena a UI por distância à câmera, pra evitar sobreposição
-        // de painéis quando dois totens ficam próximos na projeção da câmera.
+
         var cam = Camera.main;
         if (cam == null) return;
 

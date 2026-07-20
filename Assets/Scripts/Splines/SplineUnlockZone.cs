@@ -25,10 +25,8 @@ public class SplineUnlockZone : MonoBehaviour
     List<SplineEntry> _relevantEntries = new();
     List<SplineEntry> _blockedHere = new();
 
-    // Totem cujo painel está aberto no momento. Só pode existir um por vez.
     SplineEntry _selectedEntry;
 
-    // Debounce do analógico do gamepad, pra não disparar troca em todo frame
     bool _stickMovedLeft = false;
     bool _stickMovedRight = false;
 
@@ -49,7 +47,6 @@ public class SplineUnlockZone : MonoBehaviour
 
         bool hasBlocked = _blockedHere.Count > 0;
 
-        // Prompt "Aperte E" — só aparece quando há bloqueio e o menu ainda não abriu
         if (hasBlocked && !_menuOpen)
             InteractPromptUI.Instance?.Show();
         else
@@ -106,16 +103,13 @@ public class SplineUnlockZone : MonoBehaviour
             }
         }
 
-        // Confirmar — teclado
         if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)
             TryUnlock();
 
-        // Confirmar — gamepad (botão X do PlayStation = buttonWest no Input System)
         if (Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame)
             TryUnlock();
     }
 
-    // Chame estes dois métodos a partir das setas da UI (OnClick do botão)
     public void OnNextArrowClicked() => MoveSelection(1);
     public void OnPreviousArrowClicked() => MoveSelection(-1);
 
@@ -126,10 +120,8 @@ public class SplineUnlockZone : MonoBehaviour
         int currentPos = _blockedHere.IndexOf(_selectedEntry);
         int nextPos = Mathf.Clamp(currentPos + step, 0, _blockedHere.Count - 1);
 
-        // Já está na ponta (primeiro/último totem) — seta não faz nada
         if (nextPos == currentPos) return;
 
-        // Esconde a UI do totem atual antes de trocar
         totemsController.GetView(_selectedEntry.index)?.Hide();
 
         _selectedEntry = _blockedHere[nextPos];
@@ -153,20 +145,7 @@ public class SplineUnlockZone : MonoBehaviour
         {
             _stats.Coins -= entry.unlockCost;
             SplineRuntimeState.Instance.Unblock(entry.index);
-
-            _blockedHere = SplineRuntimeState.Instance
-                .GetBlockedEntriesFrom(_relevantEntries)
-                .ToList();
-
-            if (_blockedHere.Count == 0)
-            {
-                CloseMenu();
-            }
-            else
-            {
-                _selectedEntry = _blockedHere[0];
-                ShowSelected();
-            }
+            CloseMenu();
         });
     }
 

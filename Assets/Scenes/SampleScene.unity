@@ -2015,10 +2015,10 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 11500000, guid: 4283b25549eb26e4eafb1c0bd3572fa8, type: 3}
-        m_TargetAssemblyTypeName: UnityEditor.MonoScript, UnityEditor.CoreModule
-        m_MethodName: set_name
-        m_Mode: 5
+      - m_Target: {fileID: 1575469324}
+        m_TargetAssemblyTypeName: SplineUnlockZone, Assembly-CSharp
+        m_MethodName: OnNextArrowClicked
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -25183,10 +25183,10 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 11500000, guid: 4283b25549eb26e4eafb1c0bd3572fa8, type: 3}
-        m_TargetAssemblyTypeName: UnityEditor.MonoScript, UnityEditor.CoreModule
-        m_MethodName: set_name
-        m_Mode: 5
+      - m_Target: {fileID: 1575469324}
+        m_TargetAssemblyTypeName: SplineUnlockZone, Assembly-CSharp
+        m_MethodName: OnPreviousArrowClicked
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -42201,7 +42201,6 @@ RectTransform:
   - {fileID: 949911059}
   - {fileID: 1050770023}
   - {fileID: 394121573}
-  - {fileID: 1048717282}
   m_Father: {fileID: 69299850}
   m_LocalEulerAnglesHint: {x: 30, y: 45, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -43358,12 +43357,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1048717281}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0.23911765, y: 0.3696438, z: -0.09904577, w: 0.89239913}
+  m_LocalPosition: {x: 3.0053701, y: 3.6675, z: -1.0258994}
+  m_LocalScale: {x: 0.008, y: 0.008, z: 0.008}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1003369917}
+  m_Father: {fileID: 1069116618}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1048717283
 MonoBehaviour:
@@ -43875,6 +43874,7 @@ Transform:
   - {fileID: 1340190764}
   - {fileID: 391835166}
   - {fileID: 2132360803}
+  - {fileID: 1048717282}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1069116619
@@ -43889,14 +43889,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: caf63d819941e5e48bfe2c700ee22457, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::JunctionUIManager
-  menuPanel: {fileID: 1340190763}
-  coinsText: {fileID: 1534782079}
-  messageText: {fileID: 1621817844}
-  slotLabels:
-  - {fileID: 1135518692}
-  - {fileID: 1326158206}
-  - {fileID: 2027524862}
-  - {fileID: 2089302573}
 --- !u!4 &1070530346 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4175682137854908604, guid: e7346ce32a2962643b196f7d51823777, type: 3}
@@ -50359,10 +50351,10 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 11500000, guid: 4283b25549eb26e4eafb1c0bd3572fa8, type: 3}
-        m_TargetAssemblyTypeName: UnityEditor.MonoScript, UnityEditor.CoreModule
-        m_MethodName: set_name
-        m_Mode: 5
+      - m_Target: {fileID: 1575469324}
+        m_TargetAssemblyTypeName: SplineUnlockZone, Assembly-CSharp
+        m_MethodName: OnPreviousArrowClicked
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -74251,10 +74243,10 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 11500000, guid: 4283b25549eb26e4eafb1c0bd3572fa8, type: 3}
-        m_TargetAssemblyTypeName: UnityEditor.MonoScript, UnityEditor.CoreModule
-        m_MethodName: set_name
-        m_Mode: 5
+      - m_Target: {fileID: 1575469324}
+        m_TargetAssemblyTypeName: SplineUnlockZone, Assembly-CSharp
+        m_MethodName: OnNextArrowClicked
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
