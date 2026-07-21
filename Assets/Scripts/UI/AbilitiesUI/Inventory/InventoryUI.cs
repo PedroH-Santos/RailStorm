@@ -6,26 +6,36 @@ public class InventoryUI : MonoBehaviour
     public Transform entitiesContainer;
     public GameObject slotPrefab;
     public PlayerCartWeaponHandler weaponHandler;
+    public PlayerItemHandler itemHandler;
 
     const string SectionWeapons = "Weapons";
+    const string SectionItems = "Items";
     readonly Dictionary<string, InventorySection> _sections = new();
 
     void Awake()
     {
         if (weaponHandler == null)
             weaponHandler = FindFirstObjectByType<PlayerCartWeaponHandler>();
+        if (itemHandler == null)
+            itemHandler = FindFirstObjectByType<PlayerItemHandler>();
+
         RegisterSection(SectionWeapons);
+        RegisterSection(SectionItems);
     }
 
     void OnEnable()
     {
         if (weaponHandler != null) weaponHandler.OnWeaponsChanged += RefreshWeapons;
+        if (itemHandler != null) itemHandler.OnItemsChanged += RefreshItems;
+
         RefreshWeapons();
+        RefreshItems();
     }
 
     void OnDisable()
     {
         if (weaponHandler != null) weaponHandler.OnWeaponsChanged -= RefreshWeapons;
+        if (itemHandler != null) itemHandler.OnItemsChanged -= RefreshItems;
     }
 
     void RefreshWeapons()
@@ -37,6 +47,17 @@ public class InventoryUI : MonoBehaviour
             entries.Add(new InventoryEntry(w));
 
         SetSection(SectionWeapons, entries);
+    }
+
+    void RefreshItems()
+    {
+        if (itemHandler == null) return;
+
+        var entries = new List<InventoryEntry>();
+        foreach (var i in itemHandler.AcquiredItems)
+            entries.Add(new InventoryEntry(i));
+
+        SetSection(SectionItems, entries);
     }
 
     public void SetSection(string name, IReadOnlyList<InventoryEntry> entries)
