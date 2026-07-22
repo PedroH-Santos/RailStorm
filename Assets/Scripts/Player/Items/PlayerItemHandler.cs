@@ -5,11 +5,9 @@ using UnityEngine;
 
 public class PlayerItemHandler : MonoBehaviour
 {
-    public ItemManifest manifest;
+    readonly List<ItemDefinition> _acquiredItems = new();
 
     PlayerStatsAggregator _stats;
-
-    readonly List<ItemDefinition> _acquiredItems = new();
 
     public event Action OnItemsChanged;
 
@@ -32,17 +30,6 @@ public class PlayerItemHandler : MonoBehaviour
         Debug.Log($"[Items] '{item.itemName}' adquirido → {RarityHelper.DisplayName(item.rarity)}");
         OnItemsChanged?.Invoke();
         return true;
-    }
-
-    public List<ItemDefinition> GetAvailablePool()
-    {
-        var result = new List<ItemDefinition>();
-        if (manifest == null) return result;
-
-        foreach (var item in manifest.items)
-            if (!HasItem(item)) result.Add(item);
-
-        return result;
     }
 
     void ApplyEffect(ItemDefinition item)
@@ -111,8 +98,5 @@ public class PlayerItemHandler : MonoBehaviour
     public void ResetForNewRun()
     {
         _acquiredItems.Clear();
-        // Nota: componentes de Ability adicionados via AddComponent não são removidos aqui.
-        // Se precisar resetar isso entre runs, será necessário guardar referência aos
-        // componentes adicionados e destruí-los explicitamente.
     }
 }

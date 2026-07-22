@@ -1,9 +1,8 @@
 using UnityEngine;
 
-[System.Serializable]
-public class ItemDefinition : IDrawable
+[CreateAssetMenu(fileName = "NewItem", menuName = "Items/Item Definition")]
+public class ItemDefinition : ScriptableObject, IDrawable
 {
-    public int id = -1; 
     public string itemName = "Novo Item";
     [TextArea] public string description = "";
     public Sprite icon;
