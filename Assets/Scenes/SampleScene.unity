@@ -5629,7 +5629,16 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c17ee815e4240dc4583a0e4b80f9c8e9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1639613717}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c17ee815e4240dc4583a0e4b80f9c8e9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1639613719}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c17ee815e4240dc4583a0e4b80f9c8e9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1639613718}
   m_SourcePrefab: {fileID: 100100000, guid: c17ee815e4240dc4583a0e4b80f9c8e9, type: 3}
 --- !u!1001 &295902284
 PrefabInstance:
@@ -60934,6 +60943,61 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e7346ce32a2962643b196f7d51823777, type: 3}
+--- !u!1 &1639613715 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c17ee815e4240dc4583a0e4b80f9c8e9, type: 3}
+  m_PrefabInstance: {fileID: 288833728}
+  m_PrefabAsset: {fileID: 0}
+--- !u!135 &1639613717
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1639613715}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 20
+  m_Center: {x: 0, y: 2, z: 10}
+--- !u!114 &1639613718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1639613715}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 419a3d8b74e5062438f1401cb2d3f8ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShopZone
+  shopUI: {fileID: 0}
+--- !u!114 &1639613719
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1639613715}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b4d454c3690b5748b40d8b9f84bc2db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StarterAssets.ShopManager
+  resourcesFolder: Items
+  playerStats: {fileID: 337154715}
+  slotsCount: 9
+  refreshInterval: 180
 --- !u!1001 &1642987118
 PrefabInstance:
   m_ObjectHideFlags: 0

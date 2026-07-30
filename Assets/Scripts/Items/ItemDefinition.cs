@@ -8,6 +8,9 @@ public class ItemDefinition : ScriptableObject, IDrawable
     public Sprite icon;
     public int rarity;
 
+    [Header("Shop")]
+    public int price = 50;
+
     public EItemEffectType effectType;
 
     [Header("StatChange")]

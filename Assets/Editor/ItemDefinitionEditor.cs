@@ -14,6 +14,7 @@ public class ItemDefinitionEditor : Editor
         EditorGUILayout.PropertyField(serializedObject.FindProperty("description"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("rarity"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("price"));
 
         var effectTypeProp = serializedObject.FindProperty("effectType");
         EditorGUILayout.PropertyField(effectTypeProp);
