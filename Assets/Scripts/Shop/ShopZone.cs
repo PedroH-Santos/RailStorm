@@ -6,6 +6,7 @@ using UnityEngine.InputSystem;
 public class ShopZone : MonoBehaviour
 {
     [SerializeField] private ShopUI shopUI;
+    [SerializeField] private ShopManager shopManager;
 
     bool _playerInside;
     bool _shopOpen;
@@ -39,7 +40,11 @@ public class ShopZone : MonoBehaviour
         _shopOpen = true;
         InteractPromptUI.Instance?.Hide();
         _player.SetMovementLocked(true);
-        shopUI.Open(_player.GetComponent<PlayerStatsAggregator>(), _player.GetComponent<PlayerItemHandler>());
+
+        shopUI.Open(
+            _player.GetComponent<PlayerStatsAggregator>(),
+            _player.GetComponent<PlayerItemHandler>(),
+            shopManager);
     }
 
     void CloseShop()

@@ -9,13 +9,13 @@ public class ShopUI : MonoBehaviour
 {
     [Header("References")]
     public GameObject root;
-    public ShopManager shopManager;
     public List<ShopSlotUI> slots;
     public TMP_Text coinsText;
     public TMP_Text timerText;
     public TMP_Text totalText;
     public Button confirmBuyButton;
 
+    ShopManager _shopManager;
     PlayerStatsAggregator _stats;
     PlayerItemHandler _itemHandler;
 
@@ -27,16 +27,6 @@ public class ShopUI : MonoBehaviour
             confirmBuyButton.onClick.AddListener(ConfirmPurchase);
     }
 
-    void OnEnable()
-    {
-        if (shopManager != null) shopManager.OnStockChanged += RenderStock;
-    }
-
-    void OnDisable()
-    {
-        if (shopManager != null) shopManager.OnStockChanged -= RenderStock;
-    }
-
     void Update()
     {
         if (root == null || !root.activeSelf) return;
@@ -44,10 +34,17 @@ public class ShopUI : MonoBehaviour
         UpdateTimerText();
     }
 
-    public void Open(PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
+    public void Open(PlayerStatsAggregator stats, PlayerItemHandler itemHandler, ShopManager shopManager)
     {
+        if (_shopManager != null)
+            _shopManager.OnStockChanged -= RenderStock;
+
+        _shopManager = shopManager;
         _stats = stats;
         _itemHandler = itemHandler;
+
+        if (_shopManager != null)
+            _shopManager.OnStockChanged += RenderStock;
 
         root.SetActive(true);
         Time.timeScale = 0f;
@@ -60,6 +57,11 @@ public class ShopUI : MonoBehaviour
 
     public void Close()
     {
+        if (_shopManager != null)
+            _shopManager.OnStockChanged -= RenderStock;
+
+        _shopManager = null;
+
         root.SetActive(false);
         Time.timeScale = 1f;
     }
@@ -68,7 +70,9 @@ public class ShopUI : MonoBehaviour
     {
         _selected.Clear();
 
-        var stock = shopManager.CurrentStock;
+        var stock = _shopManager != null
+            ? _shopManager.CurrentStock
+            : (IReadOnlyList<ItemDefinition>)System.Array.Empty<ItemDefinition>();
 
         for (int i = 0; i < slots.Count; i++)
         {
@@ -97,7 +101,8 @@ public class ShopUI : MonoBehaviour
 
     void ConfirmPurchase()
     {
-        if (!shopManager.TryBuyMultiple(_selected, _stats, _itemHandler)) return;
+        if (_shopManager == null) return;
+        if (!_shopManager.TryBuyMultiple(_selected, _stats, _itemHandler)) return;
 
         UpdateCoinsText();
         RenderStock(); 
@@ -122,9 +127,9 @@ public class ShopUI : MonoBehaviour
 
     void UpdateTimerText()
     {
-        if (timerText == null || shopManager == null) return;
+        if (timerText == null || _shopManager == null) return;
 
-        float remaining = shopManager.TimeUntilRefresh;
+        float remaining = _shopManager.TimeUntilRefresh;
         int minutes = Mathf.FloorToInt(remaining / 60f);
         int seconds = Mathf.FloorToInt(remaining % 60f);
         timerText.text = $"{minutes:00}:{seconds:00}";

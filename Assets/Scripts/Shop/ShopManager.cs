@@ -15,6 +15,9 @@ namespace StarterAssets
         [Tooltip("Used to read LuckPercent so rarer items become more/less likely to appear.")]
         [SerializeField] private PlayerStatsAggregator playerStats;
 
+        [Tooltip("Used so items the player already owns are never rolled into the shop.")]
+        [SerializeField] private PlayerItemHandler playerItemHandler;
+
         [Header("Settings")]
         public int slotsCount = 9;
         public float refreshInterval = 180f; // 3 minutes
@@ -54,15 +57,23 @@ namespace StarterAssets
             Debug.Log($"[Shop] {_itemPool.Count} items loaded from Resources/{resourcesFolder}.");
         }
 
+        bool IsOwned(ItemDefinition item) =>
+            playerItemHandler != null && playerItemHandler.HasItem(item);
+
         void RollNewStock()
         {
             _lastStock.Clear();
             _lastStock.AddRange(_currentStock);
 
-            var candidates = _itemPool.Where(i => !_lastStock.Contains(i)).ToList();
+            // Exclude items shown in the previous batch AND items already owned.
+            var candidates = _itemPool
+                .Where(i => !_lastStock.Contains(i))
+                .Where(i => !IsOwned(i))
+                .ToList();
 
+            // Not enough unique/unowned candidates? Relax the "previous batch" rule.
             if (candidates.Count < slotsCount)
-                candidates = new List<ItemDefinition>(_itemPool);
+                candidates = _itemPool.Where(i => !IsOwned(i)).ToList();
 
             float luck = playerStats != null ? playerStats.LuckPercent : 0f;
 
@@ -72,6 +83,26 @@ namespace StarterAssets
             OnStockChanged?.Invoke();
         }
 
+        // Tops up empty slots right after a purchase, without waiting for the full refresh timer.
+        void RefillStock()
+        {
+            int missing = slotsCount - _currentStock.Count;
+            if (missing <= 0) return;
+
+            var candidates = _itemPool
+                .Where(i => !_currentStock.Contains(i))
+                .Where(i => !IsOwned(i))
+                .ToList();
+
+            if (candidates.Count == 0) return;
+
+            float luck = playerStats != null ? playerStats.LuckPercent : 0f;
+            _currentStock.AddRange(WeightedDraw(candidates, missing, luck));
+        }
+
+        // Weighted draw without replacement, same approach as AbilityDrawer.Draw:
+        // each item's chance is proportional to RarityHelper.GetWeight(item.rarity, luck),
+        // so higher luck skews the shop towards rarer items.
         static List<ItemDefinition> WeightedDraw(List<ItemDefinition> pool, int count, float luck)
         {
             var remaining = new List<ItemDefinition>(pool);
@@ -100,7 +131,11 @@ namespace StarterAssets
             return result;
         }
 
-
+        /// <summary>
+        /// Buys every valid item in one go: only succeeds if the player can afford the
+        /// combined total. Either everything in the cart is purchased, or nothing is.
+        /// Purchased items are removed from stock and the shop tries to refill their slots.
+        /// </summary>
         public bool TryBuyMultiple(IEnumerable<ItemDefinition> items, PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
         {
             if (stats == null || items == null) return false;
@@ -120,6 +155,13 @@ namespace StarterAssets
 
             foreach (var item in toBuy)
                 itemHandler?.AcquireItem(item);
+
+            foreach (var item in toBuy)
+                _currentStock.Remove(item);
+
+            RefillStock();
+
+            OnStockChanged?.Invoke();
 
             return true;
         }
