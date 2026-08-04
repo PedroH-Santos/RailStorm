@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewItem", menuName = "Items/Item Definition")]
@@ -19,11 +20,14 @@ public class ItemDefinition : ScriptableObject, IDrawable
     public bool isMultiplier = false;
 
     [Header("Ability")]
-    [Tooltip("Arraste um componente (de um prefab, por exemplo) que tenha o script da habilidade. " +
-             "Ao desbloquear, esse mesmo tipo de script será adicionado ao player.")]
-    public MonoBehaviour abilityScript;
+    [Tooltip("Arraste o script (.cs) da habilidade. Ao desbloquear, um componente desse tipo " +
+             "será adicionado diretamente ao player — não é necessário nenhum objeto/prefab de exemplo.")]
+    [SerializeField] string abilityTypeName;
 
     public string DisplayName => itemName;
     public Sprite Icon => icon;
     public int CurrentRarity => rarity;
+
+    public Type GetAbilityType() =>
+        string.IsNullOrEmpty(abilityTypeName) ? null : Type.GetType(abilityTypeName);
 }

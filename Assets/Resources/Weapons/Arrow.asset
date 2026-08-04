@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Arrow
   m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
   weaponName: Flechas
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 6d4e35b3b5ef1f941a22542ed27efa43, type: 3}
   description: "Flechas que disparam de forma aleat\xF3ria"
   weaponType: 1
   currentRarity: -1

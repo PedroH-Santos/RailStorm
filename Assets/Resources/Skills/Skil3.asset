@@ -13,12 +13,10 @@ MonoBehaviour:
   m_Name: Skil3
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillName: Skill3
-  icon: {fileID: 0}
-  rarity: 0
-  skillType: 0
+  icon: {fileID: 21300000, guid: 0915b6f8c4792404aa19f5837a8f63c8, type: 3}
+  description: 
   statTarget: 0
-  mechanicType: 0
+  currentRarity: -1
   levels:
-  - description: Move Speed 4
-    statValue: 4
+  - statValue: 4
     isMultiplier: 0

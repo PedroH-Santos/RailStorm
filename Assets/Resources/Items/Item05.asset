@@ -10,15 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4970b17714ee0464d87e6f457c7fe29a, type: 3}
-  m_Name: Item02
+  m_Name: Item05
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  itemName: Item de vida
-  description: Item de vida
-  icon: {fileID: 21300000, guid: 907b479847733014ab085dde25847da4, type: 3}
-  rarity: 1
+  itemName: Item Exemplo 03
+  description: Item Exemplo 03
+  icon: {fileID: 21300000, guid: c58384415aaadfc4a9eb30d4b28b834b, type: 3}
+  rarity: 4
   price: 50
-  effectType: 0
-  statTarget: 1
-  statValue: 30
+  effectType: 1
+  statTarget: 3
+  statValue: 10
   isMultiplier: 1
-  abilityTypeName: 
+  abilityTypeName: ItemExemplo3, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null

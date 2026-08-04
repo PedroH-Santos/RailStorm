@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Skil1
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillName: Skill Coins
-  icon: {fileID: 0}
-  rarity: 0
+  icon: {fileID: 21300000, guid: babbcb657ff2eaf47bd0687a36ad1f4d, type: 3}
+  description: 
   statTarget: 4
+  currentRarity: -1
   levels:
-  - description: 'Coins e o cara '
-    statValue: 10
+  - statValue: 10
     isMultiplier: 0

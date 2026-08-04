@@ -63,6 +63,12 @@ public class PlayerItemHandler : MonoBehaviour
                     : _stats.MaxHP + (int)item.statValue;
                 break;
 
+            case EStatTarget.HP:
+                _stats.HP = item.isMultiplier
+                    ? Mathf.RoundToInt(_stats.HP * (1f + item.statValue / 100f))
+                    : _stats.HP + (int)item.statValue;
+                break;
+
             case EStatTarget.Coins:
                 _stats.Coins = item.isMultiplier
                     ? Mathf.RoundToInt(_stats.Coins * (1f + item.statValue / 100f))
@@ -83,13 +89,12 @@ public class PlayerItemHandler : MonoBehaviour
 
     void ApplyAbility(ItemDefinition item)
     {
-        if (item.abilityScript == null)
+        var type = item.GetAbilityType();
+        if (type == null)
         {
-            Debug.LogWarning($"[Items] '{item.itemName}' é do tipo Ability mas não tem abilityScript definido.");
+            Debug.LogWarning($"[Items] '{item.itemName}' é do tipo Ability mas não tem um script de habilidade válido definido.");
             return;
         }
-
-        var type = item.abilityScript.GetType();
 
         if (gameObject.GetComponent(type) == null)
             gameObject.AddComponent(type);

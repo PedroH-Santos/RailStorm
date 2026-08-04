@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: DamageSkill
   m_EditorClassIdentifier: Assembly-CSharp::WeaponSkillDefinition
   skillName: Aumento de Dano Flechas
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 2e4423831f8928d449f79cfc3b90cf9e, type: 3}
   description: DMG -> 10% -> 11%
   weaponType: 1
   statTarget: 0

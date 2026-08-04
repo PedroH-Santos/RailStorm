@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4970b17714ee0464d87e6f457c7fe29a, type: 3}
-  m_Name: Item02
+  m_Name: Item03
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  itemName: Item de vida
-  description: Item de vida
-  icon: {fileID: 21300000, guid: 907b479847733014ab085dde25847da4, type: 3}
-  rarity: 1
-  price: 50
+  itemName: Item De Sorte
+  description: Item De Sorte
+  icon: {fileID: 21300000, guid: 011dc1e35bd62ea40ad5b5d22f72c9fb, type: 3}
+  rarity: 3
+  price: 20
   effectType: 0
-  statTarget: 1
-  statValue: 30
-  isMultiplier: 1
+  statTarget: 3
+  statValue: 10
+  isMultiplier: 0
   abilityTypeName: 

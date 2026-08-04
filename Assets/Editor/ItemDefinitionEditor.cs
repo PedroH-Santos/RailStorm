@@ -31,10 +31,56 @@ public class ItemDefinitionEditor : Editor
         }
         else if (effectType == EItemEffectType.Ability)
         {
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("abilityScript"));
+            DrawAbilityScriptField();
         }
 
         serializedObject.ApplyModifiedProperties();
+    }
+
+    void DrawAbilityScriptField()
+    {
+        var typeNameProp = serializedObject.FindProperty("abilityTypeName");
+
+        MonoScript currentScript = null;
+        if (!string.IsNullOrEmpty(typeNameProp.stringValue))
+        {
+            var type = System.Type.GetType(typeNameProp.stringValue);
+            if (type != null)
+            {
+                foreach (var script in Resources.FindObjectsOfTypeAll<MonoScript>())
+                {
+                    if (script.GetClass() == type)
+                    {
+                        currentScript = script;
+                        break;
+                    }
+                }
+            }
+        }
+
+        EditorGUI.BeginChangeCheck();
+        var newScript = (MonoScript)EditorGUILayout.ObjectField(
+            "Ability Script", currentScript, typeof(MonoScript), false);
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            if (newScript == null)
+            {
+                typeNameProp.stringValue = "";
+            }
+            else
+            {
+                var cls = newScript.GetClass();
+                if (cls != null && typeof(MonoBehaviour).IsAssignableFrom(cls))
+                {
+                    typeNameProp.stringValue = cls.AssemblyQualifiedName;
+                }
+                else
+                {
+                    Debug.LogWarning($"'{newScript.name}' não é um MonoBehaviour válido para Ability.");
+                }
+            }
+        }
     }
 
     void DrawScriptField()

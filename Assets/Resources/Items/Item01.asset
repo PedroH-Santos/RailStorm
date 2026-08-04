@@ -12,12 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4970b17714ee0464d87e6f457c7fe29a, type: 3}
   m_Name: Item01
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  itemName: O primeiro item de todos
-  description: O primeiro item de todos
+  itemName: 'Item exemplo 01 '
+  description: 'Item exemplo 01 '
   icon: {fileID: 21300000, guid: 982aff6192f788c46a03efbc065f29c0, type: 3}
   rarity: 0
+  price: 50
   effectType: 1
   statTarget: 15
   statValue: 10
   isMultiplier: 0
-  abilityScript: {fileID: 0}
+  abilityTypeName: ItemExemplo, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+    PublicKeyToken=null

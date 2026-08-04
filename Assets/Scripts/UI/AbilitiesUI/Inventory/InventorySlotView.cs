@@ -15,9 +15,9 @@ public class InventorySlotView
     public InventorySlotView(GameObject root)
     {
         Root = root;
-        _icon = root.transform.Find("Icon")?.GetComponent<Image>();
+        _icon = root.transform.Find("BackGround/Icon")?.GetComponent<Image>();
         _levelLabel = root.transform.Find("LevelLabel")?.GetComponent<TextMeshProUGUI>();
-        _rarityBorder = root.transform.Find("RarityBorder")?.GetComponent<Image>();
+        _rarityBorder = root.transform.Find("BackGround")?.GetComponent<Image>();
     }
 
     public void Apply(InventoryEntry entry)
