@@ -121,7 +121,11 @@ public class Enemy : MonoBehaviour
         {
             Vector3 dir = (player.position - firePoint.position).normalized;
 
-            proj.Init(dir, attackDamage);
+            int dmg = HordeDamageMultiplier.Active
+                ? Mathf.RoundToInt(attackDamage * HordeDamageMultiplier.Multiplier)
+                : attackDamage;
+
+            proj.Init(dir, dmg);
         }
     }
 

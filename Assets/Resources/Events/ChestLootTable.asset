@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1fe7e9ead4159344ae29c14613a3182, type: 3}
+  m_Name: ChestLootTable
+  m_EditorClassIdentifier: Assembly-CSharp::ChestLootTable
+  possibleItems:
+  - {fileID: 11400000, guid: 44d056b2fbf1e7a44b7b7d85952754f2, type: 2}
+  - {fileID: 11400000, guid: db3829d83b430fb46b53223d0ed15b6e, type: 2}
+  - {fileID: 11400000, guid: ecf6ed2c823e4034ab935ea2f4e9630b, type: 2}
+  - {fileID: 11400000, guid: f5b6c29d61c721547a540e0c1aee4d00, type: 2}
+  - {fileID: 11400000, guid: 08cff69836fd4844c8fd4b64559235f9, type: 2}
+  minRarity: 0
+  maxRarity: -1

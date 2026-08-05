@@ -6,6 +6,7 @@ using UnityEngine;
 public class PlayerItemHandler : MonoBehaviour
 {
     readonly List<ItemDefinition> _acquiredItems = new();
+    readonly List<ItemDefinition> _exiledItems = new();
 
     PlayerStatsAggregator _stats;
 
@@ -100,8 +101,18 @@ public class PlayerItemHandler : MonoBehaviour
             gameObject.AddComponent(type);
     }
 
+    public bool IsExiled(ItemDefinition item) => item != null && _exiledItems.Contains(item);
+
+    public void ExileItem(ItemDefinition item)
+    {
+        if (item == null || _exiledItems.Contains(item)) return;
+        _exiledItems.Add(item);
+        Debug.Log($"[Items] '{item.itemName}' exilado — não aparecerá mais em baús.");
+    }
+
     public void ResetForNewRun()
     {
         _acquiredItems.Clear();
+        _exiledItems.Clear();
     }
 }

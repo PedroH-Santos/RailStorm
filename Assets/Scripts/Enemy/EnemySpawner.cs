@@ -45,6 +45,7 @@ public class EnemySpawner : MonoBehaviour
 
     public static event System.Action OnWaveCleared;
     public static event System.Action OnReadyForNextWave;
+    public static event System.Action OnWaveStarted;
 
     void Start()
     {
@@ -80,6 +81,7 @@ public class EnemySpawner : MonoBehaviour
     {
         _waveInProgress = true;
         Debug.Log($"[Waves] Starting: {wave.waveName}");
+        OnWaveStarted?.Invoke();
 
         List<GameObject> pool = BuildPool(wave);
 
