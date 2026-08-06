@@ -33,7 +33,7 @@ public class HordeTotemSpawner : MonoBehaviour
             interactable = totem.AddComponent<HordeTotemInteractable>();
 
         interactable.SetHordeSpawner(hordeSpawner);
-        interactable.OnAcceptedOrDespawned += HandleActiveCleared;
+        interactable.OnConsumedOrDespawned += HandleActiveCleared;
         _active = interactable;
     }
 

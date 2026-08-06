@@ -11,14 +11,29 @@ public class ChestSpawner : MonoBehaviour
     [SerializeField] private List<Transform> spawnMarkers = new();
 
     ChestInteractable _active;
+    Transform _lastMarker;
 
     public bool HasActiveChest => _active != null;
 
     public void SpawnRandom()
     {
-        if (_active != null || chestPrefab == null || spawnMarkers.Count == 0) return;
+        if (_active != null || chestPrefab == null) return;
 
-        Transform marker = spawnMarkers[Random.Range(0, spawnMarkers.Count)];
+        // Ignora slots vazios (não configurados no Inspector) para não desperdiçar o sorteio.
+        var validMarkers = spawnMarkers.FindAll(m => m != null);
+        if (validMarkers.Count == 0)
+        {
+            Debug.LogWarning($"[ChestSpawner] '{name}' não tem nenhum Spawn Marker atribuído.");
+            return;
+        }
+
+        // Evita repetir o mesmo marcador duas vezes seguidas, quando há mais de uma opção.
+        var candidates = validMarkers.Count > 1
+            ? validMarkers.FindAll(m => m != _lastMarker)
+            : validMarkers;
+
+        Transform marker = candidates[Random.Range(0, candidates.Count)];
+        _lastMarker = marker;
         SpawnAt(marker);
     }
 
@@ -32,7 +47,7 @@ public class ChestSpawner : MonoBehaviour
             interactable = chest.AddComponent<ChestInteractable>();
 
         interactable.SetLootTable(lootTable);
-        interactable.OnOpenedOrDespawned += HandleActiveCleared;
+        interactable.OnConsumedOrDespawned += HandleActiveCleared;
         _active = interactable;
     }
 

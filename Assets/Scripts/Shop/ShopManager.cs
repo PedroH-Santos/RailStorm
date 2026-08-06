@@ -36,6 +36,27 @@ namespace StarterAssets
         {
             LoadPool();
             RollNewStock();
+
+            if (playerItemHandler != null)
+                playerItemHandler.OnItemsChanged += HandlePlayerItemsChanged;
+        }
+
+        void OnDestroy()
+        {
+            if (playerItemHandler != null)
+                playerItemHandler.OnItemsChanged -= HandlePlayerItemsChanged;
+        }
+
+        // Player can acquire items outside the shop (ex: chest events). When that happens,
+        // immediately drop any now-owned item from the current stock instead of waiting for
+        // the next scheduled refresh.
+        void HandlePlayerItemsChanged()
+        {
+            int removed = _currentStock.RemoveAll(IsOwned);
+            if (removed == 0) return;
+
+            RefillStock();
+            OnStockChanged?.Invoke();
         }
 
         void Update()
