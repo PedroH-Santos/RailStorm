@@ -17,7 +17,7 @@ MonoBehaviour:
   category: 0
   timing: 0
   activation: 1
-  spawnChance: 0.5
-  spawnDelayRange: {x: 8, y: 15}
+  spawnChance: 1
+  spawnDelayRange: {x: 0.1, y: 0.2}
   repeats: 1
-  repeatDelayRange: {x: 4, y: 8}
+  repeatDelayRange: {x: 0.1, y: 0.2}

@@ -7,6 +7,15 @@ namespace StarterAssets
 {
     public class ShopManager : MonoBehaviour
     {
+        /// <summary>
+        /// Deixa o mesmo estoque/sorteio compartilhado entre várias lojas no mapa por
+        /// padrão: se um ShopZone não tiver um ShopManager arrastado manualmente no
+        /// Inspector, ele usa esta instância. Se você quiser lojas com estoques
+        /// independentes de propósito, basta colocar um ShopManager por loja e
+        /// arrastar cada um explicitamente no ShopZone correspondente.
+        /// </summary>
+        public static ShopManager Instance { get; private set; }
+
         [Header("Pool")]
         [Tooltip("Folder under Assets/Resources to load ItemDefinition assets from.")]
         [SerializeField] private string resourcesFolder = "Items";
@@ -34,6 +43,13 @@ namespace StarterAssets
 
         void Awake()
         {
+            if (Instance != null && Instance != this)
+                Debug.LogWarning($"[Shop] Mais de um ShopManager na cena ('{Instance.name}' e '{name}'). " +
+                                  "Se a intenção é que todas as lojas compartilhem o mesmo estoque, use só um ShopManager " +
+                                  "e arraste-o em todos os ShopZone.");
+            else
+                Instance = this;
+
             LoadPool();
             RollNewStock();
 
@@ -43,6 +59,8 @@ namespace StarterAssets
 
         void OnDestroy()
         {
+            if (Instance == this) Instance = null;
+
             if (playerItemHandler != null)
                 playerItemHandler.OnItemsChanged -= HandlePlayerItemsChanged;
         }

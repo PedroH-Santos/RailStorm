@@ -6,7 +6,22 @@ using UnityEngine.UI;
 
 public class ChestRevealEffect : MonoBehaviour
 {
-    public static ChestRevealEffect Instance;
+    static ChestRevealEffect _instance;
+
+    public static ChestRevealEffect Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                var found = FindFirstObjectByType<ChestRevealEffect>(FindObjectsInactive.Include);
+                if (found != null && !found.gameObject.activeSelf)
+                    found.gameObject.SetActive(true);
+            }
+
+            return _instance;
+        }
+    }
 
     [Header("Fundo escurecido (atrás do painel)")]
     [SerializeField] private Image dimBackground;
@@ -43,7 +58,7 @@ public class ChestRevealEffect : MonoBehaviour
 
     void Awake()
     {
-        Instance = this;
+        _instance = this;
 
         if (dimBackground != null)
         {

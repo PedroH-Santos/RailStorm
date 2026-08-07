@@ -108,6 +108,7 @@ public class PlayerItemHandler : MonoBehaviour
         if (item == null || _exiledItems.Contains(item)) return;
         _exiledItems.Add(item);
         Debug.Log($"[Items] '{item.itemName}' exilado — não aparecerá mais em baús.");
+        OnItemsChanged?.Invoke();
     }
 
     public void ResetForNewRun()

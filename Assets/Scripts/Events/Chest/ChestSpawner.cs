@@ -6,8 +6,11 @@ public class ChestSpawner : MonoBehaviour
     [Header("Baú")]
     [SerializeField] private GameObject chestPrefab;
     [SerializeField] private ChestLootTable lootTable;
+    [SerializeField] private PlayerItemHandler playerItemHandler;
 
     [Header("Marcadores (posicionados manualmente perto do trilho)")]
+    [Tooltip("A rotação de cada marcador é usada como a rotação do baú ao nascer — gire o " +
+             "marcador na Scene View até ele 'olhar' para o trilho e o baú vai nascer olhando igual.")]
     [SerializeField] private List<Transform> spawnMarkers = new();
 
     ChestInteractable _active;
@@ -15,11 +18,35 @@ public class ChestSpawner : MonoBehaviour
 
     public bool HasActiveChest => _active != null;
 
+    public bool HasAvailableLoot =>
+        lootTable != null && playerItemHandler != null &&
+        lootTable.possibleItems.Exists(IsItemAvailable);
+
+    bool IsItemAvailable(ItemDefinition item) =>
+        item != null && !playerItemHandler.IsExiled(item) && !playerItemHandler.HasItem(item);
+
+    void OnEnable()
+    {
+        if (playerItemHandler != null)
+            playerItemHandler.OnItemsChanged += HandlePlayerItemsChanged;
+    }
+
+    void OnDisable()
+    {
+        if (playerItemHandler != null)
+            playerItemHandler.OnItemsChanged -= HandlePlayerItemsChanged;
+    }
+
+    void HandlePlayerItemsChanged()
+    {
+        if (!HasAvailableLoot)
+            DespawnActive();
+    }
+
     public void SpawnRandom()
     {
-        if (_active != null || chestPrefab == null) return;
+        if (_active != null || chestPrefab == null || !HasAvailableLoot) return;
 
-        // Ignora slots vazios (não configurados no Inspector) para não desperdiçar o sorteio.
         var validMarkers = spawnMarkers.FindAll(m => m != null);
         if (validMarkers.Count == 0)
         {
@@ -27,7 +54,6 @@ public class ChestSpawner : MonoBehaviour
             return;
         }
 
-        // Evita repetir o mesmo marcador duas vezes seguidas, quando há mais de uma opção.
         var candidates = validMarkers.Count > 1
             ? validMarkers.FindAll(m => m != _lastMarker)
             : validMarkers;
@@ -37,7 +63,7 @@ public class ChestSpawner : MonoBehaviour
         SpawnAt(marker);
     }
 
-    public void SpawnAt(Transform marker)
+    void SpawnAt(Transform marker)
     {
         if (_active != null || chestPrefab == null || marker == null) return;
 

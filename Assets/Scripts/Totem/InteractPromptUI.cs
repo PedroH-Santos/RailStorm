@@ -2,13 +2,28 @@ using UnityEngine;
 
 public class InteractPromptUI : MonoBehaviour
 {
-    public static InteractPromptUI Instance;
+    static InteractPromptUI _instance;
+
+    public static InteractPromptUI Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                var found = FindFirstObjectByType<InteractPromptUI>(FindObjectsInactive.Include);
+                if (found != null && !found.gameObject.activeSelf)
+                    found.gameObject.SetActive(true);
+            }
+
+            return _instance;
+        }
+    }
 
     [SerializeField] private GameObject promptRoot;
 
     void Awake()
     {
-        Instance = this;
+        _instance = this;
         if (promptRoot != null) promptRoot.SetActive(false);
     }
 

@@ -23,19 +23,42 @@ public class ChestInteractable : InteractableObject
 
     void Open()
     {
-        if (Consumed || lootTable == null || _stats == null || _itemHandler == null) return;
+        if (Consumed) return;
+
+        if (lootTable == null)
+        {
+            Debug.LogWarning($"[Chest] '{name}' não tem uma Loot Table atribuída (nem no prefab, nem via SetLootTable pelo ChestSpawner).");
+            return;
+        }
+
+        if (_stats == null || _itemHandler == null)
+        {
+            Debug.LogWarning($"[Chest] '{name}' não encontrou PlayerStatsAggregator/PlayerItemHandler no objeto com tag 'Player' " +
+                              $"(_stats={_stats != null}, _itemHandler={_itemHandler != null}). Confirme que esses componentes " +
+                              "estão no MESMO GameObject que tem a tag 'Player' e a collider que entrou no trigger do baú.");
+            return;
+        }
 
         int rarityIndex = RarityRoller.Roll(lootTable.minRarity, lootTable.ResolvedMaxRarity, _stats.LuckPercent);
-        ItemDefinition item = ChestLootRoller.PickItem(lootTable.possibleItems, rarityIndex, _itemHandler.IsExiled);
+        ItemDefinition item = ChestLootRoller.PickItem(lootTable.possibleItems, rarityIndex,
+            i => _itemHandler.IsExiled(i) || _itemHandler.HasItem(i));
 
         if (item == null)
         {
-            Debug.LogWarning($"[Chest] '{name}' não tem itens disponíveis (todos exilados ou loot table vazia).");
+            Debug.LogWarning($"[Chest] '{name}' não tem itens disponíveis (todos já possuídos, exilados ou loot table vazia).");
+            return;
+        }
+
+        var reveal = ChestRevealEffect.Instance;
+        if (reveal == null)
+        {
+            Debug.LogError($"[Chest] '{name}' não encontrou nenhum ChestRevealEffect na cena (nem ativo, nem inativo). " +
+                            "Adicione o componente em algum objeto da cena antes de abrir o baú.");
             return;
         }
 
         _pendingItem = item;
-        _pendingRarityIndex = rarityIndex;
+        _pendingRarityIndex = item.rarity;
 
         SuppressInteraction();
         _player?.SetMovementLocked(true);
@@ -43,7 +66,7 @@ public class ChestInteractable : InteractableObject
 
         if (openBurstParticles != null) openBurstParticles.Play();
 
-        ChestRevealEffect.Instance?.Show(item, rarityIndex, transform.position, OnTake, OnExile, OnSkip);
+        reveal.Show(item, _pendingRarityIndex, transform.position, OnTake, OnExile, OnSkip);
     }
 
     void OnTake()

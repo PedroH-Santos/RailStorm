@@ -21,7 +21,15 @@ public abstract class InteractableObject : MonoBehaviour
     protected virtual void Awake()
     {
         var col = GetComponent<SphereCollider>();
-        col.radius = interactRadius;
+
+        // SphereCollider.radius é multiplicado pelo MAIOR eixo da escala do objeto
+        // (comportamento do próprio Unity com colliders não-uniformemente escalados).
+        // Compensamos aqui pra "Interact Radius" sempre valer em metros do mundo,
+        // não importa a escala visual do prefab (ex.: um baú com escala 0.25/0.5/0.5).
+        Vector3 scale = transform.lossyScale;
+        float maxScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+
+        col.radius = maxScale > 0.0001f ? interactRadius / maxScale : interactRadius;
         col.isTrigger = true;
     }
 

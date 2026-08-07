@@ -41,10 +41,14 @@ public class ShopZone : MonoBehaviour
         InteractPromptUI.Instance?.Hide();
         _player.SetMovementLocked(true);
 
+        // Se nenhum ShopManager específico foi arrastado no Inspector, usa o
+        // compartilhado — assim várias lojas no mapa vendem o mesmo estoque por padrão.
+        ShopManager manager = shopManager != null ? shopManager : ShopManager.Instance;
+
         shopUI.Open(
             _player.GetComponent<PlayerStatsAggregator>(),
             _player.GetComponent<PlayerItemHandler>(),
-            shopManager);
+            manager);
     }
 
     void CloseShop()
