@@ -101,6 +101,86 @@ public class PlayerItemHandler : MonoBehaviour
             gameObject.AddComponent(type);
     }
 
+    public bool RemoveItem(ItemDefinition item)
+    {
+        if (item == null || !HasItem(item)) return false;
+
+        RevertEffect(item);
+        _acquiredItems.Remove(item);
+
+        Debug.Log($"[Items] '{item.itemName}' removido do inventário (venda).");
+        OnItemsChanged?.Invoke();
+        return true;
+    }
+
+    void RevertEffect(ItemDefinition item)
+    {
+        switch (item.effectType)
+        {
+            case EItemEffectType.StatChange:
+                RevertStatChange(item);
+                break;
+            case EItemEffectType.Ability:
+                RevertAbility(item);
+                break;
+        }
+    }
+
+    void RevertStatChange(ItemDefinition item)
+    {
+        if (_stats == null) return;
+
+        float inverseMultiplier = 1f + item.statValue / 100f;
+        bool canDivide = !Mathf.Approximately(inverseMultiplier, 0f);
+
+        switch (item.statTarget)
+        {
+            case EStatTarget.MoveSpeed:
+                _stats.MoveSpeed = item.isMultiplier
+                    ? (canDivide ? _stats.MoveSpeed / inverseMultiplier : _stats.MoveSpeed)
+                    : _stats.MoveSpeed - item.statValue;
+                break;
+
+            case EStatTarget.MaxHP:
+                _stats.MaxHP = item.isMultiplier
+                    ? (canDivide ? Mathf.RoundToInt(_stats.MaxHP / inverseMultiplier) : _stats.MaxHP)
+                    : _stats.MaxHP - (int)item.statValue;
+                break;
+
+            case EStatTarget.HP:
+                _stats.HP = item.isMultiplier
+                    ? (canDivide ? Mathf.RoundToInt(_stats.HP / inverseMultiplier) : _stats.HP)
+                    : _stats.HP - (int)item.statValue;
+                break;
+
+            case EStatTarget.Coins:
+                _stats.Coins = item.isMultiplier
+                    ? (canDivide ? Mathf.RoundToInt(_stats.Coins / inverseMultiplier) : _stats.Coins)
+                    : _stats.Coins - (int)item.statValue;
+                break;
+
+            case EStatTarget.LuckPercent:
+                _stats.LuckPercent = item.isMultiplier
+                    ? (canDivide ? _stats.LuckPercent / inverseMultiplier : _stats.LuckPercent)
+                    : _stats.LuckPercent - item.statValue;
+                break;
+
+            default:
+                Debug.LogWarning($"[Items] EStatTarget.{item.statTarget} não tratado ao reverter em PlayerItemHandler.");
+                break;
+        }
+    }
+
+    void RevertAbility(ItemDefinition item)
+    {
+        var type = item.GetAbilityType();
+        if (type == null) return;
+
+        var component = gameObject.GetComponent(type);
+        if (component != null)
+            Destroy(component);
+    }
+
     public bool IsExiled(ItemDefinition item) => item != null && _exiledItems.Contains(item);
 
     public void ExileItem(ItemDefinition item)

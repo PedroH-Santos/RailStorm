@@ -8,8 +8,12 @@ public class ShopZone : MonoBehaviour
     [SerializeField] private ShopUI shopUI;
     [SerializeField] private ShopManager shopManager;
 
+    [SerializeField] private SellUI sellUI;
+    [SerializeField] private SellManager sellManager;
+
     bool _playerInside;
     bool _shopOpen;
+    bool _sellMode;
     PlayerController _player;
 
     void Awake()
@@ -22,8 +26,12 @@ public class ShopZone : MonoBehaviour
     {
         if (_shopOpen)
         {
+            if (sellUI != null && Keyboard.current.tabKey.wasPressedThisFrame)
+                ToggleMode();
+
             if (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame)
                 CloseShop();
+
             return;
         }
 
@@ -38,24 +46,49 @@ public class ShopZone : MonoBehaviour
     void OpenShop()
     {
         _shopOpen = true;
+        _sellMode = false;
         InteractPromptUI.Instance?.Hide();
         _player.SetMovementLocked(true);
 
-        // Se nenhum ShopManager específico foi arrastado no Inspector, usa o
-        // compartilhado — assim várias lojas no mapa vendem o mesmo estoque por padrão.
-        ShopManager manager = shopManager != null ? shopManager : ShopManager.Instance;
+        OpenCurrentMode();
+    }
 
-        shopUI.Open(
-            _player.GetComponent<PlayerStatsAggregator>(),
-            _player.GetComponent<PlayerItemHandler>(),
-            manager);
+    void ToggleMode()
+    {
+        _sellMode = !_sellMode;
+
+        if (_sellMode) shopUI.Close();
+        else sellUI.Close();
+
+        OpenCurrentMode();
+    }
+
+    void OpenCurrentMode()
+    {
+        var stats = _player.GetComponent<PlayerStatsAggregator>();
+        var itemHandler = _player.GetComponent<PlayerItemHandler>();
+
+        if (_sellMode)
+        {
+            SellManager manager = sellManager != null ? sellManager : SellManager.Instance;
+            sellUI.Open(stats, itemHandler, manager);
+        }
+        else
+        {
+            // Se nenhum ShopManager específico foi arrastado no Inspector, usa o
+            // compartilhado — assim várias lojas no mapa vendem o mesmo estoque por padrão.
+            ShopManager manager = shopManager != null ? shopManager : ShopManager.Instance;
+            shopUI.Open(stats, itemHandler, manager);
+        }
     }
 
     void CloseShop()
     {
         _shopOpen = false;
         _player?.SetMovementLocked(false);
+
         shopUI.Close();
+        sellUI?.Close();
     }
 
     void OnTriggerEnter(Collider other)
