@@ -138,7 +138,7 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 
 Não há progressão permanente entre runs — tudo aqui reseta a cada partida (ver seção 6).
 
-### 4.5 Loja — `Assets/Scripts/Shop/`
+### 4.5 Loja — `Assets/Scripts/Store/Shop/` (compra) e `Assets/Scripts/Store/Sell/` (venda)
 
 **O que é / ideia central:** é um local especial no mapa onde o jogador gasta as moedas ganhas na run para comprar itens permanentes (dentro da run), complementando a progressão por cartas pós-wave. O estoque muda com o tempo, incentivando o jogador a voltar à loja durante a run.
 
@@ -156,11 +156,11 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
   - **Compra tudo-ou-nada**: soma o preço de todos os itens selecionados; só executa se `Coins >= total`; debita, chama `AcquireItem` para cada item, `RefillStock()`, dispara `OnStockChanged`.
 - **`ShopUI.cs`** — pausa o jogo ao abrir (`Time.timeScale = 0`), carrinho (`HashSet<ItemDefinition>`), habilita confirmação só se houver seleção e saldo suficiente para o total.
 - **`ShopSlotUI.cs`** — popula slot; trava (`_locked`) se já possuído ou se o preço do item sozinho excede o saldo (checagem item a item — a validação real "tudo-ou-nada" do carrinho fica no `ShopManager`/`ShopUI`).
-- **`ShopZone.cs`** — trigger (`tag == "Player"`), tecla E abre/fecha, trava movimento do player enquanto aberta; Tab alterna entre o modo Comprar (`ShopUI`) e Vender (`SellUI`) sem sair da loja.
+- **`ShopZone.cs`** — `SphereCollider` auto-configurado por `interactRadius` (padrão `3f`) + `interactCenter` (offset local, pra alinhar a esfera com o centro visual do prefab quando o pivô não fica no meio), compensando a escala do objeto — mesmo cálculo de `InteractableObject`/`SplineUnlockZone`. Recalcula tanto em `Awake` (runtime) quanto em `OnValidate`/`OnDrawGizmosSelected` (Editor, sem precisar dar Play), desenhando um gizmo laranja com o range real. Trigger (`tag == "Player"`), tecla E abre/fecha, trava movimento do player enquanto aberta.
 
 **Venda de itens:**
 
-**O que é / ideia central:** contraparte da compra — permite ao jogador converter itens que já possui de volta em moedas durante a run. Existe pra dar liquidez ao inventário (ex.: item que não serve mais pra build atual) sem deixar a venda tão vantajosa quanto simplesmente não ter comprado/pego o item.
+**O que é / ideia central:** contraparte da compra — permite ao jogador converter itens que já possui de volta em moedas durante a run. Existe pra dar liquidez ao inventário (ex.: item que não serve mais pra build atual) sem deixar a venda tão vantajosa quanto simplesmente não ter comprado/pego o item. É um **local separado no mapa** (loja de venda própria, com seu próprio trigger/gatilho), não uma aba dentro da loja de compra — cada uma tem sua zona de interação independente.
 
 **Regras:**
 - O preço de venda de um item é sempre **menor** que o preço de compra (`ItemDefinition.price`): venda = compra × `(1 - sellDiscountPercent)`, com `sellDiscountPercent` configurável no Inspector do `SellManager` (padrão `0.15`, ou seja, 15% a menos).
@@ -169,12 +169,12 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
 - Vender um item remove seu efeito do jogador (reverte o `StatChange` aplicado, ou remove o componente de `Ability`) e tira o item do inventário — não é possível vender o mesmo item duas vezes.
 - Igual à loja de compra, cada slot de item selecionado mostra um background/frame diferenciado para indicar que está selecionado.
 
-- **`Shop/SellManager.cs`** — núcleo de negócio, singleton simples (`Instance`, mesmo padrão do `ShopManager`): `GetSellPrice(item) = round(item.price * (1 - sellDiscountPercent))`; `TrySellMultiple` valida posse de cada item, soma o valor de venda, credita `PlayerStatsAggregator.Coins` e remove os itens via `PlayerItemHandler.RemoveItem`.
+- **`Store/Sell/SellManager.cs`** — núcleo de negócio, singleton simples (`Instance`, mesmo padrão do `ShopManager`): `GetSellPrice(item) = round(item.price * (1 - sellDiscountPercent))`; `TrySellMultiple` valida posse de cada item, soma o valor de venda, credita `PlayerStatsAggregator.Coins` e remove os itens via `PlayerItemHandler.RemoveItem`.
 - **`Player/Items/PlayerItemHandler.cs`** — `RemoveItem(item)` reverte o efeito (`StatChange`: subtrai/desfaz o multiplicador aplicado; `Ability`: destrói o componente adicionado) e remove da lista de itens adquiridos; dispara `OnItemsChanged`.
-- **`Shop/SellUI.cs`** — tela modal (pausa o jogo), lista o inventário do jogador em slots clicáveis (`SellInventorySlotUI`) e mantém um carrinho de seleção espelhado em `SellCartItemUI` (ícone + preço de venda + botão de remover do carrinho); total agregado exibido, confirmação chama `SellManager.TrySellMultiple`.
-- **`Shop/SellInventorySlotUI.cs`** — slot do inventário: clique alterna seleção, `selectedBackground` reflete o estado (mesmo padrão visual do `selectedFrame` do `ShopSlotUI`).
-- **`Shop/SellCartItemUI.cs`** — item já selecionado dentro do painel "Itens para vender": ícone, preço de venda, botão X para remover da seleção sem vender.
-- **`Editor/SellUIBuilder.cs`** — ferramenta de editor (`RailStorm/UI/Build Sell UI` no menu do Unity) que gera a hierarquia completa da UI de venda (`CanvasItemSell`, painéis de inventário/carrinho, slots, textos, botões) com cores placeholder e já conecta as referências no `SellUI`; também localiza o `ShopZone` da cena e preenche `sellUI`/`sellManager` automaticamente (criando um `SellManager` se não existir). Idempotente — rodar de novo substitui o `CanvasItemSell` anterior. Visual gerado é só placeholder (cores sólidas); reskin com a arte do jogo fica a cargo de quem for montar a cena.
+- **`Store/Sell/SellUI.cs`** — tela modal (pausa o jogo), lista o inventário do jogador (apenas `ItemDefinition`, nunca armas) em slots clicáveis (`SellInventorySlotUI`) e mantém um carrinho de seleção espelhado em `SellCartItemUI` (ícone + preço de venda); des-selecionar um item é feito clicando de novo no slot da esquerda, não há botão de remover no carrinho. Total agregado exibido, confirmação chama `SellManager.TrySellMultiple`. Slots de inventário e de carrinho **não são pré-criados na cena** — `EnsureSlots` instancia sob demanda a partir de `inventorySlotPrefab`/`cartSlotPrefab` dentro de `inventoryContainer`/`cartContainer` (mesmo padrão de `InventorySection.cs`), então a UI acompanha sozinha qualquer quantidade de itens.
+- **`Store/Sell/SellInventorySlotUI.cs`** — slot do inventário: clique alterna seleção, `selectedBackground` reflete o estado (mesmo padrão visual do `selectedFrame` do `ShopSlotUI`).
+- **`Store/Sell/SellCartItemUI.cs`** — item já selecionado dentro do painel "Itens para vender": só exibição (ícone + preço de venda), sem interação própria — a seleção/deseleção é sempre feita pelo slot correspondente no inventário à esquerda.
+- **`Store/Sell/SellZone.cs`** — trigger próprio (mesmo padrão do `ShopZone`, mas independente), incluindo `interactRadius`/`interactCenter`/gizmo/recalculo em Editor: tecla E abre/fecha a `SellUI`, trava movimento do player enquanto aberta. Fica em um objeto/local diferente do `ShopZone` da compra — as duas lojas não compartilham range, tecla, `Collider` ou estado entre si; cada uma tem seu próprio par Manager (regra de negócio) + Zone (presença física/interação no mapa), mesma separação de responsabilidade dos dois lados.
 
 ### 4.6 Eventos — Baú e Horda — `Assets/Scripts/Events/`
 
@@ -277,7 +277,7 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 1. `EnemySpawner` dispara `OnWaveStarted`/`OnWaveCleared` → `EventOrchestrator` decide (roleta, um evento por vez) se spawna baú ou totem de horda, conforme o `EventTiming` de cada tipo.
 2. **Baú**: interação → raridade (`RarityRoller`, influenciado por sorte) → item (`ChestLootRoller`) → Take/Exile/Skip → `PlayerItemHandler.AcquireItem`.
 3. **Horda**: aceite no totem → `HordeSpawner` gera pool ponderado, spawna em lotes, aplica multiplicador de dano global, recompensa por kill + bônus condicionado à sobrevivência.
-4. **Loja**: `ShopZone` (E) → estoque renovado a cada 3min ou sob demanda, sorteado por raridade+sorte, compra tudo-ou-nada debitando `PlayerStatsAggregator.Coins`. Tab dentro da loja alterna para o modo Vender (`SellUI`): jogador seleciona itens do próprio inventário, vende tudo-ou-nada por `SellManager.TrySellMultiple`, recebendo `preço de compra × (1 - sellDiscountPercent)` por item.
+4. **Loja de compra**: `ShopZone` (E) → estoque renovado a cada 3min ou sob demanda, sorteado por raridade+sorte, compra tudo-ou-nada debitando `PlayerStatsAggregator.Coins`. **Loja de venda** (local separado no mapa): `SellZone` (E) → jogador seleciona itens do próprio inventário, vende tudo-ou-nada por `SellManager.TrySellMultiple`, recebendo `preço de compra × (1 - sellDiscountPercent)` por item.
 5. Ao limpar uma wave → `AbilityOrb` → 3 cartas (skill/arma nova/upgrade) via `AbilityDrawer`/`AbilitySelectionUI` → próxima wave liberada.
 6. Moedas de waves/hordas/itens alimentam loja e desbloqueio de splines.
 

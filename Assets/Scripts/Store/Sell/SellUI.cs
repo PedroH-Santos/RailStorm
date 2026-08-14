@@ -9,17 +9,25 @@ public class SellUI : MonoBehaviour
 {
     [Header("References")]
     public GameObject root;
-    public List<SellInventorySlotUI> inventorySlots;
-    public List<SellCartItemUI> cartSlots;
     public TMP_Text coinsText;
     public TMP_Text totalText;
     public Button confirmSellButton;
+
+    [Header("Inventário (esquerda)")]
+    public Transform inventoryContainer;
+    public SellInventorySlotUI inventorySlotPrefab;
+
+    [Header("Carrinho (centro)")]
+    public Transform cartContainer;
+    public SellCartItemUI cartSlotPrefab;
 
     SellManager _sellManager;
     PlayerStatsAggregator _stats;
     PlayerItemHandler _itemHandler;
 
     readonly List<ItemDefinition> _selected = new();
+    readonly List<SellInventorySlotUI> _inventorySlots = new();
+    readonly List<SellCartItemUI> _cartSlots = new();
 
     void Awake()
     {
@@ -70,16 +78,18 @@ public class SellUI : MonoBehaviour
 
         _selected.RemoveAll(i => !owned.Contains(i));
 
-        for (int i = 0; i < inventorySlots.Count; i++)
+        EnsureSlots(_inventorySlots, inventorySlotPrefab, inventoryContainer, owned.Count);
+
+        for (int i = 0; i < _inventorySlots.Count; i++)
         {
             if (i < owned.Count)
             {
                 var item = owned[i];
-                inventorySlots[i].Setup(item, _selected.Contains(item), OnInventorySlotToggled);
+                _inventorySlots[i].Setup(item, _selected.Contains(item), OnInventorySlotToggled);
             }
             else
             {
-                inventorySlots[i].Clear();
+                _inventorySlots[i].Clear();
             }
         }
 
@@ -98,27 +108,23 @@ public class SellUI : MonoBehaviour
 
     void RenderCart()
     {
-        for (int i = 0; i < cartSlots.Count; i++)
+        EnsureSlots(_cartSlots, cartSlotPrefab, cartContainer, _selected.Count);
+
+        for (int i = 0; i < _cartSlots.Count; i++)
         {
             if (i < _selected.Count)
             {
                 var item = _selected[i];
                 int price = _sellManager != null ? _sellManager.GetSellPrice(item) : 0;
-                cartSlots[i].Setup(item, price, () => RemoveFromCart(item));
+                _cartSlots[i].Setup(item, price);
             }
             else
             {
-                cartSlots[i].Clear();
+                _cartSlots[i].Clear();
             }
         }
 
         UpdateCartState();
-    }
-
-    void RemoveFromCart(ItemDefinition item)
-    {
-        _selected.Remove(item);
-        RenderInventory();
     }
 
     void ConfirmSale()
@@ -146,5 +152,11 @@ public class SellUI : MonoBehaviour
     {
         if (coinsText != null && _stats != null)
             coinsText.text = $"{_stats.Coins}";
+    }
+
+    static void EnsureSlots<T>(List<T> slots, T prefab, Transform container, int needed) where T : Component
+    {
+        while (slots.Count < needed)
+            slots.Add(Instantiate(prefab, container));
     }
 }
