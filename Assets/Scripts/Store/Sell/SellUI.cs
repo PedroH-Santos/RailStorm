@@ -13,13 +13,9 @@ public class SellUI : MonoBehaviour
     public TMP_Text totalText;
     public Button confirmSellButton;
 
-    [Header("Inventário (esquerda)")]
+    [Header("Itens")]
     public Transform inventoryContainer;
     public SellInventorySlotUI inventorySlotPrefab;
-
-    [Header("Carrinho (centro)")]
-    public Transform cartContainer;
-    public SellCartItemUI cartSlotPrefab;
 
     SellManager _sellManager;
     PlayerStatsAggregator _stats;
@@ -27,12 +23,21 @@ public class SellUI : MonoBehaviour
 
     readonly List<ItemDefinition> _selected = new();
     readonly List<SellInventorySlotUI> _inventorySlots = new();
-    readonly List<SellCartItemUI> _cartSlots = new();
 
     void Awake()
     {
         if (confirmSellButton != null)
             confirmSellButton.onClick.AddListener(ConfirmSale);
+
+        ClearContainer(inventoryContainer);
+    }
+
+    static void ClearContainer(Transform container)
+    {
+        if (container == null) return;
+
+        for (int i = container.childCount - 1; i >= 0; i--)
+            DestroyImmediate(container.GetChild(i).gameObject);
     }
 
     public void Open(PlayerStatsAggregator stats, PlayerItemHandler itemHandler, SellManager sellManager)
@@ -72,6 +77,8 @@ public class SellUI : MonoBehaviour
 
     void RenderInventory()
     {
+        Debug.Log("Rendering inventory");
+
         var owned = _itemHandler != null
             ? _itemHandler.AcquiredItems
             : (IReadOnlyList<ItemDefinition>)System.Array.Empty<ItemDefinition>();
@@ -85,7 +92,8 @@ public class SellUI : MonoBehaviour
             if (i < owned.Count)
             {
                 var item = owned[i];
-                _inventorySlots[i].Setup(item, _selected.Contains(item), OnInventorySlotToggled);
+                int price = _sellManager != null ? _sellManager.GetSellPrice(item) : 0;
+                _inventorySlots[i].Setup(item, price, _selected.Contains(item), OnInventorySlotToggled);
             }
             else
             {
@@ -93,7 +101,7 @@ public class SellUI : MonoBehaviour
             }
         }
 
-        RenderCart();
+        UpdateCartState();
     }
 
     void OnInventorySlotToggled(ItemDefinition item)
@@ -104,27 +112,6 @@ public class SellUI : MonoBehaviour
             _selected.Add(item);
 
         RenderInventory();
-    }
-
-    void RenderCart()
-    {
-        EnsureSlots(_cartSlots, cartSlotPrefab, cartContainer, _selected.Count);
-
-        for (int i = 0; i < _cartSlots.Count; i++)
-        {
-            if (i < _selected.Count)
-            {
-                var item = _selected[i];
-                int price = _sellManager != null ? _sellManager.GetSellPrice(item) : 0;
-                _cartSlots[i].Setup(item, price);
-            }
-            else
-            {
-                _cartSlots[i].Clear();
-            }
-        }
-
-        UpdateCartState();
     }
 
     void ConfirmSale()
