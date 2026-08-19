@@ -1,10 +1,11 @@
 using System;
+using Assets.Scripts.Systems.UITheme;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class AbilityCardUI : MonoBehaviour
+public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     public Image iconImage;
     public TMP_Text nameText;
@@ -12,16 +13,41 @@ public class AbilityCardUI : MonoBehaviour
     public TMP_Text rarityText;
     public TMP_Text levelText;
     public Image cardBackground;
+    public Image cardBorder;
+
+    [Header("Seleção")]
+    [Tooltip("Container das cantoneiras que marcam o card sob o cursor. Fica oculto até o mouse entrar no card.")]
+    public GameObject selectionBrackets;
 
     Action _onClick;
     Button _selfButton;
 
+    void OnDisable() => SetSelected(false);
+
+    public void OnPointerEnter(PointerEventData eventData) => SetSelected(true);
+
+    public void OnPointerExit(PointerEventData eventData) => SetSelected(false);
+
+    void SetSelected(bool selected)
+    {
+        if (selectionBrackets != null)
+            selectionBrackets.SetActive(selected);
+    }
+
     public void Setup(AbilityCardData data, Action onClick)
     {
         _onClick = onClick;
+        SetSelected(false);
 
         IDrawable d = data.drawable;
         int ri = data.targetRarity;
+
+        var theme = UIThemeConfig.Instance;
+        theme?.ApplyTitle(nameText);
+        theme?.ApplyBody(descriptionText);
+        theme?.ApplyBody(rarityText);
+        theme?.ApplyBody(levelText);
+        if (theme != null && cardBorder != null) cardBorder.color = theme.panelBorder;
 
         nameText.text = d.DisplayName;
 

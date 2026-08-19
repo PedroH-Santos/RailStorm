@@ -22,7 +22,7 @@ public class AbilityOrb : MonoBehaviour
     {
         LoadPools();
         EnemySpawner.OnWaveCleared += Activate;
-        gameObject.SetActive(false);
+       // gameObject.SetActive(false);
     }
 
     void OnDestroy() => EnemySpawner.OnWaveCleared -= Activate;
