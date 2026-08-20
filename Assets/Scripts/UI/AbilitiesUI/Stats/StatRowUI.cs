@@ -1,6 +1,6 @@
-using UnityEngine;
-using UnityEngine.UI;
+using Assets.Scripts.Systems.UITheme;
 using TMPro;
+using UnityEngine;
 
 public class StatRowUI : MonoBehaviour
 {
@@ -12,18 +12,20 @@ public class StatRowUI : MonoBehaviour
     {
         if (dividerObject != null) dividerObject.SetActive(false);
 
+        var theme = UIThemeConfig.Instance;
+
         if (labelText != null)
         {
-            Debug.Log($"Setting stat row label: {label}");
             labelText.gameObject.SetActive(true);
             labelText.text = label;
+            theme?.ApplyBody(labelText);
         }
 
         if (valueText != null)
         {
-            Debug.Log($"Setting stat row value: {value}");
             valueText.gameObject.SetActive(true);
             valueText.text = value;
+            theme?.ApplyTitle(valueText);
         }
     }
 

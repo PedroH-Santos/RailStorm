@@ -87,10 +87,10 @@ namespace StarterAssets
 
         void RegisterDisplayStats()
         {
-            Add(EStatKey.HP, "Vida", "LifeContainer", () => $"{HP} / {MaxHP}");
-            Add(EStatKey.MoveSpeed, "Velocidade", "PlayerContainer", () => $"{MoveSpeed:F1}");
-            Add(EStatKey.LuckPercent, "Sorte", "PlayerContainer", () => $"{LuckPercent:F0}%");
-            Add(EStatKey.Coins, "Moedas", "PlayerContainer", () => $"{Coins}");
+            Add(EStatKey.HP, "Vida", "VitalContainer", () => $"{HP} / {MaxHP}");
+            Add(EStatKey.MoveSpeed, "Velocidade", "AttributesContainer", () => $"{MoveSpeed:F1}");
+            Add(EStatKey.LuckPercent, "Sorte", "AttributesContainer", () => $"{LuckPercent:F0}%");
+            Add(EStatKey.Coins, "Moedas", "ResourcesContainer", () => $"{Coins}");
         }
 
         void Add(EStatKey key, string label, string group, Func<string> getValue) =>

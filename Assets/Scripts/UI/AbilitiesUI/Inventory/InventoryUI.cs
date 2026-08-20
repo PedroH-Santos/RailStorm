@@ -7,8 +7,10 @@ public class InventoryUI : MonoBehaviour
     public GameObject slotPrefab;
     public PlayerCartWeaponHandler weaponHandler;
     public PlayerItemHandler itemHandler;
+    public StarterAssets.PlayerSkillHandler skillHandler;
 
     const string SectionWeapons = "Weapons";
+    const string SectionSkills = "Skills";
     const string SectionItems = "Items";
     readonly Dictionary<string, InventorySection> _sections = new();
 
@@ -18,8 +20,11 @@ public class InventoryUI : MonoBehaviour
             weaponHandler = FindFirstObjectByType<PlayerCartWeaponHandler>();
         if (itemHandler == null)
             itemHandler = FindFirstObjectByType<PlayerItemHandler>();
+        if (skillHandler == null)
+            skillHandler = FindFirstObjectByType<StarterAssets.PlayerSkillHandler>();
 
         RegisterSection(SectionWeapons);
+        RegisterSection(SectionSkills);
         RegisterSection(SectionItems);
     }
 
@@ -27,8 +32,10 @@ public class InventoryUI : MonoBehaviour
     {
         if (weaponHandler != null) weaponHandler.OnWeaponsChanged += RefreshWeapons;
         if (itemHandler != null) itemHandler.OnItemsChanged += RefreshItems;
+        if (skillHandler != null) skillHandler.OnSkillsChanged += RefreshSkills;
 
         RefreshWeapons();
+        RefreshSkills();
         RefreshItems();
     }
 
@@ -36,6 +43,7 @@ public class InventoryUI : MonoBehaviour
     {
         if (weaponHandler != null) weaponHandler.OnWeaponsChanged -= RefreshWeapons;
         if (itemHandler != null) itemHandler.OnItemsChanged -= RefreshItems;
+        if (skillHandler != null) skillHandler.OnSkillsChanged -= RefreshSkills;
     }
 
     void RefreshWeapons()
@@ -47,6 +55,17 @@ public class InventoryUI : MonoBehaviour
             entries.Add(new InventoryEntry(w));
 
         SetSection(SectionWeapons, entries);
+    }
+
+    void RefreshSkills()
+    {
+        if (skillHandler == null) return;
+
+        var entries = new List<InventoryEntry>();
+        foreach (var s in skillHandler.AcquiredSkills)
+            entries.Add(new InventoryEntry(s));
+
+        SetSection(SectionSkills, entries);
     }
 
     void RefreshItems()

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,6 +9,12 @@ namespace StarterAssets
         PlayerStatsAggregator _stats;
 
         public HashSet<SkillDefinition> ExiledSkills { get; private set; } = new();
+
+        public event Action OnSkillsChanged;
+
+        readonly List<SkillDefinition> _acquired = new();
+
+        public IReadOnlyList<SkillDefinition> AcquiredSkills => _acquired;
 
         public float luckPercent => _stats != null ? _stats.LuckPercent : 0f;
 
@@ -35,7 +42,12 @@ namespace StarterAssets
                 skill.Upgrade(rarityIndex);
 
             ApplyStat(skill, skill.CurrentRarity);
+
+            if (!_acquired.Contains(skill))
+                _acquired.Add(skill);
+
             Debug.Log($"[Skills] {skill.skillName} → {RarityHelper.DisplayName(skill.CurrentRarity)}");
+            OnSkillsChanged?.Invoke();
         }
 
         void ApplyStat(SkillDefinition skill, int rarityIndex)
@@ -76,6 +88,14 @@ namespace StarterAssets
         {
             ExiledSkills.Add(skill);
             Debug.Log($"[Skills] {skill.skillName} exilada.");
+            OnSkillsChanged?.Invoke();
+        }
+
+        public void ResetForNewRun()
+        {
+            _acquired.Clear();
+            ExiledSkills.Clear();
+            OnSkillsChanged?.Invoke();
         }
     }
 }
