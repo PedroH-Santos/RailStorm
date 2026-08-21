@@ -9,5 +9,12 @@ public class TooltipData
     public Color RarityColor = Color.white;
     public Sprite Icon;
     public string Description;
+    public bool HasAbility;
+    public string AbilityName;
+    public string AbilityDescription;
+    public int HiddenUpgrades;
+
     public readonly List<TooltipStatLine> Stats = new();
+    public readonly List<TooltipUpgradeLine> Upgrades = new();
+
 }

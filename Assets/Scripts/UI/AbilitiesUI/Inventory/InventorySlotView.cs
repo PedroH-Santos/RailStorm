@@ -8,8 +8,8 @@ public class InventorySlotView
     public GameObject Root { get; }
 
     readonly Image _icon;
-    readonly TextMeshProUGUI _levelLabel;
     readonly Image _rarityBorder;
+    readonly TextMeshProUGUI _levelLabel;
     readonly TooltipTrigger _tooltip;
 
     public InventorySlotView(GameObject root)
@@ -17,8 +17,8 @@ public class InventorySlotView
         Root = root;
         _tooltip = root.GetComponent<TooltipTrigger>();
         _icon = FindDeep(root.transform, "Icon")?.GetComponent<Image>();
-        _levelLabel = FindDeep(root.transform, "LevelLabel")?.GetComponent<TextMeshProUGUI>();
         _rarityBorder = FindDeep(root.transform, "BackGround")?.GetComponent<Image>();
+        _levelLabel = FindDeep(root.transform, "LevelLabel")?.GetComponent<TextMeshProUGUI>();
 
         UIThemeConfig.Instance?.ApplyBody(_levelLabel);
     }
@@ -30,14 +30,11 @@ public class InventorySlotView
         if (_icon != null)
             _icon.sprite = entry.Icon;
 
-        if (_levelLabel != null)
-        {
-            _levelLabel.enabled = true;
-            _levelLabel.text = entry.LevelDisplay;
-        }
-
         if (_rarityBorder != null)
             _rarityBorder.color = entry.RarityColor;
+
+        if (_levelLabel != null)
+            _levelLabel.text = entry.LevelDisplay;
 
         if (_tooltip != null)
             _tooltip.SetSource(entry.Drawable);

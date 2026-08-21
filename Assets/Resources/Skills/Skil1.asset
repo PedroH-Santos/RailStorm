@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillName: Skill Coins
   icon: {fileID: 21300000, guid: babbcb657ff2eaf47bd0687a36ad1f4d, type: 3}
-  description: 
+  description: Skill Coins
   statTarget: 4
   currentRarity: -1
   levels:

@@ -6,7 +6,7 @@ public class InventoryEntry
     public readonly int CurrentRarity;
 
     public string RarityDisplay => RarityHelper.DisplayName(CurrentRarity);
-    public string LevelDisplay => $"Nível {CurrentRarity + 1}";
+    public string LevelDisplay => $"LVL {CurrentRarity + 1}";
     public Color RarityColor => RarityHelper.Color(CurrentRarity);
     public string DisplayName => Drawable?.DisplayName ?? string.Empty;
     public Sprite Icon => Drawable?.Icon;

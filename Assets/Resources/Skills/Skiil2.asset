@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillName: Skill Life
   icon: {fileID: 21300000, guid: 4fb10d78a49253246880a851928e2f11, type: 3}
-  description: 
+  description: Skill Life
   statTarget: 1
   currentRarity: -1
   levels:

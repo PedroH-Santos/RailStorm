@@ -24,6 +24,13 @@ public class ItemDefinition : ScriptableObject, IDrawable
              "será adicionado diretamente ao player — não é necessário nenhum objeto/prefab de exemplo.")]
     [SerializeField] string abilityTypeName;
 
+    [Tooltip("Nome da habilidade exibido no tooltip. Se vazio, usa o nome do item.")]
+    public string abilityName = "";
+
+    [TextArea]
+    [Tooltip("O que a habilidade faz, exibido no bloco 'Habilidade Especial' do tooltip.")]
+    public string abilityDescription = "";
+
     public string DisplayName => itemName;
     public Sprite Icon => icon;
     public int CurrentRarity => rarity;

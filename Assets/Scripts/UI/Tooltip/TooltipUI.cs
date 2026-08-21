@@ -43,10 +43,22 @@ public class TooltipUI : MonoBehaviour
     public Transform statsContainer;
     public GameObject statRowPrefab;
 
+    [Header("Habilidade Especial")]
+    public GameObject abilitySection;
+    public TMP_Text abilityNameText;
+    public TMP_Text abilityDescriptionText;
+
+    [Header("Melhorias")]
+    public GameObject upgradesSection;
+    public Transform upgradesContainer;
+    public GameObject upgradeRowPrefab;
+    public TMP_Text upgradesOverflowText;
+
     [Header("Posicionamento")]
     public Vector2 cursorOffset = new Vector2(22f, 22f);
 
     readonly List<TooltipStatRowUI> _rows = new();
+    readonly List<TooltipUpgradeRowUI> _upgradeRows = new();
     Canvas _canvas;
     RectTransform _canvasRect;
 
@@ -61,6 +73,8 @@ public class TooltipUI : MonoBehaviour
         }
 
         if (statRowPrefab != null) statRowPrefab.SetActive(false);
+        if (upgradeRowPrefab != null) upgradeRowPrefab.SetActive(false);
+        if (abilitySection != null) abilitySection.SetActive(false);
         if (panel != null) panel.SetActive(false);
     }
 
@@ -110,7 +124,9 @@ public class TooltipUI : MonoBehaviour
             theme?.ApplyBody(descriptionText);
         }
 
+        BuildAbility(data);
         BuildRows(data.Stats);
+        BuildUpgradeRows(data.Upgrades, data.HiddenUpgrades);
 
         panel.SetActive(true);
         panel.transform.SetAsLastSibling();
@@ -144,6 +160,61 @@ public class TooltipUI : MonoBehaviour
             bool used = i < lines.Count;
             _rows[i].gameObject.SetActive(used);
             if (used) _rows[i].Setup(lines[i]);
+        }
+    }
+
+    void BuildAbility(TooltipData data)
+    {
+        if (abilitySection != null)
+            abilitySection.SetActive(data.HasAbility);
+
+        if (!data.HasAbility) return;
+
+        var theme = UIThemeConfig.Instance;
+
+        if (abilityNameText != null)
+        {
+            bool hasName = !string.IsNullOrWhiteSpace(data.AbilityName);
+            abilityNameText.gameObject.SetActive(hasName);
+            abilityNameText.text = data.AbilityName;
+            theme?.ApplyTitle(abilityNameText);
+        }
+
+        if (abilityDescriptionText != null)
+        {
+            abilityDescriptionText.text = data.AbilityDescription;
+            theme?.ApplyBody(abilityDescriptionText);
+        }
+    }
+
+    void BuildUpgradeRows(List<TooltipUpgradeLine> lines, int hidden)
+    {
+        if (upgradesSection != null)
+            upgradesSection.SetActive(lines.Count > 0);
+
+        if (upgradesOverflowText != null)
+        {
+            upgradesOverflowText.gameObject.SetActive(hidden > 0);
+            if (hidden > 0)
+            {
+                upgradesOverflowText.text = hidden == 1 ? "+1 melhoria" : $"+{hidden} melhorias";
+                UIThemeConfig.Instance?.ApplyBody(upgradesOverflowText);
+            }
+        }
+
+        if (upgradesContainer == null || upgradeRowPrefab == null) return;
+
+        while (_upgradeRows.Count < lines.Count)
+        {
+            var row = Instantiate(upgradeRowPrefab, upgradesContainer).GetComponent<TooltipUpgradeRowUI>();
+            _upgradeRows.Add(row);
+        }
+
+        for (int i = 0; i < _upgradeRows.Count; i++)
+        {
+            bool used = i < lines.Count;
+            _upgradeRows[i].gameObject.SetActive(used);
+            if (used) _upgradeRows[i].Setup(lines[i]);
         }
     }
 
