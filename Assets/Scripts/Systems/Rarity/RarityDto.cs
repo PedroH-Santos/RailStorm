@@ -15,6 +15,10 @@ namespace Assets.Scripts.Systems.Rarity
         [Tooltip("Cor usada nos cards e bordas")]
         public Color color = Color.white;
 
+        [Tooltip("Placa 9-slice desenhada atrás do ícone. Em tons de cinza, tingida em runtime com a cor acima.\n" +
+                 "O detalhe entalhado na placa é o que diferencia visualmente cada raridade.")]
+        public Sprite iconPlate;
+
         [Tooltip("Peso base no sorteio (sem sorte)")]
         public float baseWeight = 60f;
 

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 5ebf8d574ee5b564ab25a0e1930af6b2
+guid: ab62c120038fd90488cb41e1feecc007
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Cinzel
+  - Nunito
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

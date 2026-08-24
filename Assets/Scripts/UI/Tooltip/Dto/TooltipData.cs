@@ -6,6 +6,7 @@ public class TooltipData
     public string HeaderLabel;
     public string Title;
     public string RarityLabel;
+    public int RarityIndex;
     public Color RarityColor = Color.white;
     public Sprite Icon;
     public string Description;

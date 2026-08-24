@@ -12,10 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 46dbf1d63eb0f62428c2309b9ef89833, type: 3}
   m_Name: UIThemeConfig
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Systems.UITheme.UIThemeConfig
-  panelBackground: {r: 0.039215688, g: 0.16078432, b: 0.2784314, a: 1}
-  panelBorder: {r: 0.54509807, g: 0.36862746, b: 0.23529412, a: 1}
-  textTitle: {r: 0.9529412, g: 0.89411765, b: 0.7882353, a: 1}
-  textBody: {r: 0.827451, g: 0.83137256, b: 0.7529412, a: 1}
-  titleFont: {fileID: 11400000, guid: 16512b6cc307c9c47b254848eb902c99, type: 2}
-  bodyFont: {fileID: 11400000, guid: d6cac6b3f170cd24692185ea9091eeb1, type: 2}
+  panelBackground: {r: 0.039215688, g: 0.11764706, b: 0.2, a: 1}
+  panelSurface: {r: 0.06666667, g: 0.16078432, b: 0.25882354, a: 1}
+  panelRecess: {r: 0.019607844, g: 0.05882353, b: 0.10980392, a: 1}
+  panelBorder: {r: 0.7372549, g: 0.38431373, b: 0.105882354, a: 1}
+  panelBorderDark: {r: 0.4, g: 0.2, b: 0, a: 1}
+  textTitle: {r: 0.9882353, g: 0.972549, b: 0.9019608, a: 1}
+  textBody: {r: 0.6745098, g: 0.7411765, b: 0.7529412, a: 1}
+  textMuted: {r: 0.3647059, g: 0.5137255, b: 0.60784316, a: 1}
+  titleFont: {fileID: 11400000, guid: 2def1f0aaff10d5458807607ec1ac63c, type: 2}
+  bodyFont: {fileID: 11400000, guid: c2b13a9eb0cc9fd4ebac624ffdb0e207, type: 2}
+  statsFont: {fileID: 11400000, guid: e53f10a5a0cdc8a4b89300a6dd63a205, type: 2}
   cornerRadiusReference: 4

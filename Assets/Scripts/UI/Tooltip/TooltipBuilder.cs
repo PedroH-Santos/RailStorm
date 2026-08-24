@@ -101,6 +101,7 @@ public static class TooltipBuilder
             Title = drawable.DisplayName,
             Icon = drawable.Icon,
             RarityLabel = RarityHelper.DisplayName(rarity),
+            RarityIndex = rarity,
             RarityColor = RarityHelper.Color(rarity)
         };
     }

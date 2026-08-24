@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 6908a60ef255c0c4fb85d108fa62dcc0
+guid: 09be34355af38f84e868856e5a6e1764
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - MedievalSharp
+  - Cinzel
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

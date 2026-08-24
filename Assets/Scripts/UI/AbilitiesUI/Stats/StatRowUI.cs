@@ -18,14 +18,14 @@ public class StatRowUI : MonoBehaviour
         {
             labelText.gameObject.SetActive(true);
             labelText.text = label;
-            theme?.ApplyBody(labelText);
+            theme?.ApplyStatLabel(labelText);
         }
 
         if (valueText != null)
         {
             valueText.gameObject.SetActive(true);
             valueText.text = value;
-            theme?.ApplyTitle(valueText);
+            theme?.ApplyStatValue(valueText);
         }
     }
 

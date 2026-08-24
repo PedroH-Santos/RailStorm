@@ -214,6 +214,7 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
 - Um item/skill tem exatamente um efeito: ou muda um stat do jogador (soma um valor fixo, ou multiplica percentualmente o stat atual), ou concede uma habilidade nova (comportamento em código, adicionado dinamicamente ao jogador).
 - Skills só podem ser "upgradadas" para uma raridade estritamente maior que a atual — não dá pra pegar uma versão pior/igual de uma skill já adquirida.
 - Existem 5 níveis de raridade (Common → Legendary); quanto mais sorte (`LuckPercent`) o jogador tem, menor o peso de raridades comuns e maior o de raras/épicas/lendárias no sorteio — a fórmula é a mesma em toda parte do jogo que sorteia por raridade.
+- Cada raridade carrega, além do peso, sua **identidade visual**: uma cor viva e uma placa 9-slice própria (`RarityDto.color` e `RarityDto.iconPlate`). Nenhuma tela decide cor ou placa por conta própria — todas passam por `RarityHelper` (ver 4.10).
 - Um item "exilado" pelo jogador nunca mais aparece em baús, mas isso **não** o remove da loja (a loja só evita itens já possuídos, não os exilados) — comportamento assimétrico a ter em mente.
 
 - **`Items/ItemDefinition.cs`** — ScriptableObject (`IDrawable`): `price` (só loja), `rarity`, `effectType` (`StatChange` ou `Ability`). `StatChange`: `statTarget`/`statValue`/`isMultiplier`. `Ability`: `abilityTypeName`, resolvido via `Type.GetType`, componente adicionado dinamicamente ao player.
@@ -221,13 +222,15 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
 - **`Skills/SkillDefinition.cs`** — ScriptableObject genérico (`IDrawable`), níveis por raridade (`SkillLevelData`).
 - **`Player/Skills/PlayerSkillHandler.cs`** — aplica/upgrade skills; upgrade só permitido se `rarityIndex > CurrentRarity`; tem lógica análoga de aplicar `Coins` como soma/multiplicador.
 - **Raridade** (`Systems/Rarity/`): `RarityConfigDefinition` (singleton `RarityConfig`, `Resources/RarityConfig.asset`) — 5 níveis padrão:
-  | Raridade | baseWeight | weightPerLuck |
-  |---|---|---|
-  | Common | 60 | -0.30 |
-  | Uncommon | 25 | -0.10 |
-  | Rare | 10 | +0.15 |
-  | Epic | 4 | +0.15 |
-  | Legendary | 1 | +0.10 |
+  | Raridade | Cor (24/08) | baseWeight | weightPerLuck |
+  |---|---|---|---|
+  | Common | `#93A9BA` | 60 | -0.30 |
+  | Uncommon | `#35C75A` | 25 | -0.10 |
+  | Rare | `#2E86F0` | 10 | +0.15 |
+  | Epic | `#A94BEB` | 4 | +0.15 |
+  | Legendary | `#FFB020` | 1 | +0.10 |
+
+  As cores foram saturadas em 24/08 a pedido do usuário ("cores vivas"). Common é a exceção deliberada: fica no cinza-aço da paleta do tema, para o degrau para Uncommon ser visível. `RarityDto.iconPlate` aponta para `Assets/UI/Theme/Rarity/IconPlate*.png`.
 
   `RarityHelper.GetWeight(rarity, luck) = max(0, baseWeight + weightPerLuck * clamp(luck, 0, 100))`. `RarityRoller.Roll(minRi, maxRi, luck)` — sorteio ponderado num intervalo. Usado por Chest, Shop e `AbilityDrawer`.
 
@@ -298,11 +301,11 @@ O `EntitiesContainer` fica dentro de um **`StatsScrollView`** (`ScrollRect` vert
 
 > **Efeito colateral a lembrar:** a barra come 12px da largura útil da linha. Foi o que fez "Velocidade" quebrar em "Velocidad/e" na primeira versão. As larguras da linha (`Assets/Prefabs/UI/Stats.prefab`) foram recalculadas para o novo espaço: valor com `preferredWidth = 138` (cabe "100 / 130", que pede 114) e rótulo com `flexibleWidth = 1` ficando com 180 (cabe "Velocidade", que pede 166). Ambos com `enableWordWrapping = false` e `overflowMode = Ellipsis`, para que um rótulo grande demais corte em vez de empurrar o valor.
 
-Na cena, cada grupo é um bloco `Group*` contendo um `Header` (faixa navy com régua bronze embaixo, o título em MedievalSharp e um par de ornamentos `WingLeft`/`WingRight` ladeando o título) **mais** o container das linhas. O ornamento é o sprite `Assets/UI/Theme/Ornaments/TitleWing.png` — uma cunha hachurada gerada proceduralmente, tintada com `panelBorder`; o lado direito é o **mesmo sprite espelhado** por `localScale.x = -1`, não um segundo arquivo.
+Na cena, cada grupo é um bloco `Group*` contendo um `Header` (faixa navy com régua bronze embaixo, o título em Fredoka e um par de ornamentos `WingLeft`/`WingRight` ladeando o título) **mais** o container das linhas. O ornamento é o sprite `Assets/UI/Theme/Ornaments/TitleWing.png` — uma cunha hachurada gerada proceduralmente, tintada com `panelBorder`; o lado direito é o **mesmo sprite espelhado** por `localScale.x = -1`, não um segundo arquivo.
 
 > **Regra ao espelhar com `localScale`:** o espelhamento é feito **em torno do `pivot`**, não do centro do rect. Com `pivot.x = 1` (ancorado na borda direita), `localScale.x = -1` joga o sprite inteiro pra fora do painel. Por isso os dois `Wing*` usam `pivot = (0.5, 0.5)` e são posicionados por `anchoredPosition.x = ±(inset + largura/2)` — assim o espelhamento acontece em torno do próprio centro e as bordas ocupadas não mudam. Como o `Header` é irmão do container e não pode ser apagado a cada bind, `StatsUI.Bind` **não** varre `entitiesContainer` filho a filho: ele localiza cada container por busca recursiva pelo nome do grupo (`FindDeep`) e limpa apenas os filhos desse container. Isso é o que permite ter decoração fixa dentro do painel de status sem ela ser destruída no primeiro bind.
 
-A linha de stat (`Assets/Prefabs/UI/Stats.prefab`) virou uma placa própria: fundo `#16324F`, barra de acento bronze à esquerda (`Accent`, `ignoreLayout = true`), altura fixa 50, rótulo à esquerda em Cinzel/`textBody` e valor à direita em MedievalSharp/`textTitle` — antes era só um par de textos soltos, sem delimitação, o que fazia os stats parecerem dispersos no painel.
+A linha de stat (`Assets/Prefabs/UI/Stats.prefab`) virou uma placa própria: fundo `#16324F`, barra de acento bronze à esquerda (`Accent`, `ignoreLayout = true`), altura fixa 50, rótulo à esquerda e valor à direita, ambos em Nunito (`ApplyStatLabel`/`ApplyStatValue`) — antes era só um par de textos soltos, sem delimitação, o que fazia os stats parecerem dispersos no painel.
 
 > **Armadilha de layout (custou uma rodada de debug):** um `HorizontalLayoutGroup`/`VerticalLayoutGroup` com `childForceExpandHeight = true` reporta **flexibleHeight = 1 para si mesmo**, e isso sobe pela árvore inteira de layouts. Com a flag ligada no prefab da linha, cada linha "puxava" a altura sobrando do painel e os grupos esticavam para ~3× o tamanho, mesmo com `LayoutElement.preferredHeight = 50` e com `childForceExpandHeight = false` em todos os containers acima. Ao montar linha/slot de altura fixa, deixe `childForceExpandHeight = false` no próprio item.
 
@@ -314,23 +317,77 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
 **Regras:**
 - Existe **um único** conjunto de cores/fontes "de tema" (`UIThemeConfig`), carregado como singleton via `Resources.Load` (mesmo padrão do `RarityConfig`) — nenhuma tela deve hardcodar cor/fonte de título/corpo no Inspector por conta própria.
-- Paleta: fundo de painel `#0A2947` (azul-marinho escuro), borda/acento `#8B5E3C` (bronze/madeira), texto de título `#F3E4C9` (creme), texto de corpo/descrição `#D3D4C0` (verde-acinzentado claro).
-- Fontes: **MedievalSharp** para títulos e nomes de item/habilidade; **Cinzel** para textos de descrição/corpo.
+- **Paleta oficial (24/08)** — 5 cores base, adotadas a partir de uma referência escolhida pelo usuário. Toda cor da UI é uma dessas 5 ou uma derivada declarada abaixo; nada de tom novo inventado por tela:
+
+  | Nome | Hex | Papel |
+  |---|---|---|
+  | Steel | `#5D839B` | azul-acinzentado médio — ação neutra (botão `Pular`), texto secundário |
+  | Navy Deep | `#0A1E33` | fundo padrão de painel e card — escurecido em 24/08 a pedido do usuário; o `#0F2E4C` da referência ficou claro demais no jogo |
+  | Brown Deep | `#663300` | campo escuro da moldura, sombras do acento |
+  | Copper | `#BC621B` | acento vivo — réguas, bullets, ornamentos, botão `Atualizar` |
+  | Cream | `#FCF8E6` | títulos e valores em destaque |
+
+  Derivadas (calculadas a partir das 5, não são cores novas de fato):
+
+  | Nome | Hex | Origem | Papel |
+  |---|---|---|---|
+  | Navy Raised | `#112942` | Navy Deep clareado | faixas de título, cabeçalho de grupo de status |
+  | Navy Recess | `#050F1C` | Navy Deep escurecido | encaixe afundado do slot de inventário |
+  | Steel Light | `#ACBDC0` | Steel ↔ Cream a 50% | texto de corpo/descrição |
+  | Vermelho de exílio | `#A8392A` | — | única cor fora da paleta, reservada à ação destrutiva (`Exilar`) |
+- **Fontes (24/08)** — três papéis fixos, definidos pelo usuário. Nenhuma tela escolhe fonte por conta própria: pede o papel ao `UIThemeConfig`.
+
+  | Fonte | Papel | Onde aparece |
+  |---|---|---|
+  | **Fredoka** | fonte **oficial** do jogo — o padrão. Na dúvida, é ela | descrições, rótulos de seção, raridade, nível, contadores, cabeçalhos secundários |
+  | **Nunito** | estatísticas de itens e armas | linhas do painel de Status, linhas de atributo do tooltip, efeito/nível das melhorias |
+  | **Lilita One** | títulos importantes | título de painel, nome da carta, rótulo de botão, cabeçalho e título do tooltip |
+
+  Os `TMP_FontAsset` ficam em `Assets/Fonts/Generated/`: `Fredoka-VariableFont_wdth,wght SDF`, `Nunito SDF` (gerado de `Nunito/static/Nunito-SemiBold.ttf` — o `Nunito-Italic-… SDF` que já existia era da variante itálica e não serve para números), `LilitaOne-Regular SDF`. Todos em `AtlasPopulationMode.Dynamic`. As fontes anteriores (MedievalSharp/Cinzel) saíram de uso; os SDF continuam no repo, mas os `.ttf` de origem já não existem mais, então elas não conseguem mais crescer o atlas — não voltar a usá-las.
 - Cantos dos painéis e cards: pouco arredondados (não retos, não muito curvos) — controlado pelos sprites 9-slice usados nos frames, não por código.
 - A cor de raridade (`RarityConfig`/`RarityHelper`) continua sendo a exceção intencional: ela colore fundo/borda de card conforme a raridade do item, por cima da paleta base do tema.
 
-- **`UIThemeConfig.cs`** — ScriptableObject singleton (`Resources/UIThemeConfig.asset`), expõe `panelBackground`, `panelBorder`, `textTitle`, `textBody` (Color) e `titleFont`/`bodyFont` (`TMP_FontAsset`); métodos `ApplyTitle(TMP_Text)`/`ApplyBody(TMP_Text)` aplicam cor+fonte de uma vez. Fontes reais já geradas a partir de `Assets/Fonts/Cinzel,MedievalSharp/` e salvas como `Assets/Fonts/Generated/MedievalSharp SDF.asset` (título) e `Cinzel SDF.asset` (corpo).
-- **`AbilityCardUI.cs`** — primeiro consumidor via script: aplica `ApplyTitle`/`ApplyBody` nos textos do card (nome, descrição, raridade, nível) e `panelBorder` no campo `cardBorder`, mantendo `cardBackground` colorido por raridade como já era.
+- **`UIThemeConfig.cs`** — ScriptableObject singleton (`Resources/UIThemeConfig.asset`), expõe a paleta inteira como campos nomeados por **papel**, não por cor: `panelBackground` (Navy Deep `#0A1E33`), `panelSurface` (Navy Raised `#112942`), `panelRecess` (Navy Recess `#050F1C`), `panelBorder` (Copper), `panelBorderDark` (Brown Deep), `textTitle` (Cream), `textBody` (Steel Light), `textMuted` (Steel), mais os três `TMP_FontAsset` (`titleFont` = Lilita One, `bodyFont` = Fredoka, `statsFont` = Nunito).
+
+  Os métodos `Apply*` são a **única** porta de entrada — cada um casa uma fonte com uma cor, e é escolhendo o método que a tela declara o papel do texto:
+
+  | Método | Fonte | Cor |
+  |---|---|---|
+  | `ApplyTitle` | Lilita One | `textTitle` |
+  | `ApplyBody` | Fredoka | `textBody` |
+  | `ApplyBodyHighlight` | Fredoka | `textTitle` |
+  | `ApplyMuted` | Fredoka | `textMuted` |
+  | `ApplyStatLabel` | Nunito | `textBody` |
+  | `ApplyStatValue` | Nunito | `textTitle` |
+
+  Consumidores: `AbilityCardUI` (`ApplyTitle` no nome, `ApplyBody` no resto), `StatRowUI` e `TooltipStatRowUI` (`ApplyStatLabel`/`ApplyStatValue`), `TooltipUpgradeRowUI` (`ApplyBodyHighlight` no nome da melhoria, `ApplyStatLabel` no efeito e no nível), `TooltipUI`, `InventorySlotView`.
+- **`AbilityCardUI.cs`** — primeiro consumidor via script: aplica `ApplyTitle`/`ApplyBody` nos textos do card (nome, descrição, nível) e deriva de `RarityHelper` tudo que é colorido por raridade (`cardBackground`, `cardBorder`, `cardFill`, `rarityText`) — ver "Raridade como cor do card" abaixo.
 - **Sprites 9-slice próprios** (`Assets/UI/Theme/`, gerados via editor script, SDF de rounded-box, sem dependência de asset generation por IA): `PanelFrame9Slice.png` (fundo `panelBackground` + borda `panelBorder` já cravada na arte, usado em `SkillPanel`/`InventoryPanel`/`StatsPanel`), `CardFrame9Slice.png` (mesma borda, fundo `cardFill` mais claro, usado nos cards), `BorderOnly9Slice.png` (centro transparente, só o anel da borda em branco — feito pra ser tintado por `Image.color`, usado como camada extra sobre o preenchimento sólido dos botões, já que cada botão tem uma cor de função diferente).
-- **Moldura ornamentada dos painéis (20/08).** Os 3 painéis da tela de habilidade (`InventoryPanel`, `SkillPanel`, `StatsPanel`) usam agora **`Assets/UI/Theme/OrnateFrame9Slice.png`** no lugar do `WoodPanelFrame9Slice`: moldura de metal/couro escuro com bisel bronze na aresta externa, um sulco corrido no meio da faixa, um bead bronze na aresta interna e **chapas de canto em bronze com 3 rebites cada**. O sprite é 256×256 com `spriteBorder = 56` e é aplicado com `Image.pixelsPerUnitMultiplier = 2` (a borda desenha ~28px em tela). O `WoodCardFrame9Slice` continua nos **cards** — a diferença de material entre painel (metal) e card (madeira) é intencional, dá hierarquia. As runas entalhadas e a moldura de madeira dos painéis saíram junto com a troca; o `WoodPanelFrame9Slice.png` segue no repo, sem uso.
+- **Moldura ornamentada dos painéis (20/08).** Os 3 painéis da tela de habilidade (`InventoryPanel`, `SkillPanel`, `StatsPanel`) usam agora **`Assets/UI/Theme/OrnateFrame9Slice.png`** no lugar do `WoodPanelFrame9Slice`: moldura de couro escuro com bisel metálico na aresta externa, um sulco corrido no meio da faixa, um bead na aresta interna e **chapas de canto com 3 rebites cada**. O sprite é 256×256 com `spriteBorder = 56` e é aplicado com `Image.pixelsPerUnitMultiplier = 2` (a borda desenha ~28px em tela).
+
+  **Recolorida para a paleta nova (24/08).** `OrnateFrame9Slice.png` e `TitleBand9Slice.png` não foram redesenhadas: passaram por um remapeamento pixel a pixel em HSV, que mantém o desenho e troca só a família de cor. Pixels com `saturation < 0.14` (contornos neutros) ficam intactos; matiz quente vai para uma rampa `#1B0C00 → #663300 → #BC621B → #E69549` indexada pelo *value* original, e matiz azul vai para `#04101F → #0F2E4C → #2E6699`. O campo de couro fica no trecho escuro da rampa e só o filete/chapas de canto chegam no Copper — se a rampa for mais clara no meio, a moldura inteira vira laranja e passa a competir com o conteúdo. O `WoodCardFrame9Slice` continua nos **cards** — a diferença de material entre painel (metal) e card (madeira) é intencional, dá hierarquia. As runas entalhadas e a moldura de madeira dos painéis saíram junto com a troca; o `WoodPanelFrame9Slice.png` segue no repo, sem uso.
 
   Como todo detalhe reconhecível fica dentro da região de borda (chapas e rebites em `u,v <= 44`, dentro dos 56 do `spriteBorder`), a moldura respeita a regra do 9-slice: só o sulco e o bisel — que são linhas paralelas à borda — atravessam as faixas esticadas.
 
   **Recuo do conteúdo:** com a borda em ~28px, o `padding` dos 3 painéis subiu de 22 para **34**; os containers internos (`CardsContainer`, `ButtonsContainer`) baixaram de 38 para 26 para manter o espaçamento efetivo de antes.
 
-- **Botões da tela de habilidade.** `Exilar`/`Pular`/`Atualizar` têm tamanho fixo por `LayoutElement` (230×76, 250×76 no `Atualizar`) e texto MedievalSharp em 34 — antes herdavam a altura do container e ficavam com ~34px de altura e texto 24, ilegíveis. O `ButtonsContainer` reserva 114px de altura.
+- **Botões da tela de habilidade.** `Exilar`/`Pular`/`Atualizar` têm tamanho fixo por `LayoutElement` (230×76, 250×76 no `Atualizar`) e texto Lilita One em 34 — antes herdavam a altura do container e ficavam com ~34px de altura e texto 24, ilegíveis. O `ButtonsContainer` reserva 114px de altura.
 
-  O preenchimento usa **`Assets/UI/Theme/ButtonFrame9Slice.png`**: uma placa em tons de cinza com bisel (topo claro, base escura), grão sutil e contorno escuro, feita para ser **tintada** por `Image.color` — é o que tira a cara de "botão de site" que o retângulo chapado tinha. Cada botão mantém sua cor de função por cima dessa placa.
+  **Placa de botão físico (24/08).** O preenchimento usa **`Assets/UI/Theme/ButtonPlate9Slice.png`** (96×96, `spriteBorder = 26`, `pixelsPerUnitMultiplier = 1.5`), redesenhado para o botão parecer uma **peça apertável** e não um retângulo colorido — que era a queixa do usuário. De fora para dentro, de cima para baixo:
+
+  | Faixa | Valor de cinza | Papel |
+  |---|---|---|
+  | contorno externo (~3px) | `0.10` | recorta o botão contra o painel |
+  | brilho interno no topo (~4px) | face × `1.12` | a luz batendo na quina de cima |
+  | face | `1.00` no topo → `0.92` | a superfície que o dedo aperta |
+  | sulco (2px) | `0.15` | separa a face do lábio |
+  | lábio inferior (~16px em tela) | `0.30`–`0.40` | a lateral da peça, vista de cima — é isso que dá altura ao botão |
+
+  A face é quase **plana de propósito**: só o topo (dentro da região de borda do 9-slice) carrega o degradê, e a faixa central fica constante. Se a face tivesse degradê contínuo, o esticamento vertical do 9-slice deformaria o brilho conforme a altura do botão. O lábio e o sulco vivem inteiros dentro da **borda inferior** (`26px` nativos), então também não esticam.
+
+  Cores de função por cima da placa: `Exilar` `#A8392A`, `Pular` `#5D839B` (Steel), `Atualizar` `#BC621B` (Copper). Como o lábio está em `~0.35`, uma única cor produz face viva + lateral escura automaticamente — não há segundo objeto de "sombra" embaixo do botão.
+
+  **O texto é centralizado na face, não no botão.** `ButtonText` usa `offsetMin.y = 16` / `offsetMax.y = -4` para descontar o lábio; sem isso o rótulo fica visualmente baixo, encostado na base. O `Shadow` do texto está em `#150A03` (alpha 0.8) deslocado `(0, -2.5)`.
 
   O contador de usos restantes fica no `CountBadge`, **centralizado horizontalmente logo acima do botão**. Ele **não tem `Image` de fundo**: o número se destaca por `Outline` escuro + `Shadow`, sem plaquinha atrás. As referências `exileCountText`/`refreshCountText` do `AbilitySelectionUI` apontam pro `CountText` dentro dele.
 
@@ -338,19 +395,55 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
   Usa `Time.unscaledDeltaTime` porque a tela roda com o jogo pausado (`Time.timeScale = 0`), e guarda/restaura a posição de repouso em `OnEnable`/`OnDisable` — sem isso o card acumularia deslocamento a cada vez que fosse reciclado.
 
-- **Hover dos botões.** O `ColorTint` padrão do `Button` é quase imperceptível (o `highlightedColor` default fica em ~0.96). Os três botões usam `normalColor = 0.78`, `highlightedColor = 1.0`, `pressedColor = 0.58` e `fadeDuration = 0.06` — o estado de repouso é levemente rebaixado justamente para o hover ter para onde subir, já que o tint **multiplica** a cor de função do botão e não teria como clarear além do branco.
+- **Hover dos botões.** O `ColorTint` padrão do `Button` é quase imperceptível (o `highlightedColor` default fica em ~0.96). Os três botões usam `normalColor = 1.0`, `highlightedColor = 1.16`, `pressedColor = 0.72`, `disabledColor = 0.45` (alpha 0.6) e `fadeDuration = 0.06`. O repouso ficou em `1.0` (e não rebaixado, como na versão anterior) porque a `ButtonPlate9Slice` já entrega a cor de função cheia; o hover sobe acima de 1 — valores `> 1` são válidos em código e clareiam de verdade, coisa que o Inspector não deixa digitar.
 
 > **Ícones brancos pedem contorno escuro.** Os `UI_Icon_*` são glifos brancos. O `Outline` creme (`textTitle`) que existia no slot de inventário criava um halo amarelado em volta do desenho; hoje o contorno é quase preto (`#0A0705`, alpha 0.85) tanto no slot quanto no card. E todo ícone precisa de `preserveAspect = true`: o `Icon` do card fica num rect 200×108 e, sem a flag, o sprite quadrado era esticado na horizontal.
 
-- **Raridade como cor do card (referência: Megabonk).** Três camadas do card recebem a mesma cor de raridade em intensidades diferentes, todas derivadas em runtime por `AbilityCardUI.Setup` — **não há nada configurado por raridade no Inspector**:
-  - `cardBackground` (placa do ícone) → cor cheia da raridade.
-  - `iconBorder` → cor da raridade **escurecida** (`Shade(cor, 0.45)`), contornando a placa.
-  - `cardFill` (corpo do card) → `Color.Lerp(panelBackground, cor, cardFillRarityBlend)`, com `cardFillRarityBlend = 0.35` exposto no Inspector. Mistura com o navy do tema em vez de usar a cor cheia, senão o card brigaria com a paleta do painel.
+- **Raridade como cor do card (referência: Megabonk).** As camadas do card recebem a cor de raridade em intensidades diferentes, todas derivadas em runtime por `AbilityCardUI.Setup` — **não há nada configurado por raridade no Inspector**:
+  - `cardBackground` (placa do ícone) → cor cheia da raridade, **e também troca de sprite** para a placa da raridade (ver "Placa de ícone por raridade" abaixo).
+  - `cardBorder` (novo filho `CardBorder`) → cor cheia da raridade. É o anel que identifica o card à distância.
+  - `cardFill` (corpo do card) → `Color.Lerp(panelBackground, Shade(cor, cardFillDarkness), cardFillRarityBlend)`, com `cardFillDarkness = 0.3` e `cardFillRarityBlend = 0.7` no Inspector.
   - `rarityText` → cor cheia da raridade (o texto "Comum"/"Rara"/"Lendária"). Por isso `Setup` aplica só a **fonte** do tema nesse texto, nunca `ApplyBody`, que sobrescreveria a cor.
 
-- **Placas com textura, não cor chapada** (`Assets/UI/Theme/`): `IconPlate9Slice.png` (placa do ícone: gradiente radial claro no topo-esquerdo, grão, anel interno escuro e contorno) e `CardFill9Slice.png` (corpo do card: gradiente vertical, grão e vinheta nas bordas). Ambos são **em tons de cinza para serem tintados** por `Image.color` — é o que faz cada raridade parecer material e não um retângulo de cor colado. O mesmo `IconPlate9Slice` é usado no `BackGround` do slot de inventário.
+  > **Por que escurecer antes de misturar, e não misturar direto com o navy.** A versão anterior fazia `Lerp(panelBackground, corDaRaridade, blend)`. Misturar navy com uma raridade **quente** (o amarelo lendário) anda pelo meio da roda de cores e produz um verde-oliva sujo, sem relação com a raridade; a raridade azul, ao contrário, ficava clara demais e brigava com o painel. Escurecer primeiro (`Shade`) preserva o matiz e só derruba o brilho, então o corpo do card vira "a mesma cor, no escuro" — que é exatamente a leitura do Megabonk: card escuro, borda viva.
+
+- **Placa de ícone por raridade (24/08).** `Assets/UI/Theme/Rarity/IconPlate{Common,Uncommon,Rare,Epic,Legendary}.png` — 64×64, `spriteBorder = 26`, aplicadas com `pixelsPerUnitMultiplier = 1` (assim o detalhe desenha em tamanho nativo). Todas em tons de cinza, tintadas em runtime com a cor da raridade, e **todas iguais no corpo** — o que muda é um entalhe escuro (`0.14`) que escala com a raridade:
+
+  | Raridade | Detalhe entalhado |
+  |---|---|
+  | Comum | nenhum — só o risco diagonal |
+  | Incomum | linha fina recuada, acompanhando a borda |
+  | Rara | + triângulos sólidos nos 4 cantos |
+  | Épica | + cantoneiras em "L" nos 4 cantos |
+  | Lendária | + cantoneiras mais grossas com um losango cravado em cada canto |
+
+  Estrutura comum da placa, de fora para dentro: contorno `0.10` (~2px) → aro `1.0` (~3.4px, é ele que vira a cor viva) → corpo em degradê vertical `0.88` no topo → `0.58` na base.
+
+  **Risco diagonal no fundo (referência direta: Megabonk).** Por cima da placa vai uma camada `Pattern` — filha da própria placa, `SetSiblingIndex(0)` (atrás do ícone), esticada, `raycastTarget = false`, branca com **alpha 0.22**. Ela usa `Assets/UI/Theme/Rarity/IconPlateStripes.png`: faixas diagonais a 45°, com uma máscara de *falloff* que apaga o risco antes de chegar na borda. É o mesmo sprite para todas as raridades — quem colore é a placa embaixo.
+
+  > **Por que o risco é uma camada separada, e não parte da placa.** A placa é `Image.Type.Sliced`: a faixa central é **esticada**. Uma diagonal desenhada nela seria cortada nas emendas do 9-slice e viraria um borrão nas faixas centrais (a mesma armadilha das runas na moldura de madeira). A camada `Pattern` é `Type.Simple`, então estica por inteiro e nunca tem emenda. O *falloff* nas bordas existe para o retângulo do `Pattern` não vazar pelos cantos arredondados da placa — em vez de recortar a máscara (que distorceria junto com o esticamento), o risco simplesmente some antes da quina.
+
+  > **Duas versões do sprite, por causa do ângulo.** Um `Type.Simple` estica no eixo do rect, então uma diagonal de 45° num sprite quadrado desenhada num rect 2:1 vira ~27°. Como a placa do card é 220×108 e a do slot é 88×88, existem `IconPlateStripes.png` (128×128, para slot e tooltip) e `IconPlateStripesWide.png` (256×126, para os cards). A regra: **o aspecto do sprite tem que bater com o aspecto do rect** para o risco sair a 45° na tela. A diferença de *escala* entre telas (o risco do tooltip fica mais fino que o do slot) foi aceita — o que salta aos olhos é o ângulo, não o passo.
+
+  **Ligação com o dado, não com a cena:** a placa é um campo novo em `RarityDto.iconPlate`, configurado no `Resources/RarityConfig.asset` e lido por `RarityHelper.IconPlate(int)`. Quem consome: `AbilityCardUI.Setup`, `InventorySlotView.Apply` e `TooltipUI` (via `TooltipData.RarityIndex`, campo novo preenchido em `TooltipBuilder`). Nenhum desses scripts conhece nome de arquivo — para trocar a arte de uma raridade basta apontar outro sprite no asset.
+
+  > **Regra do 9-slice vale aqui também:** todo detalhe reconhecível (triângulos, cantoneiras, losangos) fica dentro dos `26px` da região de canto. O único elemento que atravessa as faixas esticadas é a linha do Incomum — e ela é paralela à borda, então esticar não a deforma. Foi por isso que a `spriteBorder` subiu de `20` para `26`: com `20`, a ponta do braço da cantoneira caía na faixa central e esticava junto com a placa.
+
+- **Anatomia das placas (`CardPlate9Slice`, `CardBorder9Slice`).** Ambas 96×96 com `spriteBorder = 26` e `pixelsPerUnitMultiplier = 1.5`, geradas pela mesma SDF de rounded-box (`margin = 2`, `radius = 17`) — é essa origem comum que garante que o anel encaixe exatamente na quina da placa. `CardPlate9Slice` é o corpo (contorno `0.26` + degradê `0.78`→`1.0`); `CardBorder9Slice` é só o anel de `6px` em branco puro, com o miolo transparente.
+
+  Todas as placas do tema são **em tons de cinza para serem tintadas** por `Image.color`: como o aro fica em `1.0` e o corpo abaixo de `1.0`, uma única cor produz borda clara + corpo escuro automaticamente. É isso que faz cada peça parecer uma peça, e não um retângulo de cor colado.
+
+  > **Lição da primeira tentativa:** a versão anterior (`CardFill9Slice`/`ButtonFrame9Slice`, ainda no repo sem uso) usava gradientes suaves, ruído e bordas de baixo contraste — e o resultado foi descrito pelo usuário como "com cara de IA". O que dá leitura de UI de jogo é o oposto: **contorno nítido de alto contraste e bisel duro**, com pouco ou nenhum ruído.
+
+  > **Cuidado ao combinar com `Button.colors`:** o tint do `Button` **multiplica** a cor da `Image`. Com o corpo da placa em ~0.5, um `normalColor` de 0.78 derrubava o botão para ~0.39 da cor de função e ele ficava quase preto. Por isso a face da placa de **botão** fica entre `0.92` e `1.0` e o tint parte de `normalColor = 1.0` (ver "Hover dos botões").
 
   > **Cuidado com o default do Editor:** como a cor real só é aplicada em `Setup`, a cor gravada na cena é apenas preview. Ela está setada na raridade Common — se ficar em branco, o card aparece lavado no primeiro frame antes do `Setup` rodar.
+
+- **A borda do card virou uma camada separada (24/08).** A `Image` do root do card continua sendo a placa (`CardPlate9Slice`, tintada por `AbilityCardUI.cardFill`), mas o anel de raridade saiu do sprite da placa e virou o filho **`CardBorder`** — `CardBorder9Slice`, `LayoutElement.ignoreLayout = true`, esticado no card, `raycastTarget = false`, `SetSiblingIndex(0)`. Isso é o que permite corpo escuro e borda viva ao mesmo tempo: com o anel embutido na placa, os dois compartilhariam o mesmo tint e a borda escureceria junto com o corpo.
+
+  O `IconBorder` do card e o `SlotBorder` do slot seguem desativados: a placa do ícone já traz o próprio aro, e dois contornos concorrentes sujavam a leitura.
+
+  > **Cuidado ao gerar um sprite "só borda":** o alpha é `alphaDoContorno − alphaDoMioloEncolhido`. Escrever `outer − (1 − hole)` (que foi a primeira tentativa) devolve `1` no meio da peça — ou seja, um retângulo **cheio** em vez de um anel, que na tela apareceu como uma chapa clara cobrindo o card inteiro.
 
 - **Madeira como motivo estrutural.** `WoodPanelFrame9Slice.png` (molduras dos 3 painéis) e `WoodCardFrame9Slice.png` (cards). O grão é procedural: ruído *value noise* deformando um padrão senoidal de anéis, com a direção do grão alternando conforme a face da moldura (`Mathf.Abs(p.x) < Mathf.Abs(p.y)` decide grão horizontal ou vertical), de modo que as barras horizontais e verticais não repitam o mesmo desenho.
 - **Regra do 9-slice para qualquer detalhe desenhado na moldura:** num `Image.Type.Sliced`, só as **quadrículas de canto** são desenhadas em tamanho nativo — as faixas entre elas são **esticadas**. Portanto qualquer elemento com forma reconhecível (runa, rebite, ornamento) precisa ficar **dentro da região de borda** (`spriteBorder = 56`), senão vira um borrão esticado. Elementos que podem ocupar as faixas centrais são apenas os que não sofrem com esticamento: linhas retas paralelas à borda e o grão da madeira.
@@ -363,7 +456,7 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 - **Motivos testados e descartados (19/08):** chegaram a ser gerados e aplicados ornamentos de **engrenagem** (`GearLarge.png`/`GearSmall.png`, cantos dos painéis) e **runas** (`RuneA/B/C.png`, ladeando os títulos), além dos losangos anteriores (`CornerDiamond.png`). Foram removidos da cena a pedido do usuário por não agradarem visualmente — os PNGs continuam no repo, mas **nenhum é referenciado**. Hoje os cantos dos painéis ficam limpos, só com a moldura de madeira. Não reintroduzir esses motivos sem pedido explícito.
 
   **Regra estrutural (importante):** ornamento **nunca** entra na arte do 9-slice — se entrasse, esticaria/repetiria junto com o painel e deformaria. Cada ornamento é uma `Image` filha própria, com `LayoutElement.ignoreLayout = true` (pra escapar do `VerticalLayoutGroup`/`HorizontalLayoutGroup` do pai), `raycastTarget = false`, âncora no canto correspondente e `sizeDelta` fixo. Divisão: **painel/card = 9-slice (estica)**, **ornamento = sprite simples (tamanho fixo, só ancorado)**. Mesma separação usada por Hades/Megabonk/Raveswatch.
-- **`AbilitySelectionUI` (cena, `CanvasSkillSelector/SkillSelectionPanel`)** já reskinada diretamente na hierarquia: `SkillPanel`/`InventoryPanel`/`StatsPanel` usam `PanelFrame9Slice`, cards usam `CardFrame9Slice`, títulos em MedievalSharp, corpo em Cinzel; botões `Exilar`/`Pular`/`Atualizar` com preenchimento sólido por cor de função + `BorderOnly9Slice` tintado de bronze como filho `BorderOverlay` (`raycastTarget = false`) por cima; ícone dos cards (`ImageContainer/Background/Icon`) recolorido pra branco com `Outline` escuro, garantindo leitura em cima de qualquer cor de fundo de raridade (`RarityHelper.Color`). Camada decorativa: `OrnamentTopLeft/TopRight/BottomLeft/BottomRight` (losangos) nos 3 painéis, `TitleBanner` dentro de cada `TitleContainer` (`SetSiblingIndex(0)`, atrás do texto), e `BracketTopLeft/TopRight/BottomRight/BottomLeft` em cada card.
+- **`AbilitySelectionUI` (cena, `CanvasSkillSelector/SkillSelectionPanel`)** já reskinada diretamente na hierarquia: `SkillPanel`/`InventoryPanel`/`StatsPanel` usam `PanelFrame9Slice`, cards usam `CardFrame9Slice`, títulos em Lilita One, corpo em Fredoka; botões `Exilar`/`Pular`/`Atualizar` com preenchimento sólido por cor de função + `BorderOnly9Slice` tintado de bronze como filho `BorderOverlay` (`raycastTarget = false`) por cima; ícone dos cards (`ImageContainer/Background/Icon`) recolorido pra branco com `Outline` escuro, garantindo leitura em cima de qualquer cor de fundo de raridade (`RarityHelper.Color`). Camada decorativa: `OrnamentTopLeft/TopRight/BottomLeft/BottomRight` (losangos) nos 3 painéis, `TitleBanner` dentro de cada `TitleContainer` (`SetSiblingIndex(0)`, atrás do texto), e `BracketTopLeft/TopRight/BottomRight/BottomLeft` em cada card.
 - **Regras de espaçamento** (aplicadas na `AbilitySelectionUI`, valem como referência pras próximas telas): o padding interno de qualquer container filho de um painel precisa ser **maior que a espessura da borda do 9-slice** (~16px no `PanelFrame9Slice`), senão o conteúdo encosta visualmente na moldura. Valores em uso: `CardsContainer` pad 34/34/20/20 spacing 16, `ButtonsContainer` pad 34/34/14/30 spacing 20, `EntitiesContainer` do inventário pad 26/26/12/16 spacing 10.
 - **Botões**: o preenchimento usa `SolidRounded9Slice.png` (branco sólido, tintado por `Image.color`) com **o mesmo raio de canto** do `BorderOnly9Slice` usado no `BorderOverlay`. Os dois sprites precisam ter raio idêntico — se o preenchimento usar outro sprite (ex.: o `UISprite` padrão da Unity, quase reto), o preenchimento vaza pelos cantos da borda arredondada.
 - **Slots de inventário**: `InventorySection` instancia os slots em runtime a partir de `InventoryUI.slotPrefab`, que aponta pro prefab de projeto **`Assets/Prefabs/UI/WeaponUI.prefab`** (não mais pra um objeto da cena) — é lá que se reestiliza o slot. Os antigos placeholders `Weapon1/2/3` que ficavam soltos dentro de `Weapons/Container` na cena foram removidos: eles apareciam em jogo junto com os slots reais, fingindo armas que o jogador não tinha. Hoje `Weapons/Container`, `Skills/Container` e `Items/Container` começam vazios e são `GridLayoutGroup` (célula `110x128`, spacing `12`, 3 colunas), preenchidos só em runtime.

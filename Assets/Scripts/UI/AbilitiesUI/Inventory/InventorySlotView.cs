@@ -31,7 +31,11 @@ public class InventorySlotView
             _icon.sprite = entry.Icon;
 
         if (_rarityBorder != null)
+        {
+            var plate = RarityHelper.IconPlate(entry.CurrentRarity);
+            if (plate != null) _rarityBorder.sprite = plate;
             _rarityBorder.color = entry.RarityColor;
+        }
 
         if (_levelLabel != null)
             _levelLabel.text = entry.LevelDisplay;

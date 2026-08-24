@@ -13,6 +13,7 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     public TMP_Text rarityText;
     public TMP_Text levelText;
     public Image cardBackground;
+    [Tooltip("Anel de borda do card. Recebe a cor cheia da raridade, destacando o card contra o painel.")]
     public Image cardBorder;
 
     [Header("Ícone")]
@@ -24,8 +25,12 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     public Image cardFill;
 
     [Range(0f, 1f)]
-    [Tooltip("Quanto da cor de raridade entra no fundo do card. 0 = cor do painel, 1 = cor cheia da raridade.")]
-    public float cardFillRarityBlend = 0.35f;
+    [Tooltip("Quanto da cor de raridade escurecida entra no fundo do card. 0 = cor do painel, 1 = só a raridade escurecida.")]
+    public float cardFillRarityBlend = 0.7f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Fator que escurece a cor de raridade antes de virar fundo do card. Preserva o matiz em vez de lavá-lo contra o navy.")]
+    public float cardFillDarkness = 0.3f;
 
     [Header("Seleção")]
     [Tooltip("Container das cantoneiras que marcam o card sob o cursor. Fica oculto até o mouse entrar no card.")]
@@ -58,7 +63,6 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         theme?.ApplyTitle(nameText);
         theme?.ApplyBody(descriptionText);
         theme?.ApplyBody(levelText);
-        if (theme != null && cardBorder != null) cardBorder.color = theme.panelBorder;
 
         nameText.text = d.DisplayName;
 
@@ -74,11 +78,18 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             rarityText.color = rarityColor;
         }
 
-        if (cardBackground != null) cardBackground.color = rarityColor;
+        if (cardBackground != null)
+        {
+            var plate = RarityHelper.IconPlate(ri);
+            if (plate != null) cardBackground.sprite = plate;
+            cardBackground.color = rarityColor;
+        }
+
+        if (cardBorder != null) cardBorder.color = rarityColor;
         if (iconBorder != null) iconBorder.color = Shade(rarityColor, 0.45f);
 
         if (cardFill != null && theme != null)
-            cardFill.color = Color.Lerp(theme.panelBackground, rarityColor, cardFillRarityBlend);
+            cardFill.color = Color.Lerp(theme.panelBackground, Shade(rarityColor, cardFillDarkness), cardFillRarityBlend);
         if (levelText != null) levelText.text = $"Nível {ri + 1}";
 
         if (d is SkillDefinition skill)

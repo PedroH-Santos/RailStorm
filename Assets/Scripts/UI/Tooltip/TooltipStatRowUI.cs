@@ -19,13 +19,13 @@ public class TooltipStatRowUI : MonoBehaviour
         if (labelText != null)
         {
             labelText.text = line.Label;
-            theme?.ApplyBody(labelText);
+            theme?.ApplyStatLabel(labelText);
         }
 
         if (valueText != null)
         {
             valueText.text = line.Value;
-            theme?.ApplyTitle(valueText);
+            theme?.ApplyStatValue(valueText);
         }
     }
 }

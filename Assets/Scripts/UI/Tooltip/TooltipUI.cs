@@ -114,7 +114,11 @@ public class TooltipUI : MonoBehaviour
         }
 
         if (iconBackground != null)
+        {
+            var plate = RarityHelper.IconPlate(data.RarityIndex);
+            if (plate != null) iconBackground.sprite = plate;
             iconBackground.color = data.RarityColor;
+        }
 
         if (descriptionText != null)
         {
@@ -177,7 +181,7 @@ public class TooltipUI : MonoBehaviour
             bool hasName = !string.IsNullOrWhiteSpace(data.AbilityName);
             abilityNameText.gameObject.SetActive(hasName);
             abilityNameText.text = data.AbilityName;
-            theme?.ApplyTitle(abilityNameText);
+            theme?.ApplyBodyHighlight(abilityNameText);
         }
 
         if (abilityDescriptionText != null)

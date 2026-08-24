@@ -20,19 +20,19 @@ public class TooltipUpgradeRowUI : MonoBehaviour
         if (nameText != null)
         {
             nameText.text = line.Name;
-            theme?.ApplyTitle(nameText);
+            theme?.ApplyBodyHighlight(nameText);
         }
 
         if (effectText != null)
         {
             effectText.text = line.Effect;
-            theme?.ApplyBody(effectText);
+            theme?.ApplyStatLabel(effectText);
         }
 
         if (levelText != null)
         {
             levelText.text = line.LevelLabel;
-            theme?.ApplyBody(levelText);
+            theme?.ApplyStatLabel(levelText);
         }
     }
 }

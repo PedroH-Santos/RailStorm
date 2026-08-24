@@ -9,6 +9,9 @@ public static class RarityHelper
     public static Color Color(int rarityIndex)
         => RarityConfig.Instance?.GetRaw(rarityIndex)?.color ?? UnityEngine.Color.white;
 
+    public static Sprite IconPlate(int rarityIndex)
+        => RarityConfig.Instance?.GetRaw(rarityIndex)?.iconPlate;
+
     public static float GetWeight(int rarityIndex, float luckPercent)
     {
         var def = RarityConfig.Instance?.GetRaw(rarityIndex);
