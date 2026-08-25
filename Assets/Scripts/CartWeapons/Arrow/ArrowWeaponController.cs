@@ -36,7 +36,7 @@ public class ArrowWeaponController : MonoBehaviour
     {
         if (!_active) return;
 
-        _currentStats = _weaponDefinition.GetEffectiveStats<ArrowLevelData>();
+        _currentStats = _weaponHandler.GetEffectiveStats<ArrowLevelData>(_weaponDefinition);
         if (_currentStats == null) return;
 
         _fireTimer += Time.deltaTime;
@@ -56,7 +56,7 @@ public class ArrowWeaponController : MonoBehaviour
         if (found == null) { Deactivate(); return; }
 
         _weaponDefinition = found;
-        _currentStats = _weaponDefinition.GetEffectiveStats<ArrowLevelData>();
+        _currentStats = _weaponHandler.GetEffectiveStats<ArrowLevelData>(_weaponDefinition);
 
         if (!_active)
         {
@@ -67,7 +67,7 @@ public class ArrowWeaponController : MonoBehaviour
 
     private void FireSalvo()
     {
-        var stats = _weaponDefinition.GetEffectiveStats<ArrowLevelData>();
+        var stats = _weaponHandler.GetEffectiveStats<ArrowLevelData>(_weaponDefinition);
         if (stats == null) return;
 
         SpawnArrowFan(leftFirePoint, -transform.right, stats);

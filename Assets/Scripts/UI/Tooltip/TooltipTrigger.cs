@@ -4,11 +4,13 @@ using UnityEngine.EventSystems;
 public class TooltipTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     IDrawable _source;
+    int _currentRarity;
     bool _hovering;
 
-    public void SetSource(IDrawable source)
+    public void SetSource(IDrawable source, int currentRarity)
     {
         _source = source;
+        _currentRarity = currentRarity;
         if (_hovering) Refresh();
     }
 
@@ -34,7 +36,7 @@ public class TooltipTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     {
         if (_source == null) return;
 
-        var data = TooltipBuilder.Build(_source);
+        var data = TooltipBuilder.Build(_source, _currentRarity);
         if (data == null) return;
 
         TooltipUI.Instance?.Show(data);

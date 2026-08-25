@@ -1,6 +1,7 @@
+using UnityEngine;
+
 public interface IDrawable
 {
     string DisplayName { get; }
-    UnityEngine.Sprite Icon { get; }
-    int CurrentRarity { get; }
+    Sprite Icon { get; }
 }

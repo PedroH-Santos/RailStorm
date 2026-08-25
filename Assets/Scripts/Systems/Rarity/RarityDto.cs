@@ -19,6 +19,9 @@ namespace Assets.Scripts.Systems.Rarity
                  "O detalhe entalhado na placa é o que diferencia visualmente cada raridade.")]
         public Sprite iconPlate;
 
+        [Tooltip("Brilho tingido pela cor da raridade, desenhado atrás do ícone e por cima da placa. O formato do brilho (círculos, raios, faíscas) é o que diferencia visualmente cada raridade.")]
+        public Sprite iconGlow;
+
         [Tooltip("Peso base no sorteio (sem sorte)")]
         public float baseWeight = 60f;
 

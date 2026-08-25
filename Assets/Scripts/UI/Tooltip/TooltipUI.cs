@@ -35,6 +35,7 @@ public class TooltipUI : MonoBehaviour
     public TMP_Text headerText;
     public Image iconImage;
     public Image iconBackground;
+    public Image iconGlow;
     public TMP_Text titleText;
     public TMP_Text rarityText;
 
@@ -120,6 +121,14 @@ public class TooltipUI : MonoBehaviour
             iconBackground.color = data.RarityColor;
         }
 
+        if (iconGlow != null)
+        {
+            var glow = RarityHelper.IconGlow(data.RarityIndex);
+            iconGlow.enabled = glow != null;
+            if (glow != null) iconGlow.sprite = glow;
+            iconGlow.color = RarityHelper.GlowColor(data.RarityIndex);
+        }
+
         if (descriptionText != null)
         {
             bool hasDescription = !string.IsNullOrWhiteSpace(data.Description);
@@ -127,6 +136,7 @@ public class TooltipUI : MonoBehaviour
             descriptionText.text = data.Description;
             theme?.ApplyBody(descriptionText);
         }
+
 
         BuildAbility(data);
         BuildRows(data.Stats);

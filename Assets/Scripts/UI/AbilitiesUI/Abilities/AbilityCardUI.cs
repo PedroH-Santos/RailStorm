@@ -17,6 +17,9 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     public Image cardBorder;
 
     [Header("Ícone")]
+    [Tooltip("Brilho da raridade desenhado entre a placa e o ícone. Sprite e cor vêm do RarityConfig.")]
+    public Image iconGlow;
+
     [Tooltip("Borda ao redor da placa do ícone. Recebe a cor da raridade escurecida, para destacar sem brigar com o fundo.")]
     public Image iconBorder;
 
@@ -39,7 +42,20 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     Action _onClick;
     Button _selfButton;
 
+    void Awake() => ApplyTheme();
+
     void OnDisable() => SetSelected(false);
+
+    void ApplyTheme()
+    {
+        var theme = UIThemeConfig.Instance;
+        if (theme == null) return;
+
+        theme.ApplyIconOutline(iconImage != null ? iconImage.GetComponent<Outline>() : null);
+        theme.ApplyTextShadow(nameText != null ? nameText.GetComponent<Shadow>() : null);
+        theme.ApplyTextShadow(levelText != null ? levelText.GetComponent<Shadow>() : null);
+        theme.ApplyTextShadow(rarityText != null ? rarityText.GetComponent<Shadow>() : null);
+    }
 
     public void OnPointerEnter(PointerEventData eventData) => SetSelected(true);
 
@@ -62,7 +78,6 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         var theme = UIThemeConfig.Instance;
         theme?.ApplyTitle(nameText);
         theme?.ApplyBody(descriptionText);
-        theme?.ApplyBody(levelText);
 
         nameText.text = d.DisplayName;
 
@@ -85,16 +100,38 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             cardBackground.color = rarityColor;
         }
 
+        if (iconGlow != null)
+        {
+            var glow = RarityHelper.IconGlow(ri);
+            iconGlow.enabled = glow != null;
+            if (glow != null) iconGlow.sprite = glow;
+            iconGlow.color = RarityHelper.GlowColor(ri);
+        }
+
         if (cardBorder != null) cardBorder.color = rarityColor;
         if (iconBorder != null) iconBorder.color = Shade(rarityColor, 0.45f);
 
         if (cardFill != null && theme != null)
             cardFill.color = Color.Lerp(theme.panelBackground, Shade(rarityColor, cardFillDarkness), cardFillRarityBlend);
-        if (levelText != null) levelText.text = $"Nível {ri + 1}";
+        if (levelText != null)
+        {
+            if (theme != null && theme.titleFont != null) levelText.font = theme.titleFont;
+            levelText.color = rarityColor;
+            levelText.text = data.isNew ? "NOVO" : $"Nível {ri + 1}";
+        }
+
+        descriptionText.text = string.Empty;
 
         if (d is SkillDefinition skill)
         {
             descriptionText.text = skill.description;
+        }
+        else if (d is WeaponSkillDefinition weaponSkill)
+        {
+            var level = weaponSkill.GetLevelForRarity(ri);
+            descriptionText.text = !string.IsNullOrEmpty(weaponSkill.description)
+                ? weaponSkill.description
+                : $"{StatLabels.Of(weaponSkill.statTarget)} +{level.statValue:0.#}{(level.isMultiplier ? "%" : string.Empty)}";
         }
         else if (d is WeaponDefinition weapon && !data.isUpgrade)
         {
@@ -105,8 +142,9 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         }
         else if (d is WeaponDefinition wu && data.isUpgrade)
         {
-            var prev = wu.CurrentStats;
-            var next = wu.NextStats;
+            var handler = PlayerCartWeaponHandler.Instance;
+            var prev = handler != null ? handler.GetCurrentStats(wu) : wu.GetStatsForRarity(0);
+            var next = handler != null ? handler.GetNextStats(wu) : wu.GetStatsForRarity(ri);
             descriptionText.text = !string.IsNullOrEmpty(wu.description)
                 ? wu.description
                 : $"DMG {prev.damage}→{next.damage}" +

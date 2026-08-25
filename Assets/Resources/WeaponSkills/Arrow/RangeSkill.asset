@@ -17,7 +17,6 @@ MonoBehaviour:
   description: RNG -> 10% -> 11%
   weaponType: 1
   statTarget: 2
-  currentRarity: -1
   levels:
   - statValue: 10
     isMultiplier: 1

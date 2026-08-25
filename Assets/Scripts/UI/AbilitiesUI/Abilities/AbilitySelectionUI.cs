@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Assets.Scripts.Systems.UITheme;
 
 public class AbilitySelectionUI : MonoBehaviour
 {
@@ -20,7 +21,7 @@ public class AbilitySelectionUI : MonoBehaviour
     public int maxExiles = 3;
 
     Color _normalBgColor;
-    readonly Color _exileBgColor = new Color(0.6f, 0f, 0f, 0.85f);
+    Color _exileBgColor;
 
     StarterAssets.PlayerController _playerController;
     StarterAssets.PlayerSkillHandler _skillHandler;
@@ -44,11 +45,44 @@ public class AbilitySelectionUI : MonoBehaviour
         btnPass.onClick.AddListener(OnPass);
         btnRefresh.onClick.AddListener(OnRefresh);
 
+        ApplyTheme();
+
         if (gameBackground != null)
         {
             gameBackground.gameObject.SetActive(false);
-            _normalBgColor = gameBackground.color;
+            gameBackground.color = _normalBgColor;
         }
+    }
+
+    void ApplyTheme()
+    {
+        var theme = UIThemeConfig.Instance;
+        if (theme == null) return;
+
+        theme.ApplyDestructiveAction(btnExile);
+        theme.ApplyNeutralAction(btnPass);
+        theme.ApplyPrimaryAction(btnRefresh);
+
+        ApplyButtonLabel(theme, btnExile);
+        ApplyButtonLabel(theme, btnPass);
+        ApplyButtonLabel(theme, btnRefresh);
+
+        theme.ApplyIconOutline(exileCountText != null ? exileCountText.GetComponent<Outline>() : null);
+        theme.ApplyIconOutline(refreshCountText != null ? refreshCountText.GetComponent<Outline>() : null);
+
+        _normalBgColor = theme.screenDim;
+        _exileBgColor = theme.screenDimExile;
+    }
+
+    static void ApplyButtonLabel(UIThemeConfig theme, Button button)
+    {
+        if (button == null) return;
+
+        var label = button.GetComponentInChildren<TMP_Text>(true);
+        if (label == null) return;
+
+        theme.ApplyTitle(label);
+        theme.ApplyTextShadow(label.GetComponent<Shadow>());
     }
 
     public void Show(
@@ -132,7 +166,7 @@ public class AbilitySelectionUI : MonoBehaviour
         if (data.drawable is SkillDefinition skill)
             _skillHandler.ApplySkill(skill, data.targetRarity);
         else if (data.drawable is WeaponSkillDefinition weaponSkill)
-            data.targetWeapon?.ApplyWeaponSkill(weaponSkill, data.targetRarity);
+            _weaponHandler?.ApplyWeaponSkill(data.targetWeapon, weaponSkill, data.targetRarity);
         else if (data.drawable is WeaponDefinition weapon)
         {
             if (data.isUpgrade) _weaponHandler?.UpgradeWeapon(weapon, data.targetRarity);

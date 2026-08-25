@@ -33,7 +33,6 @@ public class ItemDefinition : ScriptableObject, IDrawable
 
     public string DisplayName => itemName;
     public Sprite Icon => icon;
-    public int CurrentRarity => rarity;
 
     public Type GetAbilityType() =>
         string.IsNullOrEmpty(abilityTypeName) ? null : Type.GetType(abilityTypeName);

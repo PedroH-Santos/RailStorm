@@ -28,11 +28,11 @@ public static class AbilityDrawer
             {
                 if (excludedNames.Contains(s.DisplayName)) continue;
                 if (skillHandler.IsExiled(s)) continue;
-                if (!s.CanLevelUp && s.IsAcquired) continue;
+                if (!skillHandler.CanLevelUp(s)) continue;
 
-                int minRarity = s.IsAcquired ? s.NextRarity : 0;
+                int minRarity = skillHandler.HasSkill(s) ? skillHandler.NextRarity(s) : 0;
                 int targetRi = RollRarity(minRarity, s.MaxRarity, luck);
-                candidates.Add(new AbilityCardData(s, targetRi));
+                candidates.Add(new AbilityCardData(s, targetRi) { isNew = !skillHandler.HasSkill(s) });
             }
         }
 
@@ -44,8 +44,8 @@ public static class AbilityDrawer
                 if (weaponHandler.HasWeapon(w)) continue;
                 if (weaponHandler.IsExiled(w)) continue;
 
-                int targetRi = RollRarity(0, RarityHelper.Count - 1, luck);
-                candidates.Add(new AbilityCardData(w, targetRi));
+                int targetRi = RollRarity(0, Mathf.Min(RarityHelper.Count - 1, w.MaxRarity), luck);
+                candidates.Add(new AbilityCardData(w, targetRi) { isNew = true });
             }
         }
 
@@ -54,10 +54,10 @@ public static class AbilityDrawer
             foreach (var w in weaponHandler.AcquiredWeapons)
             {
                 if (excludedNames.Contains(w.DisplayName)) continue;
-                if (!w.CanUpgrade) continue;
+                if (!weaponHandler.CanUpgrade(w)) continue;
 
-                int minRarity = w.NextRarity;
-                int targetRi = RollRarity(minRarity, w.levels.Count - 1, luck);
+                int minRarity = weaponHandler.NextRarity(w);
+                int targetRi = RollRarity(minRarity, w.MaxRarity, luck);
                 candidates.Add(new AbilityCardData(w, targetRi, true));
             }
         }
@@ -67,7 +67,7 @@ public static class AbilityDrawer
             foreach (var ws in weaponSkillPool)
             {
                 if (excludedNames.Contains(ws.DisplayName)) continue;
-                if (!ws.CanLevelUp && ws.IsAcquired) continue;
+                if (!weaponHandler.CanLevelUp(ws)) continue;
 
                 WeaponDefinition owner = null;
                 foreach (var w in weaponHandler.AcquiredWeapons)
@@ -76,9 +76,9 @@ public static class AbilityDrawer
                 }
                 if (owner == null) continue;
 
-                int minRarity = ws.IsAcquired ? ws.NextRarity : 0;
+                int minRarity = weaponHandler.HasWeaponSkill(ws) ? weaponHandler.NextRarity(ws) : 0;
                 int targetRi = RollRarity(minRarity, ws.MaxRarity, luck);
-                candidates.Add(new AbilityCardData(ws, targetRi, owner));
+                candidates.Add(new AbilityCardData(ws, targetRi, owner) { isNew = !weaponHandler.HasWeaponSkill(ws) });
             }
         }
 

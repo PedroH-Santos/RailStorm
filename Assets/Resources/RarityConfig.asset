@@ -17,29 +17,34 @@ MonoBehaviour:
     displayName: Comum
     color: {r: 0.5764706, g: 0.6627451, b: 0.7294118, a: 1}
     iconPlate: {fileID: 21300000, guid: a1171bd08e7f1d54397f0a63b7f929b1, type: 3}
+    iconGlow: {fileID: 21300000, guid: 1f5ebe7d4d96a2c409ff9573b1f616d2, type: 3}
     baseWeight: 60
     weightPerLuck: -0.3
   - id: Uncommon
     displayName: Incomum
     color: {r: 0.20784314, g: 0.78039217, b: 0.3529412, a: 1}
     iconPlate: {fileID: 21300000, guid: 939bf2b441608d3448cb21688774af7f, type: 3}
+    iconGlow: {fileID: 21300000, guid: 19c5deca7b1dff6459441d02da3a085d, type: 3}
     baseWeight: 25
     weightPerLuck: -0.1
   - id: Rare
     displayName: Rara
     color: {r: 0.18039216, g: 0.5254902, b: 0.9411765, a: 1}
     iconPlate: {fileID: 21300000, guid: ddf08173915a0fe4897e766702fcc51f, type: 3}
+    iconGlow: {fileID: 21300000, guid: 4c0fa21f64a0a5146a790b567ac7bb11, type: 3}
     baseWeight: 10
     weightPerLuck: 0.15
   - id: Epic
     displayName: "\xC9pica"
     color: {r: 0.6627451, g: 0.29411766, b: 0.92156863, a: 1}
     iconPlate: {fileID: 21300000, guid: 4088899ad0af5c14698b955745dae1de, type: 3}
+    iconGlow: {fileID: 21300000, guid: 5c81c1e622364ce43bde49a02dcbacb5, type: 3}
     baseWeight: 4
     weightPerLuck: 0.15
   - id: Legendary
     displayName: "Lend\xE1ria"
     color: {r: 1, g: 0.6901961, b: 0.1254902, a: 1}
     iconPlate: {fileID: 21300000, guid: c94a6a0a2ba13e4419f01d453adfe684, type: 3}
+    iconGlow: {fileID: 21300000, guid: 04ca92dd35ecb4e4f902495f5be6608e, type: 3}
     baseWeight: 1
     weightPerLuck: 0.1

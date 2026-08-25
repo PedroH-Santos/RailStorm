@@ -5,6 +5,7 @@ public class AbilityCardData
     public IDrawable drawable;
     public int targetRarity;
     public bool isUpgrade;
+    public bool isNew;
     public WeaponDefinition targetWeapon;
 
     public string DisplayName => drawable.DisplayName;

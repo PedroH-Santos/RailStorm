@@ -11,9 +11,9 @@ public class InventoryEntry
     public string DisplayName => Drawable?.DisplayName ?? string.Empty;
     public Sprite Icon => Drawable?.Icon;
 
-    public InventoryEntry(IDrawable drawable)
+    public InventoryEntry(IDrawable drawable, int currentRarity)
     {
         Drawable = drawable;
-        CurrentRarity = drawable.CurrentRarity;
+        CurrentRarity = Mathf.Max(currentRarity, 0);
     }
 }

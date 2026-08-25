@@ -9,6 +9,7 @@ public class InventorySlotView
 
     readonly Image _icon;
     readonly Image _rarityBorder;
+    readonly Image _rarityGlow;
     readonly TextMeshProUGUI _levelLabel;
     readonly TooltipTrigger _tooltip;
 
@@ -18,9 +19,10 @@ public class InventorySlotView
         _tooltip = root.GetComponent<TooltipTrigger>();
         _icon = FindDeep(root.transform, "Icon")?.GetComponent<Image>();
         _rarityBorder = FindDeep(root.transform, "BackGround")?.GetComponent<Image>();
+        _rarityGlow = FindDeep(root.transform, "Pattern")?.GetComponent<Image>();
         _levelLabel = FindDeep(root.transform, "LevelLabel")?.GetComponent<TextMeshProUGUI>();
 
-        UIThemeConfig.Instance?.ApplyBody(_levelLabel);
+        ApplyTheme(root.transform);
     }
 
     public void Apply(InventoryEntry entry)
@@ -37,11 +39,35 @@ public class InventorySlotView
             _rarityBorder.color = entry.RarityColor;
         }
 
+        if (_rarityGlow != null)
+        {
+            var glow = RarityHelper.IconGlow(entry.CurrentRarity);
+            _rarityGlow.enabled = glow != null;
+            if (glow != null) _rarityGlow.sprite = glow;
+            _rarityGlow.color = RarityHelper.GlowColor(entry.CurrentRarity);
+        }
+
         if (_levelLabel != null)
             _levelLabel.text = entry.LevelDisplay;
 
         if (_tooltip != null)
-            _tooltip.SetSource(entry.Drawable);
+            _tooltip.SetSource(entry.Drawable, entry.CurrentRarity);
+    }
+
+    void ApplyTheme(Transform root)
+    {
+        var theme = UIThemeConfig.Instance;
+        if (theme == null) return;
+
+        theme.ApplyBodyHighlight(_levelLabel);
+        theme.ApplyIconOutline(_levelLabel != null ? _levelLabel.GetComponent<Outline>() : null);
+        theme.ApplyIconOutline(_icon != null ? _icon.GetComponent<Outline>() : null);
+
+        var tray = FindDeep(root, "SlotPlate")?.GetComponent<Image>();
+        if (tray != null) tray.color = theme.slotTray;
+
+        var shadow = FindDeep(root, "SlotShadow")?.GetComponent<Image>();
+        if (shadow != null) shadow.color = theme.dropShadow;
     }
 
     public void Hide() => Root.SetActive(false);

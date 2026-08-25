@@ -37,6 +37,7 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 ## 3. Arquitetura e convenções observadas
 
 - **ScriptableObjects para dados de design**: `WeaponDefinition`, `SkillDefinition`, `ItemDefinition`, `HordeEventConfig`, `ChestLootTable`, `RarityConfig`, `SplineManifest`. A maioria é carregada em runtime via `Resources.Load`/`Resources.LoadAll` a partir de `Assets/Resources/`.
+- **Regra inegociável — ScriptableObject é dado de design, nunca estado de run (25/08).** Um SO é um **asset em disco, instância única compartilhada**: escrever nele em runtime persiste a mudança entre sessões de Play no Editor e vaza entre runs no build. Nenhum campo que descreva o *progresso do jogador* (nível adquirido, posse, exílio, contadores) pode morar num SO — esse estado pertence sempre a um handler em runtime. Ver 4.12.
 - **`IDrawable`** (`Assets/Scripts/Skills/Interfaces/IDrawable.cs`) — interface comum a `SkillDefinition`, `WeaponDefinition` e `ItemDefinition`, usada para exibição unificada em cards de UI (loja, baú, seleção de habilidades, inventário).
 - **Eventos C#** (`Action`/`event`, vários estáticos) para desacoplar sistemas — ex.: `EnemySpawner.OnWaveCleared/OnWaveStarted`, `ChestInteractable.OnChestOpened`, `HordeSpawner.OnHordeStarted/OnHordeEnded`. Não há um Event Bus central.
 - **Singletons simples** (campo estático `Instance`, sem framework): `SplineRuntimeState`, `RarityConfig`, `InteractPromptUI`, `ChestRevealEffect`.
@@ -91,8 +92,8 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 - **`Skills/PlayerSkillHandler.cs`** — ver seção 4.6.
 
 **Armas do vagão (Cart):**
-- **`Cart/PlayerCartWeaponHandler.cs`** — inventário de até `maxWeapons = 3` armas equipadas (`WeaponDefinition`); aquisição/upgrade/exílio; evento `OnWeaponsChanged`.
-- **`Cart/Weapons/WeaponDefinition.cs`** — ScriptableObject de arma (`IDrawable`), níveis por raridade (`WeaponLevelData`), cache de stats efetivos aplicando `WeaponSkillDefinition`.
+- **`Cart/PlayerCartWeaponHandler.cs`** — inventário de até `maxWeapons = 3` armas equipadas (`WeaponDefinition`); aquisição/upgrade/exílio; evento `OnWeaponsChanged`. **É o dono do progresso de armas da run** (ver 4.12): guarda o nível de cada arma, o nível de cada `WeaponSkillDefinition`, quais weapon skills estão aplicadas em qual arma, e o cache de stats efetivos. Expõe `Instance` estático (padrão do projeto) para os consumidores desacoplados.
+- **`Cart/Weapons/WeaponDefinition.cs`** — ScriptableObject de arma (`IDrawable`), **dado puro e imutável**: níveis por raridade (`WeaponLevelData`), `MaxRarity`/`LevelCount`, `GetStatsForRarity`. Não guarda nível adquirido nem skills aplicadas — quem faz isso é o `PlayerCartWeaponHandler`.
 - **`Cart/Weapons/WeaponLevelData.cs`** — base abstrata (dano/cadência/alcance) + `ArrowLevelData` (speed, arrowCount) e `MagicLevelData` (area, castTime).
 - **`Cart/Weapons/WeaponSkillDefinition.cs`** — skill que modifica um stat de um tipo de arma específico (3 níveis padrão: +10%/+20%/+30%).
 - **`Cart/Wheels/WheelSpin.cs`** — puramente visual, gira a roda proporcional a `PlayerController.CurrentSpeed`.
@@ -214,13 +215,13 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
 - Um item/skill tem exatamente um efeito: ou muda um stat do jogador (soma um valor fixo, ou multiplica percentualmente o stat atual), ou concede uma habilidade nova (comportamento em código, adicionado dinamicamente ao jogador).
 - Skills só podem ser "upgradadas" para uma raridade estritamente maior que a atual — não dá pra pegar uma versão pior/igual de uma skill já adquirida.
 - Existem 5 níveis de raridade (Common → Legendary); quanto mais sorte (`LuckPercent`) o jogador tem, menor o peso de raridades comuns e maior o de raras/épicas/lendárias no sorteio — a fórmula é a mesma em toda parte do jogo que sorteia por raridade.
-- Cada raridade carrega, além do peso, sua **identidade visual**: uma cor viva e uma placa 9-slice própria (`RarityDto.color` e `RarityDto.iconPlate`). Nenhuma tela decide cor ou placa por conta própria — todas passam por `RarityHelper` (ver 4.10).
+- Cada raridade carrega, além do peso, sua **identidade visual**: uma cor viva, uma placa 9-slice própria e um brilho de fundo próprio (`RarityDto.color`, `RarityDto.iconPlate` e `RarityDto.iconGlow`). Nenhuma tela decide cor, placa ou brilho por conta própria — todas passam por `RarityHelper` (ver 4.10).
 - Um item "exilado" pelo jogador nunca mais aparece em baús, mas isso **não** o remove da loja (a loja só evita itens já possuídos, não os exilados) — comportamento assimétrico a ter em mente.
 
 - **`Items/ItemDefinition.cs`** — ScriptableObject (`IDrawable`): `price` (só loja), `rarity`, `effectType` (`StatChange` ou `Ability`). `StatChange`: `statTarget`/`statValue`/`isMultiplier`. `Ability`: `abilityTypeName`, resolvido via `Type.GetType`, componente adicionado dinamicamente ao player.
 - **`Player/Items/PlayerItemHandler.cs`** — `AcquireItem` idempotente; `ApplyStatChange` suporta `MoveSpeed`, `MaxHP`, `HP`, `Coins`, `LuckPercent` (soma ou multiplicador `%`); alvos não tratados só logam warning. `ExileItem`/`IsExiled` (exilado não reaparece em baús, mas ainda pode aparecer na loja — a loja só filtra por `HasItem`). `ResetForNewRun()` limpa tudo.
-- **`Skills/SkillDefinition.cs`** — ScriptableObject genérico (`IDrawable`), níveis por raridade (`SkillLevelData`).
-- **`Player/Skills/PlayerSkillHandler.cs`** — aplica/upgrade skills; upgrade só permitido se `rarityIndex > CurrentRarity`; tem lógica análoga de aplicar `Coins` como soma/multiplicador.
+- **`Skills/SkillDefinition.cs`** — ScriptableObject genérico (`IDrawable`), **dado puro e imutável**: níveis por raridade (`SkillLevelData`), `MaxRarity`/`LevelCount`, `GetLevelForRarity`. Não guarda o nível adquirido (ver 4.12).
+- **`Player/Skills/PlayerSkillHandler.cs`** — **dono do progresso de skills da run**: `Dictionary<SkillDefinition,int>` com o nível adquirido de cada skill. Aplica/upgrade skills; upgrade só permitido se `rarityIndex > GetRarity(skill)`; tem lógica análoga de aplicar `Coins` como soma/multiplicador. Expõe `Instance` estático.
 - **Raridade** (`Systems/Rarity/`): `RarityConfigDefinition` (singleton `RarityConfig`, `Resources/RarityConfig.asset`) — 5 níveis padrão:
   | Raridade | Cor (24/08) | baseWeight | weightPerLuck |
   |---|---|---|---|
@@ -230,7 +231,7 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
   | Epic | `#A94BEB` | 4 | +0.15 |
   | Legendary | `#FFB020` | 1 | +0.10 |
 
-  As cores foram saturadas em 24/08 a pedido do usuário ("cores vivas"). Common é a exceção deliberada: fica no cinza-aço da paleta do tema, para o degrau para Uncommon ser visível. `RarityDto.iconPlate` aponta para `Assets/UI/Theme/Rarity/IconPlate*.png`.
+  As cores foram saturadas em 24/08 a pedido do usuário ("cores vivas"). Common é a exceção deliberada: fica no cinza-aço da paleta do tema, para o degrau para Uncommon ser visível. `RarityDto.iconPlate` aponta para `Assets/UI/Theme/Rarity/IconPlate*.png` e `RarityDto.iconGlow` para `IconGlow*.png`.
 
   `RarityHelper.GetWeight(rarity, luck) = max(0, baseWeight + weightPerLuck * clamp(luck, 0, 100))`. `RarityRoller.Roll(minRi, maxRi, luck)` — sorteio ponderado num intervalo. Usado por Chest, Shop e `AbilityDrawer`.
 
@@ -360,7 +361,27 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
   | `ApplyStatLabel` | Nunito | `textBody` |
   | `ApplyStatValue` | Nunito | `textTitle` |
 
-  Consumidores: `AbilityCardUI` (`ApplyTitle` no nome, `ApplyBody` no resto), `StatRowUI` e `TooltipStatRowUI` (`ApplyStatLabel`/`ApplyStatValue`), `TooltipUpgradeRowUI` (`ApplyBodyHighlight` no nome da melhoria, `ApplyStatLabel` no efeito e no nível), `TooltipUI`, `InventorySlotView`.
+  Consumidores de texto: `AbilityCardUI` (`ApplyTitle` no nome, `ApplyBody` no resto), `StatRowUI` e `TooltipStatRowUI` (`ApplyStatLabel`/`ApplyStatValue`), `TooltipUpgradeRowUI` (`ApplyBodyHighlight` no nome da melhoria, `ApplyStatLabel` no efeito e no nível), `TooltipUI`, `InventorySlotView` (`ApplyBodyHighlight` no nível do slot).
+
+  **Cores que não são texto (25/08).** Até então só fonte+cor de texto passavam pelo tema; sombra, contorno, cor de botão e bandeja de slot ficavam cravados no Inspector de cada objeto. Hoje também são campos do `UIThemeConfig`:
+
+  | Campo | Valor | Papel |
+  |---|---|---|
+  | `slotTray` | `#0C2238` | bandeja do slot de inventário |
+  | `actionPrimary` | `#BC621B` | botão de ação principal (`Atualizar`) |
+  | `actionNeutral` | `#5D839B` | botão de saída sem consequência (`Pular`) |
+  | `actionDestructive` | `#A8392A` | botão destrutivo (`Exilar`) |
+  | `dropShadow` | preto 55% | sombra projetada de peças (ex.: `SlotShadow`) |
+  | `outlineDark` | `#0A0805` a 85% | contorno de ícone branco e de número sobre cor |
+  | `textShadow` | `#150A03` a 80% | sombra de entalhe em títulos, níveis e rótulos de botão |
+  | `screenDim` | `#04101F` a 69% | escurecimento do jogo atrás de tela modal |
+  | `screenDimExile` | `#990000` a 85% | escurecimento durante o modo de exílio |
+
+  E ganharam métodos `Apply*` no mesmo padrão "o método declara o papel": `ApplyIconOutline(Shadow)`, `ApplyTextShadow(Shadow)`, `ApplyPrimaryAction(Button)`, `ApplyNeutralAction(Button)`, `ApplyDestructiveAction(Button)`. Quem aplica: `AbilitySelectionUI.ApplyTheme` (os três botões, os rótulos, os contadores e as duas cores de dim) e `InventorySlotView.ApplyTheme` (bandeja, sombra e contornos do slot).
+
+  > **Cor no Inspector agora é só preview.** Toda cor da tela de habilidade é escrita em runtime a partir do asset, então o valor gravado na cena/prefab serve apenas para o Editor não mostrar objeto branco. Isso vale tanto para as cores de tema quanto para as de raridade (`AbilityCardUI.Setup`, `InventorySlotView.Apply`). Ao mexer numa cor, mexa no `Resources/UIThemeConfig.asset` — mudar no objeto não tem efeito em jogo.
+
+  > **Por que isso importa (custou uma correção).** A bandeja do slot nasceu como valor literal no prefab e ficou órfã do tema: não havia nada ligando `#0C2238` à paleta, e uma mudança futura de paleta a deixaria para trás. Foi o que motivou a varredura — vale a mesma regra para qualquer cor nova.
 - **`AbilityCardUI.cs`** — primeiro consumidor via script: aplica `ApplyTitle`/`ApplyBody` nos textos do card (nome, descrição, nível) e deriva de `RarityHelper` tudo que é colorido por raridade (`cardBackground`, `cardBorder`, `cardFill`, `rarityText`) — ver "Raridade como cor do card" abaixo.
 - **Sprites 9-slice próprios** (`Assets/UI/Theme/`, gerados via editor script, SDF de rounded-box, sem dependência de asset generation por IA): `PanelFrame9Slice.png` (fundo `panelBackground` + borda `panelBorder` já cravada na arte, usado em `SkillPanel`/`InventoryPanel`/`StatsPanel`), `CardFrame9Slice.png` (mesma borda, fundo `cardFill` mais claro, usado nos cards), `BorderOnly9Slice.png` (centro transparente, só o anel da borda em branco — feito pra ser tintado por `Image.color`, usado como camada extra sobre o preenchimento sólido dos botões, já que cada botão tem uma cor de função diferente).
 - **Moldura ornamentada dos painéis (20/08).** Os 3 painéis da tela de habilidade (`InventoryPanel`, `SkillPanel`, `StatsPanel`) usam agora **`Assets/UI/Theme/OrnateFrame9Slice.png`** no lugar do `WoodPanelFrame9Slice`: moldura de couro escuro com bisel metálico na aresta externa, um sulco corrido no meio da faixa, um bead na aresta interna e **chapas de canto com 3 rebites cada**. O sprite é 256×256 com `spriteBorder = 56` e é aplicado com `Image.pixelsPerUnitMultiplier = 2` (a borda desenha ~28px em tela).
@@ -391,6 +412,41 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
   O contador de usos restantes fica no `CountBadge`, **centralizado horizontalmente logo acima do botão**. Ele **não tem `Image` de fundo**: o número se destaca por `Outline` escuro + `Shadow`, sem plaquinha atrás. As referências `exileCountText`/`refreshCountText` do `AbilitySelectionUI` apontam pro `CountText` dentro dele.
 
+- **Hierarquia de texto do card (25/08).** Os quatro textos do card estavam todos entre 21 e 30 e o card lia como um bloco cinza uniforme — a queixa foi "sem evidência" em comparação com o Megabonk. Os tamanhos agora se separam por importância:
+
+  | Texto | Antes → Agora | Fonte | Cor |
+  |---|---|---|---|
+  | `Title` (nome) | 30 → **38** (autosize 24–38) | Lilita One, Bold | `textTitle` |
+  | `Level` ("Nível 5" / "NOVO") | 21 → **34**, Bold, alinhado à direita | Lilita One | **cor da raridade** |
+  | `Rarity` ("Lendária") | 24 → **28**, Bold | Fredoka | cor da raridade |
+  | `Description` | 23 → **26** (autosize 20–26) | Fredoka | `textBody` |
+
+  `Title`, `Level` e `Rarity` ganharam `Shadow` `#150A03` (alpha 0.8) deslocado ~2px, o mesmo tratamento dos títulos de painel e dos rótulos de botão.
+
+  > **O nível deixou de ser texto de corpo.** `AbilityCardUI.Setup` chamava `theme.ApplyBody(levelText)`, o que o deixava em Fredoka cinza — igual à descrição, que é a informação menos importante do card. Agora `Setup` aplica `theme.titleFont` e pinta o texto com a **cor da raridade** (mesmo tratamento do `rarityText`), então o nível vira o segundo ponto de leitura do card, como o "LVL 5" amarelo do Megabonk. Por isso ele não usa `ApplyTitle`: o método também cravaria `textTitle` por cima da cor da raridade.
+
+  > **Descrição de skill de arma não era preenchida (bug, 25/08).** A cadeia de `if/else` do `Setup` cobria `SkillDefinition` e `WeaponDefinition`, mas **não** `WeaponSkillDefinition` — cartas de melhoria de arma ficavam com o texto do card anterior (ou com o placeholder da cena, "DESCRICAO DO ITEM"). Agora `descriptionText` é zerado antes da cadeia, e há um ramo para `WeaponSkillDefinition` que usa `description` do asset ou, se vazio, monta a linha a partir de `StatLabels.Of(statTarget)` mais o valor do nível.
+
+  > **"NOVO" no lugar do nível (25/08).** Quando a carta oferece algo que o jogador **ainda não tem**, o campo de nível mostra `NOVO` em vez de `Nível 1` — dizer "Nível 1" para um item inédito não informa nada, enquanto "NOVO" é a informação que de fato muda a decisão. Quem decide é o `AbilityDrawer`, não o card: ele já consulta posse para calcular a raridade mínima (`skillHandler.HasSkill`, `weaponHandler.HasWeapon`, `weaponHandler.HasWeaponSkill`), então grava o resultado em `AbilityCardData.isNew` e o `AbilityCardUI.Setup` só lê a flag. **Não** dá para inferir isso de `isUpgrade`: essa flag existe só para distinguir upgrade de arma equipada, e uma skill nova também chega com `isUpgrade = false`.
+
+  > **Autosize só funciona se a linha não puder crescer (25/08 — bug encontrado em jogo).** Ligar `enableAutoSizing` no `Title` não bastou: `InfoTexts` tem `childControlHeight`, então a altura da `TitleRow` vinha do tamanho preferido dos filhos. Com o nome quebrando em 3 linhas, o TMP reportava uma altura preferida maior, a linha crescia junto e o texto **nunca estourava o próprio rect** — o autosize entendia que cabia e mantinha o corpo cheio. Quem estourava era o card, que tem 200px fixos. O conserto é travar a altura: `TitleRow` com `preferredHeight = 78` e `flexibleHeight = 0`, `Description` com `preferredHeight = 82`, `spacing = 8` no `InfoTexts` e `childForceExpandHeight = false` (78 + 8 + 82 = 168, a altura útil do card). Só então o autosize passa a agir — hoje "Aumento de Cadência das Flechas" cai para ~34pt em 2 linhas, enquanto "Skill Life" continua nos 38 cheios.
+
+  > **`childForceExpandWidth` na `TitleRow` também precisou sair.** Com a flag ligada, a sobra horizontal é dividida em partes iguais entre `Title` e `Level`, **ignorando o `flexibleWidth = 0`** do `Level` — o rótulo de nível ficava com ~200px e espremia o nome. Desligada, o `Level` fica no `preferredWidth = 150` e todo o resto vai para o nome (~445px).
+
+- **Proporção da placa de ícone no card (25/08).** A placa era **221×108** (paisagem 2:1) e dominava o card. Passou para **112×128** (retrato), na proporção do Megabonk, onde o ícone é uma peça vertical estreita à esquerda da linha. O que mudou na cena:
+
+  | Objeto | Ajuste |
+  |---|---|
+  | `ImageContainer` | `LayoutElement.preferredWidth = 168`, `flexibleWidth = 0` — a coluna do ícone deixou de disputar largura com os textos |
+  | `ImageContainer` (VLG) | `childForceExpandWidth = false`, `childAlignment = UpperCenter`, `spacing = 8` |
+  | `Rarity` | `preferredHeight` 50 → **32**, fonte 28 → **26** — é o que libera altura para a placa |
+  | `Background` (placa) | `preferredWidth = 112`, `preferredHeight = 128`, ambos `flexible = 0` |
+  | `Icon` | margem uniforme de 14px dentro da placa (`offsetMin/Max`), `preserveAspect = true` |
+
+  > **A altura do container é o orçamento.** `ImageContainer` tem 168px (card 200 − padding 32). Rarity 32 + spacing 8 + placa 128 = 168 — encaixa exato. Para deixar a placa mais alta é preciso tirar de algum dos outros dois, não do card.
+
+  > **Por que `childForceExpandWidth = false`.** Com a flag ligada (como estava), o `VerticalLayoutGroup` estica todo filho até a largura do container, então o `preferredWidth = 112` da placa era ignorado e ela voltava a ocupar a coluna inteira. Desligando a flag, a placa fica no tamanho pedido e o rótulo de raridade — que precisa de mais largura que ela para caber "Lendária" — continua livre para usar os 168 do container.
+
 - **Seleção do card animada.** `SelectionBracketsAnimator` (no mesmo GameObject `SelectionBrackets`) faz **cada cantoneira avançar na direção do centro do card e voltar**, em ciclo (`amplitude = 8px`, `cycleDuration = 1.1s`). A direção de cada uma é derivada do próprio `anchorMin`, não configurada à mão: `x < 0.5 → +1`, senão `-1` (idem em y), o que dá `(1,-1)` na superior-esquerda, `(-1,-1)` na superior-direita e assim por diante. A fase usa `(1 - cos)/2`, que vai de 0 a 1 e volta a 0 — as cantoneiras **só entram e retornam**, nunca passam para fora do repouso.
 
   Usa `Time.unscaledDeltaTime` porque a tela roda com o jogo pausado (`Time.timeScale = 0`), e guarda/restaura a posição de repouso em `OnEnable`/`OnDisable` — sem isso o card acumularia deslocamento a cada vez que fosse reciclado.
@@ -401,31 +457,46 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
 - **Raridade como cor do card (referência: Megabonk).** As camadas do card recebem a cor de raridade em intensidades diferentes, todas derivadas em runtime por `AbilityCardUI.Setup` — **não há nada configurado por raridade no Inspector**:
   - `cardBackground` (placa do ícone) → cor cheia da raridade, **e também troca de sprite** para a placa da raridade (ver "Placa de ícone por raridade" abaixo).
+  - `iconGlow` (camada `Pattern`, entre a placa e o ícone) → troca de sprite para o brilho da raridade e recebe `RarityHelper.GlowColor(ri)` (ver "Brilho de fundo por raridade" abaixo).
   - `cardBorder` (novo filho `CardBorder`) → cor cheia da raridade. É o anel que identifica o card à distância.
   - `cardFill` (corpo do card) → `Color.Lerp(panelBackground, Shade(cor, cardFillDarkness), cardFillRarityBlend)`, com `cardFillDarkness = 0.3` e `cardFillRarityBlend = 0.7` no Inspector.
   - `rarityText` → cor cheia da raridade (o texto "Comum"/"Rara"/"Lendária"). Por isso `Setup` aplica só a **fonte** do tema nesse texto, nunca `ApplyBody`, que sobrescreveria a cor.
 
   > **Por que escurecer antes de misturar, e não misturar direto com o navy.** A versão anterior fazia `Lerp(panelBackground, corDaRaridade, blend)`. Misturar navy com uma raridade **quente** (o amarelo lendário) anda pelo meio da roda de cores e produz um verde-oliva sujo, sem relação com a raridade; a raridade azul, ao contrário, ficava clara demais e brigava com o painel. Escurecer primeiro (`Shade`) preserva o matiz e só derruba o brilho, então o corpo do card vira "a mesma cor, no escuro" — que é exatamente a leitura do Megabonk: card escuro, borda viva.
 
-- **Placa de ícone por raridade (24/08).** `Assets/UI/Theme/Rarity/IconPlate{Common,Uncommon,Rare,Epic,Legendary}.png` — 64×64, `spriteBorder = 26`, aplicadas com `pixelsPerUnitMultiplier = 1` (assim o detalhe desenha em tamanho nativo). Todas em tons de cinza, tintadas em runtime com a cor da raridade, e **todas iguais no corpo** — o que muda é um entalhe escuro (`0.14`) que escala com a raridade:
+- **Placa de ícone por raridade (25/08).** `Assets/UI/Theme/Rarity/IconPlate{Common,Uncommon,Rare,Epic,Legendary}.png` — 64×64, `spriteBorder = 26`, aplicadas com `pixelsPerUnitMultiplier = 1` (assim o detalhe desenha em tamanho nativo). Todas em tons de cinza, tintadas em runtime com a cor da raridade. Estrutura, de fora para dentro: contorno `0.10` (~2px) → aro `1.0` (~3.6px, é ele que vira a cor viva) → **corpo escuro** em degradê vertical `0.30` no topo → `0.15` na base.
 
-  | Raridade | Detalhe entalhado |
+  > **Por que o corpo é escuro (25/08).** Até 24/08 o corpo ficava em `0.88`→`0.58`: a placa inteira era a cor da raridade em brilho cheio, e o ícone branco por cima não tinha contraste — era a queixa de "fica difícil ver o que é o ícone". Hoje só o aro carrega a cor viva (mesma leitura do Megabonk: placa escura, borda viva). É também o que permite o brilho descrito abaixo aparecer: sobre um corpo claro, qualquer halo some.
+
+  O detalhe que diferencia cada raridade agora é **claro** (`0.58`) contra o corpo escuro — o inverso da versão anterior, em que era um entalhe escuro sobre corpo claro:
+
+  | Raridade | Detalhe embutido |
   |---|---|
-  | Comum | nenhum — só o risco diagonal |
+  | Comum | nenhum — placa lisa |
   | Incomum | linha fina recuada, acompanhando a borda |
   | Rara | + triângulos sólidos nos 4 cantos |
   | Épica | + cantoneiras em "L" nos 4 cantos |
-  | Lendária | + cantoneiras mais grossas com um losango cravado em cada canto |
+  | Lendária | + cantoneiras mais grossas com uma gema (losango, `0.94`) cravada em cada canto |
 
-  Estrutura comum da placa, de fora para dentro: contorno `0.10` (~2px) → aro `1.0` (~3.4px, é ele que vira a cor viva) → corpo em degradê vertical `0.88` no topo → `0.58` na base.
+- **Brilho de fundo por raridade (25/08).** `Assets/UI/Theme/Rarity/IconGlow{Common,Uncommon,Rare,Epic,Legendary}.png` — 256×256, **sem** `spriteBorder` (`Image.Type.Simple`), brancas com o desenho inteiro no canal alpha. Vivem na camada `Pattern` (filha da placa, `SetSiblingIndex(0)`, portanto entre a placa e o ícone) e **substituíram o risco diagonal** que ficava ali antes. A ideia é a das HUDs mobile de referência: uma luz atrás do ícone que o coloca em evidência, em vez de uma textura que compete com ele.
 
-  **Risco diagonal no fundo (referência direta: Megabonk).** Por cima da placa vai uma camada `Pattern` — filha da própria placa, `SetSiblingIndex(0)` (atrás do ícone), esticada, `raycastTarget = false`, branca com **alpha 0.22**. Ela usa `Assets/UI/Theme/Rarity/IconPlateStripes.png`: faixas diagonais a 45°, com uma máscara de *falloff* que apaga o risco antes de chegar na borda. É o mesmo sprite para todas as raridades — quem colore é a placa embaixo.
+  | Raridade | Brilho |
+  |---|---|
+  | Comum | só o halo radial suave, sem enfeite |
+  | Incomum | halo + poeira de círculos **pequenos** |
+  | Rara | halo + círculos **médios**, parte deles em anel |
+  | Épica | halo + círculos **grandes** + aro externo + 4 faíscas |
+  | Lendária | halo + raios saindo do centro + 6 faíscas + aro externo |
 
-  > **Por que o risco é uma camada separada, e não parte da placa.** A placa é `Image.Type.Sliced`: a faixa central é **esticada**. Uma diagonal desenhada nela seria cortada nas emendas do 9-slice e viraria um borrão nas faixas centrais (a mesma armadilha das runas na moldura de madeira). A camada `Pattern` é `Type.Simple`, então estica por inteiro e nunca tem emenda. O *falloff* nas bordas existe para o retângulo do `Pattern` não vazar pelos cantos arredondados da placa — em vez de recortar a máscara (que distorceria junto com o esticamento), o risco simplesmente some antes da quina.
+  A intensidade do halo escala com a raridade (`0.55` no Comum → `0.88` no Lendário), e o centro leva uma queda de 16% para o ícone não se perder justamente no ponto mais claro.
 
-  > **Duas versões do sprite, por causa do ângulo.** Um `Type.Simple` estica no eixo do rect, então uma diagonal de 45° num sprite quadrado desenhada num rect 2:1 vira ~27°. Como a placa do card é 220×108 e a do slot é 88×88, existem `IconPlateStripes.png` (128×128, para slot e tooltip) e `IconPlateStripesWide.png` (256×126, para os cards). A regra: **o aspecto do sprite tem que bater com o aspecto do rect** para o risco sair a 45° na tela. A diferença de *escala* entre telas (o risco do tooltip fica mais fino que o do slot) foi aceita — o que salta aos olhos é o ângulo, não o passo.
+  > **`preserveAspect = true` é obrigatório nessa camada.** O `Pattern` é esticado no rect da placa, que é 221×108 no card e 88×88 no slot. Sem a flag o halo circular vira elipse no card. Com ela, o sprite quadrado desenha `108×108` centralizado no card e `88×88` no slot — **um único sprite por raridade serve as duas telas**. Foi isso que aposentou o par `IconPlateStripes`/`IconPlateStripesWide`, que só existia porque um risco a 45° precisa de um sprite com o mesmo aspecto do rect. Os dois PNGs continuam no repo, sem uso.
 
-  **Ligação com o dado, não com a cena:** a placa é um campo novo em `RarityDto.iconPlate`, configurado no `Resources/RarityConfig.asset` e lido por `RarityHelper.IconPlate(int)`. Quem consome: `AbilityCardUI.Setup`, `InventorySlotView.Apply` e `TooltipUI` (via `TooltipData.RarityIndex`, campo novo preenchido em `TooltipBuilder`). Nenhum desses scripts conhece nome de arquivo — para trocar a arte de uma raridade basta apontar outro sprite no asset.
+  > **Por que o brilho é uma camada separada, e não parte da placa.** A placa é `Image.Type.Sliced`: a faixa central é **esticada**, então um halo desenhado nela seria cortado nas emendas do 9-slice. O `Pattern` é `Type.Simple` e nunca tem emenda. O alpha do brilho também cai a zero antes da borda do sprite, para o retângulo do `Pattern` não vazar pelos cantos arredondados da placa.
+
+  **Ligação com o dado, não com a cena:** placa e brilho são campos do `RarityDto` (`iconPlate`, `iconGlow`), configurados no `Resources/RarityConfig.asset` e lidos por `RarityHelper.IconPlate(int)` / `RarityHelper.IconGlow(int)`. A cor do brilho **não** é a cor crua da raridade: `RarityHelper.GlowColor(int)` mistura 30% de branco, senão o halo lê como "mais da mesma cor" em vez de luz. Quem consome: `AbilityCardUI.Setup` (campo `iconGlow`), `InventorySlotView.Apply` (acha o `Pattern` por `FindDeep`, mesmo padrão do resto do slot) e `TooltipUI` (campo `iconGlow`, raridade via `TooltipData.RarityIndex`). Nenhum desses scripts conhece nome de arquivo — para trocar a arte de uma raridade basta apontar outro sprite no asset.
+
+  **A arte é gerada por script:** `Assets/Editor/RarityIconArtGenerator.cs`, menu `Tools/RailStorm/Gerar placas e brilhos de raridade`. Ele redesenha os 10 PNGs (5 placas + 5 brilhos), reaplica as configurações de import e já reatribui os sprites no `RarityConfig.asset`. Os números de cada raridade (raio e pico do halo, quantidade/tamanho dos círculos, raios, faíscas) ficam nos arrays indexados por raridade dentro de `BuildGlow`/`BuildGlowCircles`/`BuildGlowSparkles` — é lá que se ajusta o visual, não no Inspector.
 
   > **Regra do 9-slice vale aqui também:** todo detalhe reconhecível (triângulos, cantoneiras, losangos) fica dentro dos `26px` da região de canto. O único elemento que atravessa as faixas esticadas é a linha do Incomum — e ela é paralela à borda, então esticar não a deforma. Foi por isso que a `spriteBorder` subiu de `20` para `26`: com `20`, a ponta do braço da cantoneira caía na faixa central e esticava junto com a placa.
 
@@ -457,13 +528,28 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
   **Regra estrutural (importante):** ornamento **nunca** entra na arte do 9-slice — se entrasse, esticaria/repetiria junto com o painel e deformaria. Cada ornamento é uma `Image` filha própria, com `LayoutElement.ignoreLayout = true` (pra escapar do `VerticalLayoutGroup`/`HorizontalLayoutGroup` do pai), `raycastTarget = false`, âncora no canto correspondente e `sizeDelta` fixo. Divisão: **painel/card = 9-slice (estica)**, **ornamento = sprite simples (tamanho fixo, só ancorado)**. Mesma separação usada por Hades/Megabonk/Raveswatch.
 - **`AbilitySelectionUI` (cena, `CanvasSkillSelector/SkillSelectionPanel`)** já reskinada diretamente na hierarquia: `SkillPanel`/`InventoryPanel`/`StatsPanel` usam `PanelFrame9Slice`, cards usam `CardFrame9Slice`, títulos em Lilita One, corpo em Fredoka; botões `Exilar`/`Pular`/`Atualizar` com preenchimento sólido por cor de função + `BorderOnly9Slice` tintado de bronze como filho `BorderOverlay` (`raycastTarget = false`) por cima; ícone dos cards (`ImageContainer/Background/Icon`) recolorido pra branco com `Outline` escuro, garantindo leitura em cima de qualquer cor de fundo de raridade (`RarityHelper.Color`). Camada decorativa: `OrnamentTopLeft/TopRight/BottomLeft/BottomRight` (losangos) nos 3 painéis, `TitleBanner` dentro de cada `TitleContainer` (`SetSiblingIndex(0)`, atrás do texto), e `BracketTopLeft/TopRight/BottomRight/BottomLeft` em cada card.
-- **Regras de espaçamento** (aplicadas na `AbilitySelectionUI`, valem como referência pras próximas telas): o padding interno de qualquer container filho de um painel precisa ser **maior que a espessura da borda do 9-slice** (~16px no `PanelFrame9Slice`), senão o conteúdo encosta visualmente na moldura. Valores em uso: `CardsContainer` pad 34/34/20/20 spacing 16, `ButtonsContainer` pad 34/34/14/30 spacing 20, `EntitiesContainer` do inventário pad 26/26/12/16 spacing 10.
+- **Regras de espaçamento** (aplicadas na `AbilitySelectionUI`, valem como referência pras próximas telas): o padding interno de qualquer container filho de um painel precisa ser **maior que a espessura da borda do 9-slice**, senão o conteúdo encosta visualmente na moldura. Espaçamentos em uso (apertados em 25/08 a pedido do usuário — a tela estava respirando demais):
+
+  | Container | Espaçamento |
+  |---|---|
+  | `CardsContainer` (entre os 3 cards) | `spacing = 26`, `childForceExpandHeight = false` |
+  | `EntitiesContainer` (entre seções do inventário) | `spacing = 10` |
+  | `Weapons`/`Skills`/`Items` (título → régua → grade) | `spacing = 4`, padding inferior `4` |
+  | `Container` de cada seção (entre slots) | `Grid.spacing = 6`, padding vertical `2` |
+
+  > **`childForceExpandHeight` finge ser espaçamento.** O `CardsContainer` tinha `spacing = 0` e ainda assim havia ~49px entre os cards. Com `childControlHeight = false` e `childForceExpandHeight = true`, o layout **não redimensiona** os filhos: ele distribui a altura sobrando como folga dentro do slot de cada um e centraliza o card ali. Os 748px do container menos os 600px dos 3 cards viravam ~49px de ar por card, invisível no Inspector porque o campo `spacing` continuava zerado. Desligar a flag e usar `spacing` de verdade é o que torna o valor legível e ajustável. O teto confortável é ~34: o container tem 748px, menos 26 de padding em cima e embaixo sobram 696 úteis, e os 3 cards já ocupam 600 — acima disso eles encostam na moldura.
 - **Botões**: o preenchimento usa `SolidRounded9Slice.png` (branco sólido, tintado por `Image.color`) com **o mesmo raio de canto** do `BorderOnly9Slice` usado no `BorderOverlay`. Os dois sprites precisam ter raio idêntico — se o preenchimento usar outro sprite (ex.: o `UISprite` padrão da Unity, quase reto), o preenchimento vaza pelos cantos da borda arredondada.
-- **Slots de inventário**: `InventorySection` instancia os slots em runtime a partir de `InventoryUI.slotPrefab`, que aponta pro prefab de projeto **`Assets/Prefabs/UI/WeaponUI.prefab`** (não mais pra um objeto da cena) — é lá que se reestiliza o slot. Os antigos placeholders `Weapon1/2/3` que ficavam soltos dentro de `Weapons/Container` na cena foram removidos: eles apareciam em jogo junto com os slots reais, fingindo armas que o jogador não tinha. Hoje `Weapons/Container`, `Skills/Container` e `Items/Container` começam vazios e são `GridLayoutGroup` (célula `110x128`, spacing `12`, 3 colunas), preenchidos só em runtime.
+- **Slots de inventário**: `InventorySection` instancia os slots em runtime a partir de `InventoryUI.slotPrefab`, que aponta pro prefab de projeto **`Assets/Prefabs/UI/WeaponUI.prefab`** (não mais pra um objeto da cena) — é lá que se reestiliza o slot. Os antigos placeholders `Weapon1/2/3` que ficavam soltos dentro de `Weapons/Container` na cena foram removidos: eles apareciam em jogo junto com os slots reais, fingindo armas que o jogador não tinha. Hoje `Weapons/Container`, `Skills/Container` e `Items/Container` começam vazios e são `GridLayoutGroup` (célula `110x128`, spacing `6`, 3 colunas), preenchidos só em runtime.
 
-  Estrutura do slot (`WeaponUI`): `SlotFrame` (altura fixa 104) contém `SlotShadow` (retângulo preto 55% deslocado pra baixo/direita, dando a leitura de "encaixe" do slot), `SlotPlate` (fundo escuro `#071626`, o recesso do slot), `BackGround` (a placa colorida por raridade) com o `Icon` dentro, e `SlotBorder` (`BorderOnly9Slice` em bronze). Abaixo do frame vem o `LevelLabel`, que mostra o nível no formato compacto do Megabonk (`InventoryEntry.LevelDisplay` = `LVL {CurrentRarity + 1}`): fonte pequena (18), alinhado à esquerda sob o ícone e com `Outline` escuro para ler sobre qualquer fundo.
+  Estrutura do slot (`WeaponUI`): `SlotFrame` (**102×102**) contém `SlotShadow` (retângulo preto 55% deslocado (4, -4), dando a leitura de "encaixe" do slot), `SlotPlate` (a bandeja do slot, hoje em `#0C2238`), `BackGround` (a placa colorida por raridade, 92×92) com o `Pattern` e o `Icon` (68×68) dentro, e `SlotBorder` (`BorderOnly9Slice` em bronze, desativado). Abaixo do frame vem o `LevelLabel` (110×24), que mostra o nível no formato compacto do Megabonk (`InventoryEntry.LevelDisplay` = `LVL {CurrentRarity + 1}`): Fredoka **20 Bold**, **centralizado** sob o ícone, em `textTitle` (creme) com `Outline` quase preto para ler sobre qualquer fundo.
 
-  `InventorySlotView` acha `Icon`/`LevelLabel`/`BackGround` por **busca recursiva** (`FindDeep`), não por caminho fixo, justamente pra a arte do slot poder ganhar níveis de aninhamento (shadow/plate) sem quebrar o script. O fundo do slot (`BackGround`) **é pintado com a cor de raridade em runtime** por `InventorySlotView.Apply` (`_rarityBorder.color = entry.RarityColor`), então qualquer cor definida nele no Inspector serve só de preview no Editor e é sobrescrita em jogo. Como as cores de raridade são todas claras/saturadas e as artes de ícone (`UI_Icon_*`) são escuras, o ícone lê bem por cima delas; ele usa `preserveAspect = true` + `Outline` **claro** (creme `textTitle`) para se separar das raridades de tom médio.
+  > **A bandeja do slot precisou clarear (25/08).** `SlotPlate` era `#050F1C` (`panelRecess`), escolhido quando a placa de raridade ainda era clara — a bandeja escura servia de recesso atrás dela. Com a placa de corpo escuro (ver "Placa de ícone por raridade"), escuro sobre escuro deixou o slot sem contorno nenhum contra o painel; a queixa foi "o fundo do card está muito escuro, mal dá para ver". Hoje a bandeja é o campo `slotTray` do `UIThemeConfig` (`#0C2238`, obtido por `Lerp(panelBackground, panelSurface, 0.35)`), aplicado em runtime por `InventorySlotView.ApplyTheme`. A inversão de papéis (bandeja mais clara que a placa que ela segura) é intencional, não um resquício.
+
+  > **O caminho até esse tom.** A primeira tentativa foi `panelSurface` cheio (`#112942`) e o retorno foi "ficou bem claro, queria mais escuro porém visível". `panelRecess` já tinha sido reprovado por sumir. O ponto de equilíbrio é ficar **pouco acima** do fundo do painel: o slot precisa apenas de um degrau perceptível, porque quem carrega a leitura da peça é o aro colorido da placa, não o preenchimento da bandeja. Se um dia a paleta mudar, recalcule pelo `Lerp` em vez de copiar o hex.
+
+  > **O slot não era quadrado, e por isso o ícone parecia torto.** O `VerticalLayoutGroup` do slot tinha `childForceExpandWidth = true`, o que esticava o `SlotFrame` para os 110px da célula do grid enquanto a altura ficava presa em 104 — placa e ícone ficavam centrados num retângulo 110×104, mas a assimetria (somada à sombra deslocada (6, -8)) lia como desalinhamento. Com a flag desligada e `preferredWidth = 102` no frame, tudo fica quadrado e concêntrico. Pelo mesmo motivo o `LevelLabel` precisou de `preferredWidth = 110` explícito: sem `childForceExpandWidth`, todo filho depende do próprio `LayoutElement` para ter largura.
+
+  `InventorySlotView` acha `Icon`/`LevelLabel`/`BackGround` por **busca recursiva** (`FindDeep`), não por caminho fixo, justamente pra a arte do slot poder ganhar níveis de aninhamento (shadow/plate) sem quebrar o script. O fundo do slot (`BackGround`) **é pintado com a cor de raridade em runtime** por `InventorySlotView.Apply` (`_rarityBorder.color = entry.RarityColor`), então qualquer cor definida nele no Inspector serve só de preview no Editor e é sobrescrita em jogo. A mesma chamada acha o `Pattern` e aplica o brilho da raridade (ver "Brilho de fundo por raridade"). O `LevelLabel` usa `ApplyBodyHighlight` (Fredoka + `textTitle`), não `ApplyBody`: em `textBody` o nível ficava apagado demais no meio da grade. Desde 25/08 o corpo da placa é escuro e o ícone é branco, então o ícone lê por contraste direto; ele usa `preserveAspect = true` + `Outline` escuro (`#0A0705`, alpha 0.85), o mesmo do card.
 - **Cantoneiras de seleção do card**: os 4 `Bracket*` ficam agrupados sob um filho `SelectionBrackets` (stretch no card, `LayoutElement.ignoreLayout = true`, sem `Image` própria pra não bloquear raycast) que **começa desativado**. `AbilityCardUI` implementa `IPointerEnterHandler`/`IPointerExitHandler` e liga/desliga esse container, então as cantoneiras marcam apenas o card sob o cursor — é indicador de seleção, não decoração fixa. `OnDisable` e `Setup` forçam o estado oculto para o card não reaparecer marcado ao ser reciclado. Os brackets em si têm `raycastTarget = false`, senão sairiam por fora do card e roubariam o hover.
 - Pendente de propagar pro resto da UI (`ShopSlotUI`, `SellInventorySlotUI`, `ChestRevealEffect`, `InteractPromptUI`) — o `TooltipUI` já nasce no tema (moldura `OrnateFrame9Slice`, fontes/cores de `UIThemeConfig`) — hoje só `AbilitySelectionUI` (incluindo card de habilidade, slot de inventário e linha de status) segue o tema; as demais telas ainda usam cor/fonte fixas do Inspector.
 
@@ -474,6 +560,27 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 - `Assets/Scenes/SampleScene.unity` — cena principal (com NavMesh bakeado).
 - `Assets/Scenes/TestScene.unity` — cena de teste.
 - `Assets/_Recovery/` — lixo de auto-recovery do Editor, **não são cenas de gameplay organizadas**.
+
+### 4.12 Progresso da run em runtime (posse e nível) — `Assets/Scripts/Player/Skills/`, `Assets/Scripts/Cart/`
+
+**O que é / ideia central:** é onde mora a resposta para "o que o jogador já pegou nesta run e em que nível". Antes esse estado ficava gravado dentro dos próprios ScriptableObjects (`SkillDefinition.currentRarity` etc.), o que causava um bug crítico: como SO é um asset em disco e instância única, o progresso **persistia entre sessões de Play** — o jogador maximizava tudo, parava o jogo, iniciava de novo e o orbe não oferecia mais carta nenhuma, porque para o `AbilityDrawer` todas as skills já estavam no nível máximo. Desde 25/08 o SO é dado de design imutável e o progresso vive em dicionários runtime dentro dos handlers, que morrem junto com a run.
+
+**Regras:**
+- Nenhum ScriptableObject (`SkillDefinition`, `WeaponDefinition`, `WeaponSkillDefinition`) guarda posse, nível ou exílio. Eles expõem só `MaxRarity`, `LevelCount` e as tabelas de nível (`GetLevelForRarity`/`GetStatsForRarity`).
+- **Nível "não adquirido" é `-1`.** `GetRarity` devolve `-1` para qualquer coisa que o jogador ainda não pegou; nível `0` é a primeira raridade de verdade (Common). Quem exibe raridade deve usar `Mathf.Max(rarity, 0)`.
+- `PlayerSkillHandler` é dono do progresso de **skills**; `PlayerCartWeaponHandler` é dono do progresso de **armas e weapon skills** (nível de cada, vínculo arma↔skills aplicadas, e o cache de stats efetivos).
+- Os **stats efetivos** de uma arma (base + `WeaponSkillDefinition` aplicadas) são calculados por `PlayerCartWeaponHandler.GetEffectiveStats(weapon)`, com cache por arma invalidado a cada aquisição/upgrade/skill aplicada. Não existe mais `WeaponDefinition.GetEffectiveStats()`.
+- `IDrawable` **não** expõe mais `CurrentRarity` — a interface é só `DisplayName` + `Icon`. Raridade é sempre um parâmetro explícito, passado por quem sabe o estado, porque o mesmo `IDrawable` significa coisas diferentes conforme o dono (item tem raridade fixa de design, skill/arma têm nível de run).
+- Os dois handlers expõem `Instance` estático (mesmo padrão de `ShopManager`/`SellManager`/`SplineRuntimeState`), para os poucos consumidores que não têm como receber o handler por referência (`TooltipBuilder`, que é estático, e `AbilityCardUI`).
+- `ResetForNewRun()` em ambos limpa dicionários, listas de adquiridos, exílios e cache. **Ainda não há quem chame** — hoje o estado zera naturalmente porque morre com o GameObject ao sair do Play. Quando o `GameManager` existir (lacuna da seção 6), é ele quem deve chamar os três `ResetForNewRun` (skills, armas, itens) ao iniciar uma run.
+
+> **Por que o bug era invisível no Editor até maximizar tudo.** Com progresso parcial, o drawer ainda achava candidatos (as skills não maxadas), então parecia que só "vinham menos opções". Só ao maximizar todas é que `candidates` ficava vazio e a tela aparecia sem carta nenhuma. O sintoma era intermitente; a causa era determinística.
+
+> **Resíduo em disco.** Os `.asset` de `Assets/Resources/Skills`, `Weapons` e `WeaponSkills` tinham a chave `currentRarity` gravada (as três skills estavam em `currentRarity: 4`, prova do bug). Como o campo não existe mais na classe, o Unity ignoraria a chave órfã, mas ela foi removida do YAML na mesma tarefa para o repo não carregar estado de run versionado.
+
+- **`Player/Skills/PlayerSkillHandler.cs`** — `Dictionary<SkillDefinition,int> _rarityBySkill`; API: `GetRarity`, `HasSkill`, `CanLevelUp`, `NextRarity`, `ApplySkill`, `ExileSkill`, `IsExiled`, `ResetForNewRun`.
+- **`Cart/PlayerCartWeaponHandler.cs`** — `_rarityByWeapon`, `_rarityByWeaponSkill`, `_skillsByWeapon`, `_effectiveStatsCache`; API: `GetRarity` (sobrecarregado para arma e weapon skill), `HasWeapon`, `HasWeaponSkill`, `CanUpgrade`, `CanLevelUp`, `NextRarity`, `AcquireWeapon`, `UpgradeWeapon`, `ApplyWeaponSkill(weapon, skill, rarity)`, `GetAppliedSkills`, `GetEffectiveStats`, `GetCurrentStats`/`GetNextStats`, `ResetForNewRun`.
+- **Consumidores ajustados**: `AbilityDrawer` (pergunta ao handler em vez de ao SO), `AbilitySelectionUI` (`_weaponHandler.ApplyWeaponSkill(...)`, já que a arma não se auto-modifica mais), `AbilityCardUI` (`GetCurrentStats`/`GetNextStats` via `Instance`), `ArrowWeaponController` (`_weaponHandler.GetEffectiveStats<ArrowLevelData>(weapon)`), `InventoryUI`/`InventoryEntry` (raridade passada no construtor), `InventorySlotView`/`TooltipTrigger`/`TooltipBuilder` (raridade explícita em `SetSource`/`Build`), `Assets/Editor/WeaponSkillDefinitionEditor.cs` (parou de desenhar o campo removido).
 
 ## 5. Fluxo integrado (resumo)
 
@@ -488,7 +595,7 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
 Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 
-- **Sem `GameManager` central** — nenhuma classe orquestra estado global, transições de cena ou game over.
+- **Sem `GameManager` central** — nenhuma classe orquestra estado global, transições de cena ou game over. **Pendência concreta ligada a isso (25/08):** `PlayerSkillHandler.ResetForNewRun()`, `PlayerCartWeaponHandler.ResetForNewRun()` e `PlayerItemHandler.ResetForNewRun()` existem e funcionam, mas **ninguém os chama**. Hoje isso não causa bug porque o progresso vive em runtime e morre com o GameObject (ver 4.12); passa a causar no momento em que existir uma segunda run sem recarregar a cena (morrer → recomeçar). Quem criar o `GameManager` deve chamar os três.
 - **Sem save/load** — nenhum `PlayerPrefs`, `JsonUtility`, arquivo em disco, `SceneManager` ou `DontDestroyOnLoad` encontrado.
 - **Sem meta-progressão persistente** — nenhuma segunda moeda entre runs; `Coins` é só por run e reseta (`PlayerItemHandler.ResetForNewRun()`).
 - **Sem personagens desbloqueáveis** nem seleção de personagem.

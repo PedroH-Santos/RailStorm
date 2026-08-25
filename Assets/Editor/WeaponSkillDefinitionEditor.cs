@@ -20,7 +20,6 @@ public class WeaponSkillDefinitionEditor : Editor
 
         DrawStatTargetPopup(weaponTypeProp);
 
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("currentRarity"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("levels"), true);
 
         serializedObject.ApplyModifiedProperties();

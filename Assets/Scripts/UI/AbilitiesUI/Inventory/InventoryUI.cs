@@ -52,7 +52,7 @@ public class InventoryUI : MonoBehaviour
 
         var entries = new List<InventoryEntry>();
         foreach (var w in weaponHandler.AcquiredWeapons)
-            entries.Add(new InventoryEntry(w));
+            entries.Add(new InventoryEntry(w, weaponHandler.GetRarity(w)));
 
         SetSection(SectionWeapons, entries);
     }
@@ -63,7 +63,7 @@ public class InventoryUI : MonoBehaviour
 
         var entries = new List<InventoryEntry>();
         foreach (var s in skillHandler.AcquiredSkills)
-            entries.Add(new InventoryEntry(s));
+            entries.Add(new InventoryEntry(s, skillHandler.GetRarity(s)));
 
         SetSection(SectionSkills, entries);
     }
@@ -74,7 +74,7 @@ public class InventoryUI : MonoBehaviour
 
         var entries = new List<InventoryEntry>();
         foreach (var i in itemHandler.AcquiredItems)
-            entries.Add(new InventoryEntry(i));
+            entries.Add(new InventoryEntry(i, i.rarity));
 
         SetSection(SectionItems, entries);
     }

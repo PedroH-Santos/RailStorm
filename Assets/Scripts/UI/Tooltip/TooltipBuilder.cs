@@ -4,23 +4,28 @@ public static class TooltipBuilder
 {
     public const int MaxUpgradeLines = 5;
 
-    public static TooltipData Build(IDrawable drawable)
+    public static TooltipData Build(IDrawable drawable, int currentRarity)
     {
         switch (drawable)
         {
-            case WeaponDefinition weapon: return BuildWeapon(weapon);
-            case SkillDefinition skill: return BuildSkill(skill);
+            case WeaponDefinition weapon: return BuildWeapon(weapon, currentRarity);
+            case SkillDefinition skill: return BuildSkill(skill, currentRarity);
             case ItemDefinition item: return BuildItem(item);
             default: return null;
         }
     }
 
-    static TooltipData BuildWeapon(WeaponDefinition weapon)
+    static TooltipData BuildWeapon(WeaponDefinition weapon, int currentRarity)
     {
-        var data = NewData("Estatísticas da Arma", weapon);
+        var data = NewData("Estatísticas da Arma", weapon, currentRarity);
         data.Description = weapon.description;
 
-        var stats = weapon.GetEffectiveStats();
+        var weaponHandler = PlayerCartWeaponHandler.Instance;
+
+        var stats = weaponHandler != null
+            ? weaponHandler.GetEffectiveStats(weapon)
+            : weapon.GetStatsForRarity(Mathf.Max(currentRarity, 0));
+
         if (stats == null) return data;
 
         data.Stats.Add(new TooltipStatLine("Dano", $"{stats.damage}"));
@@ -38,9 +43,14 @@ public static class TooltipBuilder
             data.Stats.Add(new TooltipStatLine("Conjuração", $"{magic.castTime:0.##}s"));
         }
 
-        foreach (var skill in weapon.AppliedSkills)
+        if (weaponHandler == null) return data;
+
+        foreach (var skill in weaponHandler.GetAppliedSkills(weapon))
         {
-            if (skill == null || !skill.IsAcquired) continue;
+            if (skill == null) continue;
+
+            int skillRarity = weaponHandler.GetRarity(skill);
+            if (skillRarity < 0) continue;
 
             if (data.Upgrades.Count >= MaxUpgradeLines)
             {
@@ -48,9 +58,9 @@ public static class TooltipBuilder
                 continue;
             }
 
-            var level = skill.GetLevelForRarity(skill.CurrentRarity);
+            var level = skill.GetLevelForRarity(skillRarity);
             string effect = $"{StatLabels.Of(skill.statTarget)} {FormatDelta(level.statValue, level.isMultiplier, true)}";
-            string levelLabel = $"Nv. {skill.CurrentRarity + 1}/{skill.levels.Count}";
+            string levelLabel = $"Nv. {skillRarity + 1}/{skill.LevelCount}";
 
             data.Upgrades.Add(new TooltipUpgradeLine(skill.DisplayName, effect, levelLabel));
         }
@@ -58,23 +68,23 @@ public static class TooltipBuilder
         return data;
     }
 
-    static TooltipData BuildSkill(SkillDefinition skill)
+    static TooltipData BuildSkill(SkillDefinition skill, int currentRarity)
     {
-        var data = NewData("Habilidade", skill);
+        var data = NewData("Habilidade", skill, currentRarity);
         data.Description = skill.description;
 
-        int rarity = Mathf.Max(skill.CurrentRarity, 0);
+        int rarity = Mathf.Max(currentRarity, 0);
         var level = skill.GetLevelForRarity(rarity);
 
         data.Stats.Add(new TooltipStatLine(StatLabels.Of(skill.statTarget), FormatDelta(level.statValue, level.isMultiplier, false)));
-        data.Stats.Add(new TooltipStatLine("Nível", $"{rarity + 1} / {skill.levels.Count}"));
+        data.Stats.Add(new TooltipStatLine("Nível", $"{rarity + 1} / {skill.LevelCount}"));
 
         return data;
     }
 
     static TooltipData BuildItem(ItemDefinition item)
     {
-        var data = NewData("Item", item);
+        var data = NewData("Item", item, item.rarity);
         data.Description = item.description;
 
         if (item.effectType == EItemEffectType.StatChange)
@@ -92,9 +102,9 @@ public static class TooltipBuilder
         return data;
     }
 
-    static TooltipData NewData(string header, IDrawable drawable)
+    static TooltipData NewData(string header, IDrawable drawable, int currentRarity)
     {
-        int rarity = Mathf.Max(drawable.CurrentRarity, 0);
+        int rarity = Mathf.Max(currentRarity, 0);
         return new TooltipData
         {
             HeaderLabel = header,
