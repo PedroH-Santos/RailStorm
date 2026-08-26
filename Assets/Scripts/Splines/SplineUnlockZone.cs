@@ -14,16 +14,13 @@ public class SplineUnlockZone : MonoBehaviour
     [Header("Referência ao SplineContainer da cena")]
     [SerializeField] private SplineContainer splineContainer;
 
-    [Header("Totens e Foco")]
-    [SerializeField] private JunctionTotemsController totemsController;
-    [SerializeField] private FocusDimController focusDim;
-
     PlayerController _player;
     PlayerStatsAggregator _stats;
     bool _menuOpen;
 
     List<SplineEntry> _relevantEntries = new();
     List<SplineEntry> _blockedHere = new();
+    Dictionary<int, int> _startKnotBySplineIndex = new();
 
     SplineEntry _selectedEntry;
 
@@ -41,9 +38,12 @@ public class SplineUnlockZone : MonoBehaviour
     {
         if (_player == null) return;
 
+        var previouslyBlocked = _blockedHere;
         _blockedHere = SplineRuntimeState.Instance
             .GetBlockedEntriesFrom(_relevantEntries)
             .ToList();
+
+        if (!_menuOpen) RefreshRestingBadges(previouslyBlocked);
 
         bool hasBlocked = _blockedHere.Count > 0;
 
@@ -71,13 +71,11 @@ public class SplineUnlockZone : MonoBehaviour
 
     void HandleUnlockInput()
     {
-        // Navegação — teclado
         if (Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.aKey.wasPressedThisFrame)
             MoveSelection(-1);
         else if (Keyboard.current.rightArrowKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame)
             MoveSelection(1);
 
-        // Navegação — gamepad (analógico esquerdo, com debounce)
         if (Gamepad.current != null)
         {
             float stickX = Gamepad.current.leftStick.x.ReadValue();
@@ -110,9 +108,6 @@ public class SplineUnlockZone : MonoBehaviour
             TryUnlock();
     }
 
-    public void OnNextArrowClicked() => MoveSelection(1);
-    public void OnPreviousArrowClicked() => MoveSelection(-1);
-
     void MoveSelection(int step)
     {
         if (_selectedEntry == null) return;
@@ -122,10 +117,10 @@ public class SplineUnlockZone : MonoBehaviour
 
         if (nextPos == currentPos) return;
 
-        totemsController.GetView(_selectedEntry.index)?.Hide();
+        GetTotemView(_selectedEntry.index)?.SetSelected(false);
 
         _selectedEntry = _blockedHere[nextPos];
-        ShowSelected();
+        ShowSelected(pop: true);
     }
 
     void TryUnlock()
@@ -133,7 +128,7 @@ public class SplineUnlockZone : MonoBehaviour
         if (_selectedEntry == null) return;
 
         SplineEntry entry = _selectedEntry;
-        var view = totemsController.GetView(entry.index);
+        var view = GetTotemView(entry.index);
 
         if (_stats.Coins < entry.unlockCost)
         {
@@ -158,21 +153,36 @@ public class SplineUnlockZone : MonoBehaviour
         InteractPromptUI.Instance?.Hide();
 
         _selectedEntry = _blockedHere[0];
-        ShowSelected();
+        ShowSelected(pop: false);
     }
 
-    void ShowSelected()
+    void ShowSelected(bool pop)
     {
         if (_selectedEntry == null) return;
 
-        var view = totemsController.GetView(_selectedEntry.index);
-        if (view == null) return;
+        var view = GetTotemView(_selectedEntry.index);
+        int position = _blockedHere.IndexOf(_selectedEntry);
 
-        view.Bind(_selectedEntry, _stats.Coins >= _selectedEntry.unlockCost, TryUnlock);
-        view.Show();
-        view.SetSelected(true);
+        view?.Bind(_selectedEntry, _stats.Coins >= _selectedEntry.unlockCost);
+        view?.Show();
+        view?.SetSelected(true);
 
-        focusDim?.SetFocused(true, _selectedEntry.themeColor);
+        ChooseWayScreenUI.Instance?.Show(
+            _selectedEntry,
+            position,
+            _blockedHere.Count,
+            _stats.Coins >= _selectedEntry.unlockCost,
+            _stats.Coins,
+            TryUnlock,
+            () => MoveSelection(-1),
+            () => MoveSelection(1));
+
+        if (pop) ChooseWayScreenUI.Instance?.Pop();
+
+        FocusDimController.Instance?.SetFocused(true, _selectedEntry.themeColor);
+
+        bool reversed = _startKnotBySplineIndex.TryGetValue(_selectedEntry.index, out int startKnot) && startKnot != 0;
+        SplinePathParticles.Instance?.SetPath(splineContainer, _selectedEntry.index, reversed, _selectedEntry.themeColor);
     }
 
     void CloseMenu()
@@ -181,17 +191,42 @@ public class SplineUnlockZone : MonoBehaviour
         _player?.SetMovementLocked(false);
         Time.timeScale = 1f;
 
-        focusDim?.SetFocused(false, Color.white);
+        FocusDimController.Instance?.SetFocused(false, Color.white);
+        SplinePathParticles.Instance?.StopPath();
+        ChooseWayScreenUI.Instance?.Hide();
 
-        if (_selectedEntry != null)
-            totemsController.GetView(_selectedEntry.index)?.Hide();
+        foreach (var entry in _blockedHere)
+            GetTotemView(entry.index)?.Hide();
 
         _selectedEntry = null;
+    }
+
+    TotemView GetTotemView(int splineIndex) =>
+        TotemRegistry.TryGet(splineIndex, out var view) ? view : null;
+
+    void RefreshRestingBadges(List<SplineEntry> previouslyBlocked)
+    {
+        foreach (var entry in previouslyBlocked)
+        {
+            if (_blockedHere.Contains(entry)) continue;
+            GetTotemView(entry.index)?.Hide();
+        }
+
+        foreach (var entry in _blockedHere)
+        {
+            var view = GetTotemView(entry.index);
+            if (view == null) continue;
+
+            bool affordable = _stats != null && _stats.Coins >= entry.unlockCost;
+            view.Bind(entry, affordable);
+            view.Show();
+        }
     }
 
     List<SplineEntry> ResolveRelevantEntries(int currentSplineIndex)
     {
         var result = new List<SplineEntry>();
+        _startKnotBySplineIndex.Clear();
 
         if (splineContainer == null || SplineRuntimeState.Instance?.manifest == null)
             return result;
@@ -212,7 +247,10 @@ public class SplineUnlockZone : MonoBehaviour
 
             SplineEntry entry = SplineRuntimeState.Instance.manifest.GetEntry(ski.Spline);
             if (entry != null && !result.Contains(entry))
+            {
                 result.Add(entry);
+                _startKnotBySplineIndex[entry.index] = ski.Knot;
+            }
         }
 
         return result;
@@ -253,6 +291,9 @@ public class SplineUnlockZone : MonoBehaviour
         if (_menuOpen) CloseMenu();
 
         InteractPromptUI.Instance?.Hide();
+
+        foreach (var entry in _blockedHere)
+            GetTotemView(entry.index)?.Hide();
 
         _player = null;
         _stats = null;

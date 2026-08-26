@@ -19,33 +19,45 @@ MonoBehaviour:
     description: Spline 0
     isBlockedByDefault: 0
     unlockCost: 0
+    themeColor: {r: 1, g: 1, b: 1, a: 1}
+    themeIcon: {fileID: 0}
   - index: 1
     displayName: Spline 1
-    destinationName: Spline 1
-    description: Spline 1
+    destinationName: Caminho da Floresta
+    description: Raizes antigas e misterios.
     isBlockedByDefault: 1
-    unlockCost: 15
+    unlockCost: 40
+    themeColor: {r: 0.61960787, g: 0.16862746, b: 0.78039217, a: 1}
+    themeIcon: {fileID: 0}
   - index: 2
     displayName: Spline 2
-    destinationName: Spline 2
-    description: Spline 2
+    destinationName: Caminho das Montanhas
+    description: Terras altas e perigosas.
     isBlockedByDefault: 1
-    unlockCost: 15
+    unlockCost: 75
+    themeColor: {r: 0.18039216, g: 0.5254902, b: 0.9411765, a: 1}
+    themeIcon: {fileID: 0}
   - index: 3
     displayName: Spline 3
     destinationName: Spline 3
     description: Spline 3
     isBlockedByDefault: 1
     unlockCost: 15
+    themeColor: {r: 1, g: 1, b: 1, a: 1}
+    themeIcon: {fileID: 0}
   - index: 4
     displayName: Spline 4
     destinationName: Spline 4
     description: Spline 4
     isBlockedByDefault: 1
     unlockCost: 15
+    themeColor: {r: 1, g: 1, b: 1, a: 1}
+    themeIcon: {fileID: 0}
   - index: 5
     displayName: Spline 5
     destinationName: Spline 5
     description: Spline 5
     isBlockedByDefault: 1
     unlockCost: 15
+    themeColor: {r: 1, g: 1, b: 1, a: 1}
+    themeIcon: {fileID: 0}

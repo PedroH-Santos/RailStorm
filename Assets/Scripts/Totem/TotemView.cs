@@ -1,33 +1,27 @@
 using System.Collections;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class TotemView : MonoBehaviour
 {
-
-    [Header("Partículas")]
+    [Header("Particulas")]
     [SerializeField] private ParticleSystem idleParticles;
     [SerializeField] private ParticleSystem selectParticles;
     [SerializeField] private ParticleSystem unlockBurstParticles;
 
-    [Header("UI (World Space Canvas)")]
-    [SerializeField] private Canvas totemCanvas;
-    [SerializeField] private GameObject panelRoot;
-    [SerializeField] private TMP_Text titleText;
-    [SerializeField] private TMP_Text descriptionText;
-    [SerializeField] private TMP_Text costText;
-    [SerializeField] private Image costIcon;
-    [SerializeField] private Image iconHeader;
-    [SerializeField] private Image panelFrameImage;
-    [SerializeField] private GameObject selectedFrame;
-    [SerializeField] private Button unlockButton;
+    [Header("Emissao do totem")]
+    [Tooltip("Renderers que recebem a cor do caminho como emissao: cristais, emblema, runas.")]
+    [SerializeField] private Renderer[] accentRenderers;
+    [SerializeField] private float idleEmissionIntensity = 1f;
+    [SerializeField] private float selectedEmissionIntensity = 2.5f;
+    [SerializeField] private float unlockEmissionIntensity = 4f;
+
+    [Header("Selo world-space")]
+    [SerializeField] private ChooseWayTotemBadge badge;
 
     static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
     MaterialPropertyBlock _mpb;
 
     Color _baseEmissionColor = Color.white;
-    float _baseLightIntensity;
     Vector3 _baseScale;
 
     void Awake()
@@ -35,13 +29,11 @@ public class TotemView : MonoBehaviour
         _mpb = new MaterialPropertyBlock();
         _baseScale = transform.localScale;
 
-        // Partículas precisam continuar animando mesmo com Time.timeScale = 0
         ForceUnscaledTime(idleParticles);
         ForceUnscaledTime(selectParticles);
         ForceUnscaledTime(unlockBurstParticles);
 
-        if (panelRoot != null) panelRoot.SetActive(false);
-        if (selectedFrame != null) selectedFrame.SetActive(false);
+        badge?.Hide();
     }
 
     void ForceUnscaledTime(ParticleSystem ps)
@@ -54,62 +46,42 @@ public class TotemView : MonoBehaviour
     public void SetThemeColor(Color color)
     {
         _baseEmissionColor = color;
-        ApplyEmission(color, 1f);
-        if (panelFrameImage != null) panelFrameImage.color = color;
+        ApplyEmission(color, idleEmissionIntensity);
+        SetParticlesColor(idleParticles, color);
+        SetParticlesColor(selectParticles, color);
+        SetParticlesColor(unlockBurstParticles, color);
+        badge?.SetAccent(color);
     }
 
-    public void SetCanvasSortOrder(int order)
+    public void Bind(SplineEntry entry, bool affordable)
     {
-        if (totemCanvas != null) totemCanvas.sortingOrder = order;
-    }
-
-    public void Bind(SplineEntry entry, bool affordable, System.Action onUnlockClicked)
-    {
-        if (titleText != null) titleText.text = entry.destinationName;
-        if (descriptionText != null) descriptionText.text = entry.description;
-
-        if (costText != null)
-        {
-            costText.text = entry.unlockCost.ToString();
-            costText.color = affordable ? Color.white : new Color(1f, 0.4f, 0.4f);
-        }
-
-        if (iconHeader != null && entry.themeIcon != null)
-            iconHeader.sprite = entry.themeIcon;
-
-        if (unlockButton != null)
-        {
-            Debug.Log("cLICK");
-            unlockButton.onClick.RemoveAllListeners();
-            unlockButton.onClick.AddListener(() => onUnlockClicked?.Invoke());
-            unlockButton.interactable = affordable;
-        }
+        badge?.Bind(entry, affordable);
     }
 
     public void Show()
     {
-        if (panelRoot != null) panelRoot.SetActive(true);
+        badge?.Show();
     }
 
     public void Hide()
     {
-        if (panelRoot != null) panelRoot.SetActive(false);
+        badge?.Hide();
         SetSelected(false);
-    } 
+    }
 
     public void SetSelected(bool selected)
     {
-        if (selectedFrame != null) selectedFrame.SetActive(selected);
+        badge?.SetSelected(selected);
 
         if (selected)
         {
             if (selectParticles != null) selectParticles.Play();
-            ApplyEmission(_baseEmissionColor, 2.5f);
+            ApplyEmission(_baseEmissionColor, selectedEmissionIntensity);
         }
         else
         {
             if (selectParticles != null) selectParticles.Stop();
-            ApplyEmission(_baseEmissionColor, 1f);
+            ApplyEmission(_baseEmissionColor, idleEmissionIntensity);
         }
     }
 
@@ -129,7 +101,7 @@ public class TotemView : MonoBehaviour
             t += Time.unscaledDeltaTime;
             float pulse = 1f + Mathf.Sin(t / duration * Mathf.PI) * 0.15f;
             transform.localScale = _baseScale * pulse;
-            ApplyEmission(_baseEmissionColor, Mathf.Lerp(2.5f, 4f, t / duration));
+            ApplyEmission(_baseEmissionColor, Mathf.Lerp(selectedEmissionIntensity, unlockEmissionIntensity, t / duration));
             yield return null;
         }
 
@@ -158,16 +130,24 @@ public class TotemView : MonoBehaviour
 
     void ApplyEmission(Color color, float intensity)
     {
-        //ApplyEmissionTo(emblemRenderer, color, intensity);
-        //ApplyEmissionTo(crystalLeftRenderer, color, intensity);
-        //ApplyEmissionTo(crystalRightRenderer, color, intensity);
+        if (accentRenderers == null) return;
+
+        foreach (var renderer in accentRenderers)
+            ApplyEmissionTo(renderer, color, intensity);
     }
 
-    void ApplyEmissionTo(Renderer r, Color color, float intensity)
+    void ApplyEmissionTo(Renderer target, Color color, float intensity)
     {
-        if (r == null) return;
-        r.GetPropertyBlock(_mpb);
+        if (target == null) return;
+        target.GetPropertyBlock(_mpb);
         _mpb.SetColor(EmissionColorId, color * intensity);
-        r.SetPropertyBlock(_mpb);
+        target.SetPropertyBlock(_mpb);
+    }
+
+    static void SetParticlesColor(ParticleSystem ps, Color color)
+    {
+        if (ps == null) return;
+        var main = ps.main;
+        main.startColor = color;
     }
 }

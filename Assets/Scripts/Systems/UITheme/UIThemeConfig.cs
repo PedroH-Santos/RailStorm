@@ -70,6 +70,22 @@ namespace Assets.Scripts.Systems.UITheme
         [Tooltip("Sombra de texto (#150A03) — dá a leitura de entalhe em títulos, níveis e rótulos de botão.")]
         public Color textShadow = new Color32(0x15, 0x0A, 0x03, 0xCC);
 
+        [Header("Madeira (amostrada de ImphenziaPalette02-Albedo)")]
+        [Tooltip("Wood Light (#DEAD8B) — destaque no topo da face de peças de madeira (placas, postes).")]
+        public Color woodLight = new Color32(0xDE, 0xAD, 0x8B, 0xFF);
+
+        [Tooltip("Wood Face (#C69F7A) — cor principal da face de madeira.")]
+        public Color woodFace = new Color32(0xC6, 0x9F, 0x7A, 0xFF);
+
+        [Tooltip("Wood Mid (#A0754B) — lábio/lateral, dá a leitura de espessura da peça.")]
+        public Color woodMid = new Color32(0xA0, 0x75, 0x4B, 0xFF);
+
+        [Tooltip("Wood Dark (#724E21) — sombra funda da madeira.")]
+        public Color woodDark = new Color32(0x72, 0x4E, 0x21, 0xFF);
+
+        [Tooltip("Wood Outline (#2A190B) — contorno quase preto-marrom de toda peça de madeira.")]
+        public Color woodOutline = new Color32(0x2A, 0x19, 0x0B, 0xFF);
+
         [Header("Fundo de tela modal")]
         [Tooltip("Escurecimento do jogo atrás de uma tela modal.")]
         public Color screenDim = new Color32(0x04, 0x10, 0x1F, 0xB1);

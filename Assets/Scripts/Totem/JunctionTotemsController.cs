@@ -19,9 +19,21 @@ public class JunctionTotemsController : MonoBehaviour
         return slot?.view;
     }
 
-    void OnEnable() => SplineRuntimeState.OnSplineUnblocked += HandleUnblocked;
-    void OnDisable() => SplineRuntimeState.OnSplineUnblocked -= HandleUnblocked;
+    void OnEnable()
+    {
+        SplineRuntimeState.OnSplineUnblocked += HandleUnblocked;
 
+        foreach (var slot in slots)
+            TotemRegistry.Register(slot.splineIndex, slot.view);
+    }
+
+    void OnDisable()
+    {
+        SplineRuntimeState.OnSplineUnblocked -= HandleUnblocked;
+
+        foreach (var slot in slots)
+            TotemRegistry.Unregister(slot.splineIndex, slot.view);
+    }
 
     void HandleUnblocked(int splineIndex)
     {
@@ -37,17 +49,6 @@ public class JunctionTotemsController : MonoBehaviour
             var entry = SplineRuntimeState.Instance?.manifest?.GetEntry(slot.splineIndex);
             if (entry != null && slot.view != null)
                 slot.view.SetThemeColor(entry.themeColor);
-        }
-
-
-        var cam = Camera.main;
-        if (cam == null) return;
-
-        foreach (var slot in slots)
-        {
-            if (slot.view == null) continue;
-            float dist = Vector3.Distance(cam.transform.position, slot.view.transform.position);
-            slot.view.SetCanvasSortOrder(Mathf.RoundToInt(-dist * 10f));
         }
     }
 }

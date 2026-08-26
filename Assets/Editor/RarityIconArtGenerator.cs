@@ -4,6 +4,7 @@ using Assets.Scripts.Systems.Rarity;
 using UnityEditor;
 using UnityEngine;
 
+public static class RarityIconArtGenerator
 {
     const string OutputFolder = "Assets/UI/Theme/Rarity";
     const int PlateSize = 64;

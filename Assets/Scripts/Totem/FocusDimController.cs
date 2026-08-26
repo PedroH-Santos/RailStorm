@@ -5,6 +5,25 @@ using UnityEngine.Rendering.Universal;
 
 public class FocusDimController : MonoBehaviour
 {
+    static FocusDimController _instance;
+    public static FocusDimController Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                var found = FindFirstObjectByType<FocusDimController>(FindObjectsInactive.Include);
+                if (found != null)
+                {
+                    found.gameObject.SetActive(true);
+                    _instance = found;
+                }
+            }
+
+            return _instance;
+        }
+    }
+
     [SerializeField] private Volume focusVolume;
     [SerializeField] private float fadeDuration = 0.25f;
 
@@ -14,6 +33,8 @@ public class FocusDimController : MonoBehaviour
 
     void Awake()
     {
+        _instance = this;
+
         if (focusVolume == null || focusVolume.profile == null) return;
 
         focusVolume.profile.TryGet(out _colorAdjustments);

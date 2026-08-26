@@ -264,7 +264,7 @@ Não há `CurrencyManager` dedicado — `Coins` é um campo em `PlayerStatsAggre
 - `UI/Tooltip/*` — tooltip de hover dos slots do inventário (ver abaixo).
 - `UI/AbilitiesUI/Stats/*` — painel de stats (bind dinâmico em `PlayerStatsAggregator.AllStats`), organizado em **grupos nomeados** (ver abaixo).
 - `Totem/InteractPromptUI.cs` — prompt "pressione E" (singleton, reusado por Chest/Horde/Shop/SplineUnlockZone).
-- `Totem/TotemView.cs`/`JunctionTotemsController.cs` — UI world-space dos totens de desbloqueio de trilho (partículas, shake ao negar, pulso ao desbloquear).
+- `Totem/TotemView.cs`/`JunctionTotemsController.cs` — o totem 3D de desbloqueio de trilho (partículas, emissão, shake ao negar, pulso ao desbloquear). A placa flutuante em si é a UI de escolha de caminho — ver 4.13.
 - `Totem/FocusDimController.cs` — Volume URP (vignette) para focar visualmente no totem durante o menu de desbloqueio.
 
 **Seções do inventário (20/08).** `InventoryUI` registra **três** seções, pelo nome do GameObject filho de `EntitiesContainer`: `Weapons` ("Armas do Carro"), `Skills` ("Habilidades") e `Items` ("Itens"). A seção de habilidades existe porque a posse de skill não ficava em lugar nenhum consultável: `SkillDefinition` guarda o próprio `currentRarity`, mas não havia lista de quais skills o jogador pegou nesta run. `PlayerSkillHandler` passou a manter `AcquiredSkills` + evento `OnSkillsChanged` (mesmo padrão de `PlayerCartWeaponHandler.OnWeaponsChanged`), e ganhou `ResetForNewRun()` para limpar essa lista junto com os exílios.
@@ -551,7 +551,9 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
   `InventorySlotView` acha `Icon`/`LevelLabel`/`BackGround` por **busca recursiva** (`FindDeep`), não por caminho fixo, justamente pra a arte do slot poder ganhar níveis de aninhamento (shadow/plate) sem quebrar o script. O fundo do slot (`BackGround`) **é pintado com a cor de raridade em runtime** por `InventorySlotView.Apply` (`_rarityBorder.color = entry.RarityColor`), então qualquer cor definida nele no Inspector serve só de preview no Editor e é sobrescrita em jogo. A mesma chamada acha o `Pattern` e aplica o brilho da raridade (ver "Brilho de fundo por raridade"). O `LevelLabel` usa `ApplyBodyHighlight` (Fredoka + `textTitle`), não `ApplyBody`: em `textBody` o nível ficava apagado demais no meio da grade. Desde 25/08 o corpo da placa é escuro e o ícone é branco, então o ícone lê por contraste direto; ele usa `preserveAspect = true` + `Outline` escuro (`#0A0705`, alpha 0.85), o mesmo do card.
 - **Cantoneiras de seleção do card**: os 4 `Bracket*` ficam agrupados sob um filho `SelectionBrackets` (stretch no card, `LayoutElement.ignoreLayout = true`, sem `Image` própria pra não bloquear raycast) que **começa desativado**. `AbilityCardUI` implementa `IPointerEnterHandler`/`IPointerExitHandler` e liga/desliga esse container, então as cantoneiras marcam apenas o card sob o cursor — é indicador de seleção, não decoração fixa. `OnDisable` e `Setup` forçam o estado oculto para o card não reaparecer marcado ao ser reciclado. Os brackets em si têm `raycastTarget = false`, senão sairiam por fora do card e roubariam o hover.
-- Pendente de propagar pro resto da UI (`ShopSlotUI`, `SellInventorySlotUI`, `ChestRevealEffect`, `InteractPromptUI`) — o `TooltipUI` já nasce no tema (moldura `OrnateFrame9Slice`, fontes/cores de `UIThemeConfig`) — hoje só `AbilitySelectionUI` (incluindo card de habilidade, slot de inventário e linha de status) segue o tema; as demais telas ainda usam cor/fonte fixas do Inspector.
+- Pendente de propagar pro resto da UI (`ShopSlotUI`, `SellInventorySlotUI`, `ChestRevealEffect`, `InteractPromptUI`) — o `TooltipUI` e a UI de escolha de caminho (`ChooseWayScreenUI`/`ChooseWayTotemBadge`, ver 4.13) já nascem no tema; hoje `AbilitySelectionUI` (incluindo card de habilidade, slot de inventário e linha de status), `TooltipUI` e a UI de escolha de caminho seguem o tema; as demais telas ainda usam cor/fonte fixas do Inspector.
+
+**Onde mora a arte de cada tela (26/08).** `Assets/UI/Theme/` é a pasta **compartilhada**: só entra ali o que mais de uma tela usa (`OrnateFrame9Slice`, `ButtonPlate9Slice`, `CardPlate9Slice`, ornamentos, `Rarity/`). Arte que existe para **uma tela só** ganha pasta própria por tela — hoje `Assets/UI/ChooseWay/` (placa dos totens). Ao criar uma tela nova com arte exclusiva, crie a pasta dela em vez de despejar em `Theme/`, e mantenha o gerador correspondente em `Assets/Editor/`.
 
 ### 4.11 Cenas
 
@@ -581,6 +583,79 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 - **`Player/Skills/PlayerSkillHandler.cs`** — `Dictionary<SkillDefinition,int> _rarityBySkill`; API: `GetRarity`, `HasSkill`, `CanLevelUp`, `NextRarity`, `ApplySkill`, `ExileSkill`, `IsExiled`, `ResetForNewRun`.
 - **`Cart/PlayerCartWeaponHandler.cs`** — `_rarityByWeapon`, `_rarityByWeaponSkill`, `_skillsByWeapon`, `_effectiveStatsCache`; API: `GetRarity` (sobrecarregado para arma e weapon skill), `HasWeapon`, `HasWeaponSkill`, `CanUpgrade`, `CanLevelUp`, `NextRarity`, `AcquireWeapon`, `UpgradeWeapon`, `ApplyWeaponSkill(weapon, skill, rarity)`, `GetAppliedSkills`, `GetEffectiveStats`, `GetCurrentStats`/`GetNextStats`, `ResetForNewRun`.
 - **Consumidores ajustados**: `AbilityDrawer` (pergunta ao handler em vez de ao SO), `AbilitySelectionUI` (`_weaponHandler.ApplyWeaponSkill(...)`, já que a arma não se auto-modifica mais), `AbilityCardUI` (`GetCurrentStats`/`GetNextStats` via `Instance`), `ArrowWeaponController` (`_weaponHandler.GetEffectiveStats<ArrowLevelData>(weapon)`), `InventoryUI`/`InventoryEntry` (raridade passada no construtor), `InventorySlotView`/`TooltipTrigger`/`TooltipBuilder` (raridade explícita em `SetSource`/`Build`), `Assets/Editor/WeaponSkillDefinitionEditor.cs` (parou de desenhar o campo removido).
+
+### 4.13 UI de escolha de caminho — `Assets/Scripts/UI/ChooseWayUI/`, `Assets/Scripts/Splines/SplinePathParticles.cs`, `Assets/Scripts/Totem/TotemRegistry.cs`, `Assets/UI/ChooseWay/`
+
+**O que é / ideia central:** é a tela que aparece quando o jogador para numa bifurcação e aperta E. É **híbrida, não world-space nem tela cheia**: cada totem bloqueado ganha um **selo pequeno** flutuando acima dele (crachá + custo, só "onde"), e o **conteúdo detalhado** (nome, descrição, custo, saldo, botão) mora numa **barra na parte inferior da tela** (só "o quê"). A seleção no mundo é reforçada por **partículas correndo ao longo do trilho** escolhido, na direção do destino, mais o totem correspondente acendendo — redundância proposital para o jogador nunca precisar ler texto para saber para onde vai.
+
+**Substituiu a versão anterior (26/08)**, uma placa holográfica world-space (borda com bloom, feixe de luz, faíscas). Foi trocada a pedido do usuário porque destoava do 3D: todo o jogo usa **um único material flat-shaded** (`Assets/Meshes/Common.mat`, ver 4.10/estilo de arte abaixo) sem brilho nenhum, e a URP tem Bloom global com `threshold 1` — a placa antiga era a única coisa da tela que "floreceava". A troca não foi só "menos brilho": é uma metáfora de **matéria** (madeira pintada, chanfrada) no lugar de **luz**.
+
+**Regras:**
+- Ao entrar na zona (antes mesmo de apertar E), os **selos de todos os caminhos bloqueados da bifurcação já aparecem**, em repouso — o jogador vê os destinos possíveis sem precisar abrir o menu.
+- Só o caminho **selecionado** tem a barra inferior visível e o selo em destaque (maior, cor cheia, balançando); os outros ficam em repouso (escala normal, cor escurecida).
+- Trocar de seleção (A/D, ←/→, analógico, ou as setas da barra) faz **três coisas ao mesmo tempo**: troca o selo em destaque, troca o conteúdo da barra (com um "pop"), e migra as partículas do trilho para a nova spline.
+- As setas de navegação da barra somem nas pontas da lista (primeiro/último caminho), igual à versão anterior.
+- A cor de identidade de cada caminho (`SplineEntry.themeColor`) pinta o escudo do selo, o escudo da barra e as partículas do trilho. **Branco não configurado cai no acento do tema** (`UIThemeConfig.panelBorder`), mesma regra de antes. O botão `Desbloquear` **não** segue o acento — é sempre `actionPrimary` (Copper).
+- Sem moedas suficientes, o custo vira `actionDestructive` e o botão fica não-interativo.
+- **O saldo de moedas aparece na barra** ("Você tem N") porque o jogo não tem HUD permanente — sem isso o jogador não saberia se pode pagar.
+- Toda animação roda em `Time.unscaledDeltaTime` (o menu pausa o jogo).
+
+**Vocabulário visual "madeira pintada" (o que faz virar cartoon low poly, não mais holograma):**
+- **Cantos chanfrados a 45°**, nunca arredondados — é a assinatura poligonal do resto do jogo.
+- Cor **chapada em 2–3 degraus** por peça (face clara no topo, face média, lábio escuro embaixo), nunca gradiente contínuo.
+- **Sem ruído, sem textura de detalhe** — o 3D do jogo também não tem (`Common.mat` não tem normal map nem textura de detalhe, só a paleta `ImphenziaPalette02-Albedo`).
+- **Contorno escuro uniforme** (~5px) em toda peça, e um **lábio inferior** mais escuro dando a leitura de espessura (mesmo truque do `ButtonPlate9Slice`).
+- Sombra = silhueta chapada escura deslocada (6, −8), sem blur.
+- **Nenhuma cor acima de 1.0** — o Bloom global tem `threshold 1`; qualquer HDR aqui volta a florescer.
+- As cores de madeira foram **amostradas da própria `ImphenziaPalette02-Albedo.png`** (os swatches que pintam o mundo), não inventadas: viraram os campos `woodLight`/`woodFace`/`woodMid`/`woodDark`/`woodOutline` do `UIThemeConfig` (seção 4.10).
+
+**Selo world-space por totem** (Canvas `260×320`, escala `0.01`, `3.4` unidades acima do totem, rotação `(30, 45, 0)`):
+
+| Peça | Papel |
+|---|---|
+| `Post` (`PostPlank`) | poste de madeira que planta o selo no topo do totem — a conexão física que o feixe de luz fazia antes |
+| `Shield` | escudo chanfrado grayscale, tintado em runtime com a cor do caminho |
+| `Icon` | `themeIcon` do destino, sobre o escudo |
+| `Lock` | cadeado (`padlock-locked`, Skymon pack) — todo caminho aqui é bloqueado por definição |
+| `CostTag` (`RibbonTag9Slice`) | etiqueta de madeira com moeda + custo |
+
+**Barra inferior** (`BottomBar`, `1240×260`, âncora bottom-center, `anchoredPosition (0, 48)`, dentro do Canvas `CanvasChooseSpline` — reaproveitado da cena, screen-space overlay, `1920×1080`):
+
+| Coluna | Conteúdo |
+|---|---|
+| `CrestColumn` (220) | `Shield` 150² + ícone do destino |
+| `InfoColumn` (660) | título (Lilita One, caixa alta) → descrição (Fredoka) → linha de `Pips` (um por caminho da bifurcação, o atual cheio) |
+| `CostColumn` (320) | `CostTag` (moeda + Nunito) → "Você tem N" → botão `Desbloquear` |
+| `PreviousButton`/`NextButton` | discos chanfrados (`ChevronPlate`) fora do layout, nas laterais da barra |
+| `Hints` | `[A/D] Trocar · [Enter] Desbloquear · [E] Sair`, rodapé da barra |
+
+**Divisão de componentes** (a antiga `ChooseWayPanelUI` acumulava os dois papéis; hoje são scripts separados):
+
+- **`Scripts/UI/ChooseWayUI/ChooseWayScreenUI.cs`** — dono da barra inferior. Singleton no padrão de auto-ativação do projeto (getter `Instance` reativa o GameObject via `FindFirstObjectByType(..., Include)`), vive no `CanvasChooseSpline`. API: `ApplyTheme`, `Show(entry, position, total, affordable, coins, onUnlock, onPrevious, onNext)`, `Pop()`, `Hide()`.
+- **`Scripts/UI/ChooseWayUI/ChooseWayScreenAnimator.cs`** — sobe a barra de baixo com overshoot (`back-out`, ~0.28s) na entrada; "pop" de escala rápido ao trocar de caminho.
+- **`Scripts/UI/ChooseWayUI/ChooseWayTotemBadge.cs`** — dono do selo de um totem. API: `ApplyTheme`, `SetAccent`, `Bind`, `Show`, `Hide`, `SetSelected`. Sem botões — o canvas do selo não tem `GraphicRaycaster`.
+- **`Scripts/UI/ChooseWayUI/ChooseWayBadgeAnimator.cs`** — balanço de placa pendurada (±2,5°, contínuo) e crescimento com overshoot ao ser selecionado.
+- **`Scripts/Totem/TotemView.cs`** — voltou a ser só o totem 3D: partículas, shake, pulso de desbloqueio, e **emissão de verdade** (o array `accentRenderers` recebe a cor do caminho via `MaterialPropertyBlock` — antes essa chamada existia mas estava comentada e não fazia nada). Delega toda a UI para o `ChooseWayTotemBadge` serializado (`badge`). Perdeu `SetNavigation`/`SetCanvasSortOrder` — as setas foram para a barra, e o selo é pequeno demais para precisar do hack de sorting por distância que a placa antiga usava.
+- **`Scripts/Totem/TotemRegistry.cs`** — registro estático `splineIndex → TotemView` (`Register`/`Unregister`/`TryGet`). Ver "Bug de referências nulas" abaixo.
+- **`Scripts/Totem/FocusDimController.cs`** — ganhou o padrão `Instance` (antes era referenciado por campo serializado em cada `SplineUnlockZone`; só existe um na cena).
+- **`Scripts/Splines/SplinePathParticles.cs`** — **um único** `ParticleSystem` reutilizado (não um por spline), emissão 100% manual (`emission.enabled = false`, `shape.enabled = false`): `SetPath(container, splineIndex, reversed, accent)` avança um cursor `t` (2–3 rastros defasados, offsets 0/0,33/0,66) e chama `ParticleSystem.Emit` com posição de `SplineUtility.Evaluate` e velocidade na direção da tangente. `main.simulationSpace = World`, `main.useUnscaledTime = true` (o jogo está pausado). `StopPath()` limpa e para. O parâmetro `reversed` vem de `SplineUnlockZone`, que já sabe (via `GetClosestKnotIndex`) se o knot da bifurcação é o primeiro ou o último da spline de destino.
+- **`Scripts/Splines/SplinePathVisual.cs`** — ganhou `ActiveRoot` (público) e um registro estático próprio (`TryGet(splineIndex, ...)`), preparando o terreno para a segunda fase (acender as pranchas via emissão, ver "Pendências" abaixo).
+- **`Scripts/Splines/SplineUnlockZone.cs`** — `ShowSelected` chama `ChooseWayScreenUI.Instance.Show(...)` e `SplinePathParticles.Instance.SetPath(...)`; `MoveSelection` também dispara `ChooseWayScreenUI.Pop()`. Um novo método `RefreshRestingBadges` roda toda `Update()` (quando o menu não está aberto) para mostrar/esconder os selos de repouso conforme o jogador entra/sai do alcance de cada caminho.
+- **`Editor/ChooseWayArtGenerator.cs`** — menu `Tools/RailStorm/Gerar arte da UI de escolha de caminho`. Gera os PNGs cartoon em `Assets/UI/ChooseWay/`: `SignPlate9Slice`/`SignShadow9Slice` (a barra), `Shield` (escudo grayscale), `RibbonTag9Slice` (etiqueta de custo), `PostPlank` (poste do selo), `ChevronPlate` (setas), `PipEmpty`/`PipFull`, `NailHead` (gerado, ainda sem uso — reserva para decorar os cantos da barra numa próxima passada), `TrailSpark` (sprite simples das partículas do trilho). **Aposentados** (ficam no repo sem uso, convenção do projeto): `WayPanelFill9Slice`, `WayPanelBorder9Slice`, `WayCrestFill`, `WayCrestRim`, `WayBeam`, `WayGlow`, `WaySpark`, `WayDisc`, `WayRule` — a arte da versão holográfica anterior.
+- **`Editor/ChooseWayUIBuilder.cs`** — menu `Tools/RailStorm/Reconstruir UI dos totens de caminho`. Reconstrói três coisas na cena aberta: a barra dentro do `CanvasChooseSpline` (reaproveitado — é a versão screen-space antiga desse mesmo menu, que já existia inativa na cena sem nenhum script referenciando), o sistema de partículas do trilho (`SplinePathParticles`, com um material `Particles/Unlit` gerado em `Assets/UI/ChooseWay/TrailSparkMaterial.mat`), e o selo (`BadgeCanvas`) de **todo `TotemView` da cena**. Todas as medidas são `const` no topo do arquivo.
+
+> **Bug de referências nulas corrigido nesta troca.** Das 9 `SplineUnlockZone` da cena, só 1 tinha o antigo campo `totemsController` preenchido no Inspector — as outras 8 lançariam `NullReferenceException` ao abrir o menu. A causa raiz era exigir religar manualmente cada zona a um `JunctionTotemsController`. Hoje `JunctionTotemsController.OnEnable`/`OnDisable` registram/removem seus totens no `TotemRegistry` estático, e `SplineUnlockZone` consulta o registro em vez de um campo serializado — nenhuma zona pode ficar "esquecida" de novo. `FocusDimController` teve o mesmo tratamento (virou singleton).
+
+> **`Ensure<T>` do builder: cuidado com `??` em `UnityEngine.Object`.** A primeira versão de `ChooseWayUIBuilder.Ensure<T>` usava `target.GetComponent<T>() ?? target.AddComponent<T>()` e lançava `MissingComponentException` de forma intermitente. Substituído por um `if (component == null)` explícito. É o clássico cuidado do C# na Unity: prefira sempre a checagem explícita de null a `??`/`?.` quando o operando é um `UnityEngine.Object`.
+
+> **`Canvas` não tem `.scene` — é `.gameObject.scene`.** Peguei esse erro de compilação ao chamar `EditorSceneManager.MarkSceneDirty` a partir de um `Canvas`; o acesso correto passa pelo `GameObject`.
+
+**Pendências (não implementadas nesta passada, ficou de fora por escopo):**
+- **Acender as pranchas do trilho selecionado.** A keyword `_EMISSION` já está ativa em `Common.mat` (mas com `_EmissionColor` preto); dá para aplicar `MaterialPropertyBlock` nos renderers de `SplinePathVisual.ActiveRoot` com um pulso viajando pela fila, sem instanciar material nem quebrar o SRP Batcher — mesmo padrão de `TotemView.ApplyEmissionTo`.
+- `NailHead.png` é gerado mas não está posicionado nos cantos da barra/selo ainda.
+- O `SplineManifest` (`Assets/Scripts/Splines/Manifest/SplineManifest.asset`) ainda tem a maioria das entradas em placeholder (`destinationName`/`description`/`themeIcon`); só os índices 1 e 2 foram preenchidos como exemplo real durante a validação desta feature.
+
+> **DoF do foco desligado.** `Assets/Volumes/VPTotemFocus.asset` (o perfil que `FocusDimController` ativa ao abrir o menu) tinha `DepthOfField` com `focusDistance 3`/`gaussianEnd 4` — borraria justamente o trilho destacado pelas partículas, que fica a mais de 4 unidades da câmera. `active` foi setado para `0` nesse componente do perfil.
 
 ## 5. Fluxo integrado (resumo)
 
