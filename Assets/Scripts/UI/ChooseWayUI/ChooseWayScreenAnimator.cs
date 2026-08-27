@@ -53,6 +53,8 @@ public class ChooseWayScreenAnimator : MonoBehaviour
 
     System.Collections.IEnumerator PopRoutine()
     {
+        bar.anchoredPosition = _restPosition;
+
         float t = 0f;
         while (t < popDuration)
         {

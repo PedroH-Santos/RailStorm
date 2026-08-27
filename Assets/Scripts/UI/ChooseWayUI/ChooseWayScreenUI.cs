@@ -80,10 +80,9 @@ public class ChooseWayScreenUI : MonoBehaviour
         theme.ApplyBody(hintsText);
         theme.ApplyPrimaryAction(unlockButton);
 
-        Color woodText = Color.Lerp(theme.woodOutline, theme.textTitle, 0.3f);
-        if (descriptionText != null) descriptionText.color = woodText;
-        if (walletText != null) walletText.color = woodText;
-        if (hintsText != null) hintsText.color = woodText;
+        if (descriptionText != null) descriptionText.color = theme.woodOutline;
+        if (walletText != null) walletText.color = theme.woodOutline;
+        if (hintsText != null) hintsText.color = Color.Lerp(theme.woodOutline, theme.textTitle, 0.45f);
 
         if (costIcon != null) costIcon.color = theme.panelBorder;
 
@@ -96,6 +95,8 @@ public class ChooseWayScreenUI : MonoBehaviour
 
     public void Show(SplineEntry entry, int position, int total, bool affordable, int coins, Action onUnlock, Action onPrevious, Action onNext)
     {
+        bool wasVisible = barRoot != null && barRoot.activeSelf;
+
         if (canvasRoot != null) canvasRoot.SetActive(true);
         if (barRoot != null) barRoot.SetActive(true);
 
@@ -134,7 +135,7 @@ public class ChooseWayScreenUI : MonoBehaviour
         Wire(nextButton, onNext);
         nextButton.gameObject.SetActive(position < total - 1);
 
-        _animator?.PlayEnter();
+        if (!wasVisible) _animator?.PlayEnter();
     }
 
     public void Pop()
