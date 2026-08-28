@@ -38,8 +38,10 @@ public class JunctionTotemsController : MonoBehaviour
     void HandleUnblocked(int splineIndex)
     {
         var slot = slots.Find(s => s.splineIndex == splineIndex);
-        if (slot?.view != null)
-            slot.view.gameObject.SetActive(false);
+        if (slot?.view == null) return;
+        if (slot.view.IsVanishing) return;
+
+        slot.view.gameObject.SetActive(false);
     }
 
     void Start()

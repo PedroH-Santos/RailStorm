@@ -20,7 +20,7 @@ MonoBehaviour:
     isBlockedByDefault: 0
     unlockCost: 0
     themeColor: {r: 1, g: 1, b: 1, a: 1}
-    themeIcon: {fileID: 0}
+    themeIcon: {fileID: 21300000, guid: 4fb10d78a49253246880a851928e2f11, type: 3}
   - index: 1
     displayName: Spline 1
     destinationName: Caminho da Floresta
@@ -28,7 +28,7 @@ MonoBehaviour:
     isBlockedByDefault: 1
     unlockCost: 40
     themeColor: {r: 0.61960787, g: 0.16862746, b: 0.78039217, a: 1}
-    themeIcon: {fileID: 0}
+    themeIcon: {fileID: 21300000, guid: ada3f29e6973f6d4ca61ea8adc98548f, type: 3}
   - index: 2
     displayName: Spline 2
     destinationName: Caminho das Montanhas
@@ -36,7 +36,7 @@ MonoBehaviour:
     isBlockedByDefault: 1
     unlockCost: 75
     themeColor: {r: 0.18039216, g: 0.5254902, b: 0.9411765, a: 1}
-    themeIcon: {fileID: 0}
+    themeIcon: {fileID: 21300000, guid: a4d6c044f84dbc94bb8b075cf70e1722, type: 3}
   - index: 3
     displayName: Spline 3
     destinationName: Spline 3

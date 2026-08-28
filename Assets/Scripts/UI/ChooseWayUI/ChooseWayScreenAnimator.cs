@@ -6,6 +6,9 @@ public class ChooseWayScreenAnimator : MonoBehaviour
     [SerializeField] private float enterDuration = 0.28f;
     [SerializeField] private float popDuration = 0.16f;
     [SerializeField] private float popScale = 1.05f;
+    [SerializeField] private float unlockPunchScale = 1.12f;
+    [SerializeField] private float unlockPunchDuration = 0.26f;
+    [SerializeField] private float exitDuration = 0.24f;
 
     Vector2 _restPosition;
     float _riseDistance;
@@ -33,6 +36,65 @@ public class ChooseWayScreenAnimator : MonoBehaviour
         _routine = StartCoroutine(PopRoutine());
     }
 
+    public void PlayUnlockPunch()
+    {
+        if (bar == null) return;
+
+        if (_routine != null) StopCoroutine(_routine);
+        _routine = StartCoroutine(PunchRoutine());
+    }
+
+    public void PlayExit(System.Action onDone)
+    {
+        if (bar == null)
+        {
+            onDone?.Invoke();
+            return;
+        }
+
+        _riseDistance = bar.rect.height + 80f;
+        if (_routine != null) StopCoroutine(_routine);
+        _routine = StartCoroutine(ExitRoutine(onDone));
+    }
+
+    System.Collections.IEnumerator PunchRoutine()
+    {
+        bar.anchoredPosition = _restPosition;
+
+        float t = 0f;
+        while (t < unlockPunchDuration)
+        {
+            t += Time.unscaledDeltaTime;
+            float p = Mathf.Clamp01(t / unlockPunchDuration);
+            float scale = 1f + Mathf.Sin(p * Mathf.PI) * (unlockPunchScale - 1f);
+            bar.localScale = Vector3.one * scale;
+            yield return null;
+        }
+
+        bar.localScale = Vector3.one;
+        _routine = null;
+    }
+
+    System.Collections.IEnumerator ExitRoutine(System.Action onDone)
+    {
+        bar.localScale = Vector3.one;
+        Vector2 from = bar.anchoredPosition;
+        Vector2 to = _restPosition - new Vector2(0f, _riseDistance);
+
+        float t = 0f;
+        while (t < exitDuration)
+        {
+            t += Time.unscaledDeltaTime;
+            float p = Mathf.Clamp01(t / exitDuration);
+            bar.anchoredPosition = Vector2.Lerp(from, to, Easing.CubicIn(p));
+            yield return null;
+        }
+
+        bar.anchoredPosition = _restPosition;
+        _routine = null;
+        onDone?.Invoke();
+    }
+
     System.Collections.IEnumerator EnterRoutine()
     {
         bar.anchoredPosition = _restPosition - new Vector2(0f, _riseDistance);
@@ -43,12 +105,13 @@ public class ChooseWayScreenAnimator : MonoBehaviour
         {
             t += Time.unscaledDeltaTime;
             float p = Mathf.Clamp01(t / enterDuration);
-            float eased = BackOut(p);
+            float eased = Easing.BackOut(p);
             bar.anchoredPosition = Vector2.Lerp(_restPosition - new Vector2(0f, _riseDistance), _restPosition, eased);
             yield return null;
         }
 
         bar.anchoredPosition = _restPosition;
+        _routine = null;
     }
 
     System.Collections.IEnumerator PopRoutine()
@@ -68,13 +131,6 @@ public class ChooseWayScreenAnimator : MonoBehaviour
         }
 
         bar.localScale = Vector3.one;
-    }
-
-    static float BackOut(float t)
-    {
-        const float c1 = 1.70158f;
-        const float c3 = c1 + 1f;
-        float p = t - 1f;
-        return 1f + c3 * p * p * p + c1 * p * p;
+        _routine = null;
     }
 }

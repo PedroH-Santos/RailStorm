@@ -1,3 +1,4 @@
+using System.Collections;
 using Assets.Scripts.Systems.UITheme;
 using TMPro;
 using UnityEngine;
@@ -23,12 +24,18 @@ public class ChooseWayTotemBadge : MonoBehaviour
     [SerializeField] private TMP_Text descriptionText;
     [SerializeField] private TMP_Text costText;
 
+    [Header("Desbloqueio")]
+    [SerializeField] private CanvasGroup group;
+    [SerializeField] private float flashDuration = 0.22f;
+    [SerializeField] private float dismissRise = 42f;
+
     [Header("Cores")]
     [SerializeField, Range(0f, 1f)] private float restingBlend = 0.55f;
     [SerializeField, Range(0f, 1f)] private float restingCardBlend = 0.3f;
 
     ChooseWayBadgeAnimator _animator;
     Color _accent = Color.white;
+    Coroutine _routine;
 
     void Awake()
     {
@@ -98,12 +105,80 @@ public class ChooseWayTotemBadge : MonoBehaviour
 
     public void Show()
     {
-        if (root != null) root.SetActive(true);
+        if (root == null) return;
+
+        if (group != null) group.alpha = 1f;
+        root.SetActive(true);
     }
 
     public void Hide()
     {
         if (root != null) root.SetActive(false);
+    }
+
+    public void PlayUnlocked()
+    {
+        if (root == null) return;
+
+        _animator?.PlayPunch();
+
+        if (_routine != null) StopCoroutine(_routine);
+        _routine = StartCoroutine(UnlockedRoutine());
+    }
+
+    IEnumerator UnlockedRoutine()
+    {
+        float t = 0f;
+        while (t < flashDuration)
+        {
+            t += Time.unscaledDeltaTime;
+            float p = Mathf.Clamp01(t / flashDuration);
+            float flash = 1f - p;
+
+            Color lit = Color.Lerp(_accent, Color.white, flash);
+            if (accentPlate != null) accentPlate.color = lit;
+            if (icon != null) icon.color = lit;
+
+            yield return null;
+        }
+
+        if (accentPlate != null) accentPlate.color = _accent;
+        if (icon != null) icon.color = _accent;
+        _routine = null;
+    }
+
+    public void PlayDismiss(float duration)
+    {
+        if (root == null) return;
+
+        if (_routine != null) StopCoroutine(_routine);
+        _routine = StartCoroutine(DismissRoutine(duration));
+    }
+
+    IEnumerator DismissRoutine(float duration)
+    {
+        RectTransform rect = root.transform as RectTransform;
+        Vector2 basePosition = rect != null ? rect.anchoredPosition : Vector2.zero;
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            float p = Mathf.Clamp01(t / duration);
+
+            if (rect != null)
+                rect.anchoredPosition = basePosition + new Vector2(0f, dismissRise * Easing.CubicOut(p));
+
+            if (group != null) group.alpha = 1f - Easing.CubicIn(p);
+
+            yield return null;
+        }
+
+        if (rect != null) rect.anchoredPosition = basePosition;
+        if (group != null) group.alpha = 1f;
+
+        _routine = null;
+        Hide();
     }
 
     public void SetSelected(bool selected)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Assets.Scripts.Systems.UITheme;
 using TMPro;
 using UnityEngine;
@@ -56,8 +57,16 @@ public class ChooseWayScreenUI : MonoBehaviour
     [Header("Dicas")]
     [SerializeField] private TMP_Text hintsText;
 
+    [Header("Desbloqueio")]
+    [SerializeField] private TMP_Text unlockedStamp;
+    [SerializeField] private TMP_Text costBurn;
+    [SerializeField] private string unlockedMessage = "CAMINHO LIBERADO";
+    [SerializeField] private float costBurnRise = 60f;
+    [SerializeField] private float costBurnDuration = 0.7f;
+
     ChooseWayScreenAnimator _animator;
     Color _accent = Color.white;
+    Coroutine _burnRoutine;
 
     void Awake()
     {
@@ -78,11 +87,15 @@ public class ChooseWayScreenUI : MonoBehaviour
         theme.ApplyBody(walletText);
         theme.ApplyTitle(unlockLabel);
         theme.ApplyBody(hintsText);
+        theme.ApplyTitle(unlockedStamp);
+        theme.ApplyStatValue(costBurn);
         theme.ApplyPrimaryAction(unlockButton);
+
+        if (unlockedStamp != null) unlockedStamp.fontStyle = FontStyles.UpperCase;
 
         if (descriptionText != null) descriptionText.color = theme.woodOutline;
         if (walletText != null) walletText.color = theme.woodOutline;
-        if (hintsText != null) hintsText.color = Color.Lerp(theme.woodOutline, theme.textTitle, 0.45f);
+        if (hintsText != null) hintsText.color = theme.textTitle;
 
         if (costIcon != null) costIcon.color = theme.panelBorder;
 
@@ -124,6 +137,9 @@ public class ChooseWayScreenUI : MonoBehaviour
             if (entry.themeIcon != null) icon.sprite = entry.themeIcon;
         }
 
+        if (unlockedStamp != null) unlockedStamp.gameObject.SetActive(false);
+        if (costBurn != null) costBurn.gameObject.SetActive(false);
+
         BuildPips(position, total);
 
         Wire(unlockButton, onUnlock);
@@ -143,8 +159,85 @@ public class ChooseWayScreenUI : MonoBehaviour
         _animator?.PlayPop();
     }
 
+    public void PlayUnlocked(int cost)
+    {
+        if (unlockButton != null) unlockButton.interactable = false;
+
+        if (unlockedStamp != null)
+        {
+            unlockedStamp.text = unlockedMessage;
+            unlockedStamp.color = _accent;
+            unlockedStamp.gameObject.SetActive(true);
+        }
+
+        if (costText != null) costText.text = "0";
+
+        if (costBurn != null)
+        {
+            if (_burnRoutine != null) StopCoroutine(_burnRoutine);
+            _burnRoutine = StartCoroutine(CostBurnRoutine(cost));
+        }
+
+        _animator?.PlayUnlockPunch();
+    }
+
+    IEnumerator CostBurnRoutine(int cost)
+    {
+        var theme = UIThemeConfig.Instance;
+
+        costBurn.text = "-" + cost;
+        if (theme != null) costBurn.color = theme.actionDestructive;
+        costBurn.gameObject.SetActive(true);
+
+        RectTransform rect = costBurn.rectTransform;
+        Vector2 basePosition = rect.anchoredPosition;
+        Color baseColor = costBurn.color;
+
+        float t = 0f;
+        while (t < costBurnDuration)
+        {
+            t += Time.unscaledDeltaTime;
+            float p = Mathf.Clamp01(t / costBurnDuration);
+
+            rect.anchoredPosition = basePosition + new Vector2(0f, costBurnRise * Easing.CubicOut(p));
+            costBurn.color = new Color(baseColor.r, baseColor.g, baseColor.b, 1f - Easing.CubicIn(p));
+
+            yield return null;
+        }
+
+        rect.anchoredPosition = basePosition;
+        costBurn.color = baseColor;
+        costBurn.gameObject.SetActive(false);
+        _burnRoutine = null;
+    }
+
     public void Hide()
     {
+        if (barRoot == null || !barRoot.activeSelf)
+        {
+            HideImmediate();
+            return;
+        }
+
+        if (_animator == null)
+        {
+            HideImmediate();
+            return;
+        }
+
+        _animator.PlayExit(HideImmediate);
+    }
+
+    void HideImmediate()
+    {
+        if (_burnRoutine != null)
+        {
+            StopCoroutine(_burnRoutine);
+            _burnRoutine = null;
+        }
+
+        if (unlockedStamp != null) unlockedStamp.gameObject.SetActive(false);
+        if (costBurn != null) costBurn.gameObject.SetActive(false);
         if (barRoot != null) barRoot.SetActive(false);
         if (canvasRoot != null) canvasRoot.SetActive(false);
     }

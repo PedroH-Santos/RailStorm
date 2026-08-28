@@ -645,15 +645,23 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 
 > **Repouso vs. selecionado** (`ChooseWayTotemBadge.SetSelected`): anel e ícone vão da cor cheia do caminho a `Lerp(acento, cinza, restingBlend = 0.55)` e o corpo da placa escurece por `restingCardBlend = 0.3`, além do crescimento com overshoot do `ChooseWayBadgeAnimator`.
 
-**Barra inferior** (`BottomBar`, `1240×260`, âncora bottom-center, `anchoredPosition (0, 48)`, dentro do Canvas `CanvasChooseSpline` — reaproveitado da cena, screen-space overlay, `1920×1080`):
+**Barra inferior** (`BottomBar`, `1400×280`, âncora bottom-center, `anchoredPosition (0, 48)`, dentro do Canvas `CanvasChooseSpline` — reaproveitado da cena, screen-space overlay, `1920×1080`):
 
 | Coluna | Conteúdo |
 |---|---|
 | `CrestColumn` (220) | `Shield` 150² + ícone do destino |
-| `InfoColumn` (660) | título (Lilita One, caixa alta) → descrição (Fredoka) → linha de `Pips` (um por caminho da bifurcação, o atual cheio) |
+| `InfoColumn` (740) | título (Lilita One, caixa alta) → descrição (Fredoka) → linha de `Pips` (um por caminho da bifurcação, o atual cheio) |
 | `CostColumn` (320) | moeda + custo em Nunito, **sem moldura atrás** → botão `Desbloquear` |
 | `PreviousButton`/`NextButton` | discos chanfrados (`ChevronPlate`) fora do layout, nas laterais da barra |
-| `Hints` | `[A/D] Trocar · [Enter] Desbloquear · [E] Sair`, rodapé da barra |
+| `Hints` | `[A/D] Trocar · [Enter] Desbloquear · [E] Sair`, **fora da placa**, 46px abaixo dela |
+
+> **A largura das colunas é um orçamento fechado — estourar comprime todas (28/08).** O `Content` é a barra menos `sizeDelta {-60, -60}`, ou seja **1340×220 úteis**. As três colunas têm `flexibleWidth = 0` e `minWidth = -1`, então quando a soma `220 + 740 + 320` mais `2 × spacing 16` passa do box, o `HorizontalLayoutGroup` **encolhe as três proporcionalmente** — e o título, que cabia, passa a quebrar. Era exatamente o que acontecia com a barra em `1240×260`: as colunas pediam 1232 num box de 1180 e a `InfoColumn` recebia ~631 dos 660 pedidos. **O sintoma aparece na fonte, mas a causa é geométrica** — ao mexer em qualquer largura de coluna, refaça a soma antes de culpar o tamanho do texto.
+
+> **O título não pode quebrar, por design (28/08).** `Title` usa `TextWrappingMode = 0` (quebra **desligada**) mais autosize `32–52` e `LayoutElement.preferredHeight = 70`. Nome de destino em duas linhas estourava os 60px do `LayoutElement` e, com `VerticalAlignment` Middle, transbordava para cima **e** para baixo, cobrindo a descrição. Com a quebra desligada, um nome longo demais encolhe até 32pt em vez de partir a linha. Vale a mesma condição registrada no card de habilidade (seção 4.10): o autosize só age porque `flexibleHeight = 0` e a altura preferida estão travadas — se a linha puder crescer, o TMP entende que o texto coube e nunca encolhe.
+
+> **A coluna de texto é centralizada, não alinhada ao topo.** `InfoColumn` usa `ChildAlignment = MiddleLeft` e `spacing = 10`: o conteúdo (`70 + 10 + 76 + 10 + 22 = 188`) fica centrado nos 220 úteis, com 16px de folga em cima e embaixo. Com `UpperLeft` (como era até 28/08) toda a sobra ia para o rodapé e os textos ficavam grudados na aresta de cima da placa.
+
+> **As dicas são o único texto desta tela que NÃO fica sobre madeira (28/08).** O `Hints` é filho de `BottomBar`, mas ancorado à borda inferior com `pivot.y = 0` e `anchoredPosition (0, -46)` — ele desenha **abaixo** da placa (e da sombra dela, que tem offset `(6, -8)`), sobre o mundo escurecido pelo `screenDim`. Por isso a regra "texto sobre madeira é escuro" **não** se aplica a ele: `ApplyTheme` o pinta com `textTitle` cheio, e o GameObject carrega um `Outline` mais um `Shadow` que o recortam contra qualquer fundo de jogo. Antes ele usava `Lerp(woodOutline, textTitle, 0.45)` — um marrom-acinzentado pensado para madeira — em 22pt e sem contorno nenhum, e ficava praticamente invisível. Os dois componentes não precisam de cor configurada: o `foreach (var shadow in GetComponentsInChildren<Shadow>(true))` de `ApplyTheme` já aplica `outlineDark` no `Outline` e `textShadow` no `Shadow`.
 
 **Divisão de componentes** (a antiga `ChooseWayPanelUI` acumulava os dois papéis; hoje são scripts separados):
 
@@ -701,6 +709,60 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - O `SplineManifest` (`Assets/Scripts/Splines/Manifest/SplineManifest.asset`) ainda tem a maioria das entradas em placeholder (`destinationName`/`description`/`themeIcon`); só os índices 1 e 2 foram preenchidos como exemplo real durante a validação desta feature.
 
 > **DoF do foco desligado.** `Assets/Volumes/VPTotemFocus.asset` (o perfil que `FocusDimController` ativa ao abrir o menu) tinha `DepthOfField` com `focusDistance 3`/`gaussianEnd 4` — borraria justamente o trilho destacado pelas partículas, que fica a mais de 4 unidades da câmera. `active` foi setado para `0` nesse componente do perfil.
+
+### 4.14 Celebração do desbloqueio de caminho — `Assets/Scripts/Splines/SplineUnlockSequence.cs`
+
+**O que é / ideia central:** é o beat que roda quando o jogador confirma o pagamento de um caminho. Em vez de só confirmar a compra, o momento **mostra a recompensa**: o totem se prepara e descarrega, o trilho **se constrói em cascata** do totem até o destino, e só então o totem sai de cena e a barra fecha. Dura ~1,3s com o jogo ainda pausado.
+
+**Por que existiu a reforma (28/08).** A versão anterior era um pulso senoidal de ±15% no totem por 0,5s e nada mais — o usuário não gostou. A causa não era a curva: **o desbloqueio não tinha recompensa, só confirmação.** Depois do pulso, tudo acontecia no mesmo frame — moeda debitada (com a barra já sumindo, então o jogador nunca via o custo ser pago), `Unblock` trocando o trilho quebrado pelo normal com um `SetActive` seco, o totem apagado por outro `SetActive(false)`, e o `CloseMenu` despausando. A coisa pela qual o jogador pagou — o caminho novo existindo — aparecia fora de cena, sem ninguém apontando para ela.
+
+**Regras:**
+- O desbloqueio é uma **sequência com beats**, não um efeito único, e roda inteira com `Time.timeScale = 0` — portanto **tudo** mede `Time.unscaledDeltaTime`, como o resto do fluxo de escolha de caminho.
+- Durante a sequência o input de desbloqueio fica travado (`_unlocking`): `Update` retorna cedo, `E`/`Esc` não fecham o menu e `OnTriggerExit` é ignorado.
+- A onda de construção sempre corre **do totem em direção ao destino**, nunca ao contrário.
+- As moedas são debitadas **uma vez só**, no beat de pagamento, e o `Unblock` só acontece no fim — a spline não fica atravessável antes de a animação terminar.
+- Todas as durações são `[SerializeField]`, para calibrar em jogo sem tocar em código.
+
+**Beat sheet:**
+
+| t (s) | O que acontece |
+|---|---|
+| 0.00 | `TotemView.PlayCharge` — antecipação: o totem encolhe para `0.92` |
+| 0.12 | **Descarga**: estica para `1.10` com `BackOut`, `unlockBurstParticles.Play()`, emissão ao pico. O selo pisca a borda/ícone em branco e leva um punch |
+| 0.30 | Moeda debitada. Barra: `-{custo}` sobe e some sobre a coluna de custo, carimbo `CAMINHO LIBERADO` na cor do caminho, botão desativado, punch de escala |
+| 0.38–1.08 | **Onda no trilho**: `SplinePathVisual.PlayUnlockReveal` faz as pranchas surgirem em cascata, e a fumaça do trilho corre à frente da onda |
+| 1.08–1.38 | `TotemView.PlayVanish` — o totem afunda no chão com escala Y → 0 e leve giro; o selo sobe e some |
+| 1.48 | `Unblock()` + `CloseMenu()` — a barra desliza para baixo e o jogo despausa |
+
+- **`Splines/SplineUnlockSequence.cs`** — orquestra o beat sheet. Fica no **mesmo GameObject** do `SplineUnlockZone` (`[RequireComponent]`), sem singleton nem fiação de cena. API: `Play(entry, view, reversed, onCoinsSpent, onComplete)`, `IsPlaying`.
+
+  > **Por que a corrotina não mora no `TotemView`.** O `JunctionTotemsController` desativa o GameObject do totem no `Unblock`, o que **mata qualquer corrotina rodando nele**. O `SplineUnlockZone` fica ativo o tempo todo (e com `timeScale = 0` o jogador não consegue sair do trigger), então é o host seguro.
+
+- **`Systems/Easing.cs`** — `BackOut`/`CubicIn`/`CubicOut` estáticos. O `BackOut` era privado dentro do `ChooseWayScreenAnimator`; foi extraído em vez de duplicado, e o animator passou a consumi-lo.
+
+- **`Splines/SplinePathVisual.cs`** — ganhou `PlayUnlockReveal(reversed, duration)`. Ativa `normalRoot` antecipadamente, zera a escala de cada prancha e as faz crescer em cascata com `BackOut`, subindo `plankRiseHeight` do chão.
+
+  > **A cascata é só a ordem dos filhos.** O `SplineTrackBuilder` instancia as pranchas como filhas diretas de `normalRoot`, **já em ordem ao longo do trilho** — não é preciso avaliar a spline. O `reversed` que o `SplineUnlockZone` já calculava para as partículas diz se a onda percorre os filhos do índice 0 para o fim ou o contrário, e é o que garante que ela sempre saia do totem. `ActiveRoot`/`TryGet` já existiam como API pública **sem nenhum chamador**, deixados prontos exatamente para isto.
+
+  > **`Refresh()` não pode rodar no fim da revelação.** O `Unblock` só acontece depois, então naquele instante o `SplineRuntimeState` ainda diz "bloqueado" e um `Refresh()` reverteria o trilho para quebrado, desfazendo a animação. Por isso a corrotina termina sem reconciliar, e o `Refresh()` disparado pelo `OnSplineUnblocked` (que também sai cedo enquanto `_revealRoutine != null`) vira no-op.
+
+- **`Splines/SplinePathParticles.cs`** — ganhou `PlayReveal(duration)`: reseta o cursor e o faz percorrer a spline inteira em `duration`, no lugar da `travelSpeed` fixa, para a baforada liderar a construção. Não reconfigura o `ParticleSystem` — `SetPath` já rodou na seleção do caminho.
+
+- **`Totem/TotemView.cs`** — `PlayUnlockEffect` (o pulso senoidal) virou `PlayCharge()` + `PlayVanish()`, com a flag `IsVanishing` e o padrão de corrotina cancelável (`_routine` + `StopCoroutine`) que o componente **não** seguia — o antigo `PlayUnlockEffect` empilhava rotinas a cada Enter. `JunctionTotemsController.HandleUnblocked` só desativa o totem se ele **não** estiver sumindo; o `SetActive(false)` final é a última linha da própria `VanishRoutine`.
+
+  > **Sumir com direção lê melhor que encolher no lugar** — era exatamente a queixa sobre o efeito antigo. O totem afunda `vanishSinkDepth` unidades com um giro leve, em vez de desaparecer no próprio eixo.
+
+- **`UI/ChooseWayUI/ChooseWayScreenUI.cs`** — `PlayUnlocked(cost)` ativa o carimbo `UnlockedStamp`, zera o custo exibido, dispara o `-{custo}` flutuante e chama o punch. `Hide()` deixou de ser `SetActive(false)` seco: passa pelo `PlayExit` do animator e só então executa `HideImmediate`.
+
+- **`UI/ChooseWayUI/ChooseWayScreenAnimator.cs`** — ganhou `PlayUnlockPunch()` e `PlayExit(onDone)`. Todas as rotinas agora zeram `_routine` ao terminar e fixam `anchoredPosition`/`localScale` na primeira linha — o CLAUDE.md já registrava que `PlayEnter` e `PlayPop` compartilham o mesmo slot de corrotina e que isso deixou a barra parada fora da tela uma vez.
+
+- **`UI/ChooseWayUI/ChooseWayTotemBadge.cs`** — `PlayUnlocked()` (flash branco no anel e no ícone) e `PlayDismiss(duration)` (sobe `dismissRise` e faz fade pelo `CanvasGroup`).
+
+  > **O punch do selo mora no animator, não no selo.** `ChooseWayBadgeAnimator.LateUpdate` **reescreve `plate.localScale` todo frame** — qualquer escala aplicada de fora por corrotina seria apagada no mesmo frame. Por isso o pop virou `ChooseWayBadgeAnimator.PlayPunch()`, um multiplicador temporário somado ao `_currentScale` dentro do próprio `LateUpdate`. Vale como regra: **não animar por fora uma propriedade que outro componente escreve continuamente.**
+
+  > **Não há cadeado para animar.** `lock_`/`lockGlyph` continuam como campos do componente, mas o layout atual do selo não os liga mais (removidos em 27/08). Seguem null-safe e sem uso.
+
+**Peças de cena a ligar (a UI é montada à mão, ver seção 3):** `unlockedStamp` (TMP sobre a `InfoColumn`), `costBurn` (TMP sobre a `CostColumn`) — ambos com `LayoutElement.ignoreLayout = true`, porque a soma das larguras das colunas da barra é um orçamento fechado — e um `CanvasGroup` no root do selo. **Todos os três são opcionais em runtime**: sem eles a sequência roda igual, só sem o carimbo, sem o `-{custo}` e sem o fade do selo.
 
 ## 5. Fluxo integrado (resumo)
 

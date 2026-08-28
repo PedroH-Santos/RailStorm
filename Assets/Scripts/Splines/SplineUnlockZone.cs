@@ -6,6 +6,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.Splines;
 
 [RequireComponent(typeof(SphereCollider))]
+[RequireComponent(typeof(SplineUnlockSequence))]
 public class SplineUnlockZone : MonoBehaviour
 {
     [Header("Collider desta zona (independente do SplineCollision)")]
@@ -16,7 +17,9 @@ public class SplineUnlockZone : MonoBehaviour
 
     PlayerController _player;
     PlayerStatsAggregator _stats;
+    SplineUnlockSequence _sequence;
     bool _menuOpen;
+    bool _unlocking;
 
     List<SplineEntry> _relevantEntries = new();
     List<SplineEntry> _blockedHere = new();
@@ -32,11 +35,13 @@ public class SplineUnlockZone : MonoBehaviour
         var col = GetComponent<SphereCollider>();
         col.radius = unlockRadius;
         col.isTrigger = true;
+
+        _sequence = GetComponent<SplineUnlockSequence>();
     }
 
     void Update()
     {
-        if (_player == null) return;
+        if (_player == null || _unlocking) return;
 
         var previouslyBlocked = _blockedHere;
         _blockedHere = SplineRuntimeState.Instance
@@ -121,11 +126,12 @@ public class SplineUnlockZone : MonoBehaviour
 
         _selectedEntry = _blockedHere[nextPos];
         ShowSelected(pop: true);
+        UpdateDustFocus();
     }
 
     void TryUnlock()
     {
-        if (_selectedEntry == null) return;
+        if (_unlocking || _selectedEntry == null) return;
 
         SplineEntry entry = _selectedEntry;
         var view = GetTotemView(entry.index);
@@ -136,13 +142,27 @@ public class SplineUnlockZone : MonoBehaviour
             return;
         }
 
-        view?.PlayUnlockEffect(() =>
-        {
-            _stats.Coins -= entry.unlockCost;
-            SplineRuntimeState.Instance.Unblock(entry.index);
-            CloseMenu();
-        });
+        _unlocking = true;
+
+        _sequence.Play(
+            entry,
+            view,
+            ResolveReversed(entry),
+            () =>
+            {
+                _stats.Coins -= entry.unlockCost;
+                ChooseWayScreenUI.Instance?.PlayUnlocked(entry.unlockCost);
+            },
+            () =>
+            {
+                SplineRuntimeState.Instance.Unblock(entry.index);
+                CloseMenu();
+                _unlocking = false;
+            });
     }
+
+    bool ResolveReversed(SplineEntry entry) =>
+        _startKnotBySplineIndex.TryGetValue(entry.index, out int startKnot) && startKnot != 0;
 
     void OpenMenu()
     {
@@ -154,6 +174,13 @@ public class SplineUnlockZone : MonoBehaviour
 
         _selectedEntry = _blockedHere[0];
         ShowSelected(pop: false);
+        UpdateDustFocus();
+    }
+
+    void UpdateDustFocus()
+    {
+        foreach (var entry in _blockedHere)
+            GetTotemView(entry.index)?.SetDustVisible(entry == _selectedEntry);
     }
 
     void ShowSelected(bool pop)
@@ -181,8 +208,7 @@ public class SplineUnlockZone : MonoBehaviour
 
         FocusDimController.Instance?.SetFocused(true, _selectedEntry.themeColor);
 
-        bool reversed = _startKnotBySplineIndex.TryGetValue(_selectedEntry.index, out int startKnot) && startKnot != 0;
-        SplinePathParticles.Instance?.SetPath(splineContainer, _selectedEntry.index, reversed, _selectedEntry.themeColor);
+        SplinePathParticles.Instance?.SetPath(splineContainer, _selectedEntry.index, ResolveReversed(_selectedEntry), _selectedEntry.themeColor);
     }
 
     void CloseMenu()
@@ -196,7 +222,11 @@ public class SplineUnlockZone : MonoBehaviour
         ChooseWayScreenUI.Instance?.Hide();
 
         foreach (var entry in _blockedHere)
-            GetTotemView(entry.index)?.Hide();
+        {
+            var view = GetTotemView(entry.index);
+            view?.Hide();
+            view?.SetDustVisible(true);
+        }
 
         _selectedEntry = null;
     }
@@ -287,6 +317,7 @@ public class SplineUnlockZone : MonoBehaviour
     void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag("Player")) return;
+        if (_unlocking) return;
 
         if (_menuOpen) CloseMenu();
 

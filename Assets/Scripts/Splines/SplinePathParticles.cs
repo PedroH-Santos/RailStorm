@@ -45,6 +45,8 @@ public class SplinePathParticles : MonoBehaviour
     bool _reversed;
     float _cursor;
     float _emitTimer;
+    float _revealSpeed;
+    float _revealRemaining;
     Color _smokeColor = Color.white;
 
     void Awake()
@@ -114,16 +116,30 @@ public class SplinePathParticles : MonoBehaviour
         _reversed = reversed;
         _cursor = 0f;
         _emitTimer = 0f;
+        _revealSpeed = 0f;
+        _revealRemaining = 0f;
         _smokeColor = SmokeColorFrom(accent);
 
         particles.Clear();
         particles.Play();
     }
 
+    public void PlayReveal(float duration)
+    {
+        if (particles == null || duration <= 0f) return;
+
+        _cursor = 0f;
+        _emitTimer = 0f;
+        _revealSpeed = 1f / duration;
+        _revealRemaining = duration;
+    }
+
     public void StopPath()
     {
         _splineIndex = -1;
         _container = null;
+        _revealSpeed = 0f;
+        _revealRemaining = 0f;
 
         if (particles == null) return;
 
@@ -150,7 +166,15 @@ public class SplinePathParticles : MonoBehaviour
 
         float delta = Time.unscaledDeltaTime;
 
-        _cursor += travelSpeed * delta;
+        float speed = travelSpeed;
+
+        if (_revealRemaining > 0f)
+        {
+            speed = _revealSpeed;
+            _revealRemaining -= delta;
+        }
+
+        _cursor += speed * delta;
         if (_cursor > 1f) _cursor -= 1f;
 
         float interval = 1f / Mathf.Max(1f, puffsPerSecond);
