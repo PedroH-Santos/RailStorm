@@ -18,4 +18,6 @@ public static class TotemRegistry
 
     public static bool TryGet(int splineIndex, out TotemView view) =>
         ViewsBySplineIndex.TryGetValue(splineIndex, out view);
+
+    public static IEnumerable<TotemView> AllViews => ViewsBySplineIndex.Values;
 }

@@ -28,20 +28,8 @@ public static class TooltipBuilder
 
         if (stats == null) return data;
 
-        data.Stats.Add(new TooltipStatLine("Dano", $"{stats.damage}"));
-        data.Stats.Add(new TooltipStatLine("Cadência", $"{stats.attackRate:0.##}/s"));
-        data.Stats.Add(new TooltipStatLine("Alcance", $"{stats.range:0.#}m"));
-
-        if (stats is ArrowLevelData arrow)
-        {
-            data.Stats.Add(new TooltipStatLine("Flechas", $"{arrow.arrowCount}"));
-            data.Stats.Add(new TooltipStatLine("Velocidade", $"{arrow.speed:0.#}"));
-        }
-        else if (stats is MagicLevelData magic)
-        {
-            data.Stats.Add(new TooltipStatLine("Área", $"{magic.area:0.#}m"));
-            data.Stats.Add(new TooltipStatLine("Conjuração", $"{magic.castTime:0.##}s"));
-        }
+        foreach (var target in stats.DisplayStats)
+            data.Stats.Add(new TooltipStatLine(StatLabels.Of(target), WeaponStatFormatting.Format(target, stats.GetStatValue(target))));
 
         if (weaponHandler == null) return data;
 

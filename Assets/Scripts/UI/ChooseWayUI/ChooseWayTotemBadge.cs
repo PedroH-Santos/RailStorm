@@ -34,14 +34,29 @@ public class ChooseWayTotemBadge : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float restingCardBlend = 0.3f;
 
     ChooseWayBadgeAnimator _animator;
+    Canvas _canvas;
+    static Camera _mainCamera;
     Color _accent = Color.white;
     Coroutine _routine;
 
     void Awake()
     {
         _animator = GetComponentInChildren<ChooseWayBadgeAnimator>(true);
+        _canvas = GetComponent<Canvas>();
         ApplyTheme();
         if (root != null) root.SetActive(false);
+    }
+
+    void LateUpdate()
+    {
+        if (_canvas == null || root == null || !root.activeInHierarchy) return;
+
+        if (_mainCamera == null) _mainCamera = Camera.main;
+        if (_mainCamera == null) return;
+
+        Vector3 offset = transform.position - _mainCamera.transform.position;
+        float depth = Vector3.Dot(offset, _mainCamera.transform.forward);
+        _canvas.sortingOrder = Mathf.RoundToInt(-depth * 10f);
     }
 
     public void ApplyTheme()

@@ -207,6 +207,7 @@ public class SplineUnlockZone : MonoBehaviour
         if (pop) ChooseWayScreenUI.Instance?.Pop();
 
         FocusDimController.Instance?.SetFocused(true, _selectedEntry.themeColor);
+        ChooseWayCameraFraming.Instance?.SetFocused(true);
 
         SplinePathParticles.Instance?.SetPath(splineContainer, _selectedEntry.index, ResolveReversed(_selectedEntry), _selectedEntry.themeColor);
     }
@@ -218,6 +219,7 @@ public class SplineUnlockZone : MonoBehaviour
         Time.timeScale = 1f;
 
         FocusDimController.Instance?.SetFocused(false, Color.white);
+        ChooseWayCameraFraming.Instance?.SetFocused(false);
         SplinePathParticles.Instance?.StopPath();
         ChooseWayScreenUI.Instance?.Hide();
 

@@ -138,7 +138,7 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             var stats = weapon.GetStatsForRarity(ri);
             descriptionText.text = !string.IsNullOrEmpty(weapon.description)
                 ? weapon.description
-                : $"DMG {stats.damage}  |  {stats.attackRate:F1}/s  |  Alc. {stats.range:F0}m";
+                : WeaponStatFormatting.BuildSummary(stats);
         }
         else if (d is WeaponDefinition wu && data.isUpgrade)
         {
@@ -147,9 +147,7 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             var next = handler != null ? handler.GetNextStats(wu) : wu.GetStatsForRarity(ri);
             descriptionText.text = !string.IsNullOrEmpty(wu.description)
                 ? wu.description
-                : $"DMG {prev.damage}→{next.damage}" +
-                  $"  |  {prev.attackRate:F1}→{next.attackRate:F1}/s" +
-                  $"  |  Alc. {prev.range:F0}→{next.range:F0}m";
+                : WeaponStatFormatting.BuildTransitionSummary(prev, next);
         }
 
         if (_selfButton == null) _selfButton = GetComponent<Button>();

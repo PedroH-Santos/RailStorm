@@ -19,6 +19,11 @@ public class SplineRuntimeState : MonoBehaviour
         Instance = this;
     }
 
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
 
     public bool IsBlocked(int splineIndex)
     {
