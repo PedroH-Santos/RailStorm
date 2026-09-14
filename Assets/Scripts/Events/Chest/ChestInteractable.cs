@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using StarterAssets;
 using UnityEngine;
 
@@ -40,8 +42,8 @@ public class ChestInteractable : InteractableObject
         }
 
         int rarityIndex = RarityRoller.Roll(lootTable.minRarity, lootTable.ResolvedMaxRarity, _stats.LuckPercent);
-        ItemDefinition item = ChestLootRoller.PickItem(lootTable.possibleItems, rarityIndex,
-            i => _itemHandler.IsExiled(i) || _itemHandler.HasItem(i));
+        bool IsUnavailable(ItemDefinition i) => _itemHandler.IsExiled(i) || _itemHandler.HasItem(i);
+        ItemDefinition item = ChestLootRoller.PickItem(lootTable.possibleItems, rarityIndex, IsUnavailable);
 
         if (item == null)
         {
@@ -66,7 +68,10 @@ public class ChestInteractable : InteractableObject
 
         if (openBurstParticles != null) openBurstParticles.Play();
 
-        reveal.Show(item, _pendingRarityIndex, transform.position, OnTake, OnExile, OnSkip);
+        List<ItemDefinition> reelPool = lootTable.possibleItems.Where(i => i != null && !IsUnavailable(i)).ToList();
+        if (!reelPool.Contains(item)) reelPool.Add(item);
+
+        reveal.Show(item, _pendingRarityIndex, reelPool, transform.position, OnTake, OnExile, OnSkip);
     }
 
     void OnTake()

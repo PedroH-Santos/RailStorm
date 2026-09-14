@@ -1,5 +1,6 @@
 using System;
-using System.Collections;
+using System.Collections.Generic;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -25,36 +26,43 @@ public class ChestRevealEffect : MonoBehaviour
 
     [Header("Fundo escurecido (atrás do painel)")]
     [SerializeField] private Image dimBackground;
-    [SerializeField] private float dimTargetAlpha = 0.65f;
     [SerializeField] private float dimFadeDuration = 0.15f;
 
-    [Header("Painel (não cobre a tela toda)")]
+    [Header("Painel")]
     [SerializeField] private GameObject panelRoot;
-    [SerializeField] private Image panelFrame;
+    [SerializeField] private Image panelBorder;
+
+    [Header("Textos")]
+    [SerializeField] private Image rarityTagPlate;
     [SerializeField] private TMP_Text rarityText;
     [SerializeField] private TMP_Text itemNameText;
     [SerializeField] private TMP_Text descriptionText;
-    [SerializeField] private Image itemIcon;
+
+    [Header("Roleta")]
+    [SerializeField] private ChestRouletteAnimator roulette;
 
     [Header("Botões de decisão")]
     [SerializeField] private Button btnTake;
     [SerializeField] private Button btnExile;
     [SerializeField] private Button btnSkip;
 
-    [Header("Burst de raios atrás do ícone")]
-    [SerializeField] private Image raysImage;
-    [SerializeField] private float raysSpinSpeed = 20f;
-
     [Header("Timings")]
     [SerializeField] private float panelInDuration = 0.25f;
     [SerializeField] private float panelOutDuration = 0.2f;
 
+    [Header("Painéis laterais")]
+    [SerializeField] private InventoryUI inventoryUI;
+    [SerializeField] private StatsUI statsUI;
+    [SerializeField] private StarterAssets.PlayerStatsAggregator playerStats;
+
     [Header("Partículas (opcional, na posição do baú no mundo)")]
     [SerializeField] private ParticleSystem burstParticlesPrefab;
 
-    Coroutine _spinRoutine;
     Action _onTake, _onExile, _onSkip;
     bool _waitingForDecision;
+    bool _spinning;
+    Tween _panelTween;
+    float _dimTargetAlpha;
 
     void Awake()
     {
@@ -63,6 +71,7 @@ public class ChestRevealEffect : MonoBehaviour
         if (dimBackground != null)
         {
             var c = dimBackground.color;
+            _dimTargetAlpha = c.a;
             c.a = 0f;
             dimBackground.color = c;
             dimBackground.gameObject.SetActive(false);
@@ -73,13 +82,11 @@ public class ChestRevealEffect : MonoBehaviour
         if (btnTake != null) btnTake.onClick.AddListener(() => Decide(_onTake));
         if (btnExile != null) btnExile.onClick.AddListener(() => Decide(_onExile));
         if (btnSkip != null) btnSkip.onClick.AddListener(() => Decide(_onSkip));
+
+        if (playerStats == null) playerStats = FindFirstObjectByType<StarterAssets.PlayerStatsAggregator>();
     }
 
-    /// <summary>
-    /// Mostra o painel de revelação e aguarda o player escolher Pegar (Take) / Exilar (Exile) / Pular (Skip).
-    /// Cada callback é invocado quando o botão correspondente é clicado, e então o painel fecha.
-    /// </summary>
-    public void Show(ItemDefinition item, int rarityIndex, Vector3 worldPos, Action onTake, Action onExile, Action onSkip)
+    public void Show(ItemDefinition item, int rarityIndex, IReadOnlyList<ItemDefinition> reelPool, Vector3 worldPos, Action onTake, Action onExile, Action onSkip)
     {
         _onTake = onTake;
         _onExile = onExile;
@@ -95,120 +102,106 @@ public class ChestRevealEffect : MonoBehaviour
             Destroy(ps.gameObject, ps.main.duration + ps.main.startLifetime.constantMax);
         }
 
-        SetupPanelContent(item, rarityIndex);
-        StartCoroutine(OpenRoutine());
-    }
+        SetButtonsInteractable(false);
+        SetPendingTexts();
 
-    IEnumerator OpenRoutine()
-    {
-        _waitingForDecision = true;
+        if (inventoryUI != null) inventoryUI.gameObject.SetActive(true);
+        statsUI?.Bind(playerStats);
 
-        yield return StartCoroutine(FadeDim(dimTargetAlpha, dimFadeDuration));
-        yield return StartCoroutine(PanelIn());
+        Open();
 
-        if (_spinRoutine != null) StopCoroutine(_spinRoutine);
-        _spinRoutine = StartCoroutine(SpinRays());
-    }
-
-    IEnumerator SpinRays()
-    {
-        while (_waitingForDecision)
+        _spinning = true;
+        roulette?.Play(item, rarityIndex, reelPool, () =>
         {
-            if (raysImage != null)
-                raysImage.transform.Rotate(0f, 0f, raysSpinSpeed * Time.unscaledDeltaTime);
-            yield return null;
+            _spinning = false;
+            _waitingForDecision = true;
+            SetFinalTexts(item, rarityIndex);
+            SetButtonsInteractable(true);
+        });
+    }
+
+    void Open()
+    {
+        if (dimBackground != null)
+        {
+            dimBackground.gameObject.SetActive(true);
+            dimBackground.DOKill();
+            dimBackground.DOFade(_dimTargetAlpha, dimFadeDuration).SetUpdate(true);
+        }
+
+        if (panelRoot != null)
+        {
+            panelRoot.SetActive(true);
+            panelRoot.transform.localScale = Vector3.one * 0.85f;
+            _panelTween?.Kill();
+            _panelTween = panelRoot.transform.DOScale(1f, panelInDuration).SetEase(Ease.OutBack).SetUpdate(true);
         }
     }
 
-    void Decide(Action callback)
+    void SetPendingTexts()
     {
-        if (!_waitingForDecision) return;
-        _waitingForDecision = false;
-
-        callback?.Invoke();
-        StartCoroutine(CloseRoutine());
+        if (rarityText != null) rarityText.text = "???";
+        if (itemNameText != null) itemNameText.text = "Sorteando...";
+        if (descriptionText != null) descriptionText.text = string.Empty;
     }
 
-    IEnumerator CloseRoutine()
-    {
-        yield return StartCoroutine(PanelOut());
-        yield return StartCoroutine(FadeDim(0f, dimFadeDuration));
-
-        if (dimBackground != null) dimBackground.gameObject.SetActive(false);
-    }
-
-    void SetupPanelContent(ItemDefinition item, int rarityIndex)
+    void SetFinalTexts(ItemDefinition item, int rarityIndex)
     {
         Color rarityColor = RarityHelper.Color(rarityIndex);
 
         if (rarityText != null)
         {
             rarityText.text = RarityHelper.DisplayName(rarityIndex);
-            rarityText.color = rarityColor;
+            rarityText.transform.DOKill();
+            rarityText.transform.localScale = Vector3.one * 1.3f;
+            rarityText.transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack).SetUpdate(true);
         }
 
         if (itemNameText != null) itemNameText.text = item.itemName;
         if (descriptionText != null) descriptionText.text = item.description;
-        if (itemIcon != null) itemIcon.sprite = item.icon;
-        if (panelFrame != null) panelFrame.color = rarityColor;
-        if (raysImage != null) raysImage.color = new Color(rarityColor.r, rarityColor.g, rarityColor.b, 0.5f);
+        if (rarityTagPlate != null) rarityTagPlate.color = rarityColor;
+        if (panelBorder != null) panelBorder.color = rarityColor;
     }
 
-    IEnumerator FadeDim(float target, float duration)
+    void SetButtonsInteractable(bool interactable)
     {
-        if (dimBackground == null) yield break;
-
-        dimBackground.gameObject.SetActive(true);
-        float start = dimBackground.color.a;
-        float t = 0f;
-
-        while (t < duration)
-        {
-            t += Time.unscaledDeltaTime;
-            float a = Mathf.Lerp(start, target, t / duration);
-            var c = dimBackground.color;
-            dimBackground.color = new Color(c.r, c.g, c.b, a);
-            yield return null;
-        }
-
-        var final = dimBackground.color;
-        dimBackground.color = new Color(final.r, final.g, final.b, target);
+        if (btnTake != null) btnTake.interactable = interactable;
+        if (btnExile != null) btnExile.interactable = interactable;
+        if (btnSkip != null) btnSkip.interactable = interactable;
     }
 
-    IEnumerator PanelIn()
+    void Decide(Action callback)
     {
-        if (panelRoot == null) yield break;
+        if (!_waitingForDecision || _spinning) return;
+        _waitingForDecision = false;
 
-        panelRoot.SetActive(true);
-        Vector3 baseScale = Vector3.one;
-
-        float t = 0f;
-        while (t < panelInDuration)
-        {
-            t += Time.unscaledDeltaTime;
-            float pulse = Mathf.Sin(Mathf.Clamp01(t / panelInDuration) * Mathf.PI * 0.5f) * 1.08f;
-            panelRoot.transform.localScale = baseScale * Mathf.Max(pulse, 0.01f);
-            yield return null;
-        }
-
-        panelRoot.transform.localScale = baseScale;
+        callback?.Invoke();
+        Close();
     }
 
-    IEnumerator PanelOut()
+    void Close()
     {
-        if (panelRoot == null) yield break;
+        roulette?.Stop();
+        SetButtonsInteractable(false);
 
-        Vector3 baseScale = panelRoot.transform.localScale;
-        float t = 0f;
-        while (t < panelOutDuration)
+        _panelTween?.Kill();
+        _panelTween = panelRoot.transform.DOScale(0f, panelOutDuration).SetEase(Ease.InCubic).SetUpdate(true)
+            .OnComplete(() =>
+            {
+                panelRoot.SetActive(false);
+                panelRoot.transform.localScale = Vector3.one;
+            });
+
+        if (dimBackground != null)
         {
-            t += Time.unscaledDeltaTime;
-            float scale = Mathf.Lerp(1f, 0f, t / panelOutDuration);
-            panelRoot.transform.localScale = baseScale * scale;
-            yield return null;
+            dimBackground.DOKill();
+            dimBackground.DOFade(0f, dimFadeDuration).SetUpdate(true)
+                .OnComplete(() => dimBackground.gameObject.SetActive(false));
         }
+    }
 
-        panelRoot.SetActive(false);
-        panelRoot.transform.localScale = baseScale;
+    void OnDestroy()
+    {
+        _panelTween?.Kill();
     }
 }
