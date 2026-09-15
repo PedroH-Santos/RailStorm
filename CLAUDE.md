@@ -132,7 +132,7 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 **Regras:**
 - O orbe de escolha só aparece depois que a wave é totalmente limpa, e a próxima wave fica travada até o jogador decidir.
 - As 3 cartas oferecidas são sorteadas por raridade (influenciada pela sorte do jogador) entre candidatos válidos: skills ainda não exiladas, armas novas (se ainda há espaço no vagão), upgrades de armas já equipadas, ou skills específicas de uma arma já equipada.
-- O jogador pode re-sortear as opções até `maxRefreshes = 2` vezes e exilar cartas indesejadas até `maxExiles = 3` vezes por seleção (itens/skills exilados não voltam a aparecer).
+- O jogador pode re-sortear as opções até `maxRefreshes = 2` vezes e exilar cartas indesejadas até `maxExiles = 3` vezes por seleção (itens/skills exilados não voltam a aparecer nesta run). Exilar é um **modo em dois passos**: o botão Exilar liga o modo (e vira "Cancelar"), o clique seguinte num card confirma — ver "Modo exílio" na 4.10.
 
 - **`Abilities/AbilityOrb.cs`** — orbe que ativa quando uma wave é vencida (`EnemySpawner.OnWaveCleared`); interação (E) abre a seleção de habilidades.
 - **`UI/AbilitiesUI/Abilities/AbilityDrawer.cs`** — sorteia as cartas oferecidas: filtra candidatos válidos (skills não exiladas, armas não possuídas com espaço no vagão, armas possuídas com upgrade disponível, skills de arma cujo dono já esteja equipado); sorteia raridade via `RarityRoller` ponderado por `LuckPercent`, depois sorteia as cartas dentro da raridade.
@@ -556,7 +556,88 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 - **Cantoneiras de seleção do card**: os 4 `Bracket*` ficam agrupados sob um filho `SelectionBrackets` (stretch no card, `LayoutElement.ignoreLayout = true`, sem `Image` própria pra não bloquear raycast) que **começa desativado**. `AbilityCardUI` implementa `IPointerEnterHandler`/`IPointerExitHandler` e liga/desliga esse container, então as cantoneiras marcam apenas o card sob o cursor — é indicador de seleção, não decoração fixa. `OnDisable` e `Setup` forçam o estado oculto para o card não reaparecer marcado ao ser reciclado. Os brackets em si têm `raycastTarget = false`, senão sairiam por fora do card e roubariam o hover.
 - Pendente de propagar pro resto da UI (`ShopSlotUI`, `SellInventorySlotUI`, `InteractPromptUI`) — o `TooltipUI` e a UI de escolha de caminho (`ChooseWayScreenUI`/`ChooseWayTotemBadge`, ver 4.13) já nascem no tema; hoje `AbilitySelectionUI` (incluindo card de habilidade, slot de inventário e linha de status), `TooltipUI`, a UI de escolha de caminho e a UI de revelação do baú (`ChestRevealEffect`, ver 4.15) seguem o tema; as demais telas ainda usam cor/fonte fixas do Inspector.
 
-**Onde mora a arte de cada tela (26/08).** `Assets/UI/Theme/` é a pasta **compartilhada**: só entra ali o que mais de uma tela usa (`OrnateFrame9Slice`, `ButtonPlate9Slice`, `CardPlate9Slice`, ornamentos, `Rarity/`). Arte que existe para **uma tela só** ganha pasta própria por tela — hoje `Assets/UI/ChooseWay/` (placa dos totens). Ao criar uma tela nova com arte exclusiva, crie a pasta dela em vez de despejar em `Theme/`, e mantenha o gerador correspondente em `Assets/Editor/`.
+**Onde mora a arte de cada tela (26/08).** `Assets/UI/Theme/` é a pasta **compartilhada**: só entra ali o que mais de uma tela usa (`OrnateFrame9Slice`, `ButtonPlate9Slice`, `CardPlate9Slice`, ornamentos, `Rarity/`). Arte que existe para **uma tela só** ganha pasta própria por tela — hoje `Assets/UI/ChooseWay/` (placa dos totens). Ao criar uma tela nova com arte exclusiva, crie a pasta dela em vez de despejar em `Theme/`. (A menção antiga a "manter o gerador em `Assets/Editor/`" não vale mais — ver regra da seção 3.)
+
+#### Estilo cartoon do `CanvasSkillSelector` (15/09)
+
+**O que é / ideia central:** a tela de seleção pós-wave (painéis de Inventário/Melhorias/Status, cards, botões, slots, linhas de status e tooltip) lia "realista" demais ao lado do 3D low poly flat-shaded — moldura de couro com bisel metálico e rebites, degradês suaves, contornos finos. A reforma troca a **forma** das peças para linguagem de desenho animado, **mantendo** a moldura de madeira, a paleta oficial e as três fontes (pedido explícito do usuário: "borda de madeira, cores e fontes permanecem, mas mais cartoon").
+
+**Regras:**
+- **Contorno escuro grosso** (`#150A03`) em toda peça — é ele que dá leitura de objeto. Detalhes grandes e poucos: 1 parafuso por canto em vez de 3 rebites, 1 veio reto por tábua em vez de textura.
+- **Cor chapada**: no máximo base + faixa de luz + faixa de sombra por peça. Sem degradê contínuo, sem ruído.
+- **Sombra projetada chapada** via componente `UnityEngine.UI.Shadow` na própria `Image` (painéis `(10,-12)`, cards e tooltip `(7,-9)`, cor `UIThemeConfig.dropShadow`). Não criar filho de sombra: filho é desenhado **por cima** do pai, e o `Shadow` desenha a silhueta atrás da mesma malha.
+- **Nenhuma cor nova.** Os sprites de moldura/placa têm cores baked derivadas da paleta (Brown Deep, Copper, Navy); os demais são tons de cinza tintados por `Image.color`, como antes. Sprite com cor baked (`CartoonTitlePlank9Slice`) precisa de `Image.color` **branco** — tintar de navy por cima deixou as faixas pretas na primeira passada.
+- **Texto cartoon = material TMP com Outline + Underlay**, não `Outline`/`Shadow` de UI (esses componentes foram **desabilitados** nos textos que ganharam o material, para não duplicar sombra). Materiais: `Assets/Fonts/Generated/LilitaOne-Regular SDF Cartoon.mat` (outline `0.3`, underlay `-1.2`) e `Fredoka-VariableFont_wdth,wght SDF Cartoon.mat` (outline `0.26`). Nunito (números de stats) e descrições ficam **sem** contorno, por legibilidade.
+- **O `Level` do card agora nasce em Lilita One na cena**, com o material cartoon. `AbilityCardUI.Setup` faz `levelText.font = theme.titleFont`; se a fonte da cena fosse outra, o setter do TMP trocaria a fonte e **resetaria o material** para o padrão da Lilita, apagando o contorno. Regra geral: todo texto que o código repinta via `Apply*`/`.font` precisa já estar na mesma fonte na cena para o material sobreviver. O `Level` também ganhou autosize `22–32` e margem direita `8`: a dilatação do contorno fazia "Nível 4" cortar na borda.
+- **Movimento com overshoot (DOTween, `SetUpdate(true)`, `SetLink`)**: cards entram em cascata (`AbilityCardUI.PlayEnter`, escala `0.6 → 1`, `Ease.OutBack`, `AbilitySelectionUI.cardEnterStagger = 0.06s`) sempre que `RenderCards` roda (abrir, atualizar, exilar); hover cresce o card para `hoverScale = 1.035`; `Exilar`/`Atualizar` levam `DOPunchScale` (`buttonPunch = 0.12`). `OnDisable` do card mata o tween e devolve a escala a 1, para card reciclado não voltar inflado.
+
+**Sprites (`Assets/UI/Theme/Cartoon/`, PNGs estáticos — editar direto, não existe gerador no repo):**
+
+| Sprite | Substitui | `spriteBorder` / `pixelsPerUnitMultiplier` em uso |
+|---|---|---|
+| `CartoonWoodFrame9Slice` (256²) | `OrnateFrame9Slice` nos 3 painéis e no tooltip | 56 / `1.6` painéis, `2.6` tooltip (padding do tooltip subiu para `28,28,26,26`) |
+| `CartoonPanelShadow9Slice`, `CartoonCardShadow9Slice` | — | silhuetas reservadas; hoje a sombra vem do componente `Shadow` |
+| `CartoonTitlePlank9Slice` (128×72, cor baked) | `TitleBand9Slice`, `Band` dos cabeçalhos de status, `HeaderBand` do tooltip | (30,28,30,28) / `1`, `1.3`, `1.6` |
+| `CartoonCardPlate9Slice` / `CartoonCardBorder9Slice` (96²) | `CardPlate9Slice` / `CardBorder9Slice` | 26 / `1` (anel de raridade 8px + filete escuro interno) |
+| `CartoonButtonPlate9Slice` (96²) | `ButtonPlate9Slice` | 26 / `1.5` — face `0.92`, brilho em pílula `1.0` no canto sup. esquerdo, lábio `0.36` |
+| `CartoonIconPlate{Common..Legendary}` (64²) | `IconPlate*` no `RarityConfig.asset` (vale para card, slot, tooltip e roleta do baú) | 26 / `1` — mesmos detalhes por raridade, com contorno escuro em cada detalhe |
+| `CartoonIconGlow{Common..Legendary}` (256², sem border) | `IconGlow*` no `RarityConfig.asset` (camada `Pattern`) | Simple, `preserveAspect` — ver "Glow cartoon" abaixo |
+| `CartoonSlotPlate9Slice` (64²) | `SolidRounded9Slice` em `SlotPlate`/`SlotShadow` (`WeaponUI.prefab`) e fundo de `Stats.prefab` | 20 / `1` slot, `1.4` linha de status |
+| `CartoonRule9Slice` (48×16) | `TitleRule` das seções do inventário (altura 3 → 10), `Divider`/`UpgradesDivider` do tooltip (3 → 8) | (8,7,8,7) / `1` |
+| `CartoonTitleWing` (64×32) | `TitleWing` nos cabeçalhos de status (52×26) | Simple |
+| `CartoonCornerBracket` (48²) | `CornerBracket` das cantoneiras de seleção (32 → 38) | Simple |
+| `CartoonBadgeDisc` (64×48) | — novo filho `Disc` atrás do número do `CountBadge`, cor `#663300` | (22,20,22,20) / `1.2` |
+
+A régua `Rule` dos cabeçalhos de status foi desativada — a faixa de cobre já está baked na `CartoonTitlePlank9Slice`.
+
+> **O que "parecia antigo" era o glow, não a placa (15/09).** Depois do primeiro teste o usuário achou que os ícones ainda usavam o fundo antigo. As placas já eram as cartoon; o que destoava era o **`IconGlow`**, que continuava sendo o halo radial suave com poeira da versão pré-cartoon. Antes de descobrir isso, as placas chegaram a ser redesenhadas (aro em dois tons, brilho, sombra baked) e aumentadas (`pixelsPerUnitMultiplier` 0.6–0.75). **Isso foi revertido a pedido do usuário** ("ficou muito grosso e esquisito"): placas voltaram ao desenho da primeira versão cartoon e a `ppum = 1` no card, no slot e no tooltip. Não reintroduzir o aro grosso sem pedido.
+
+**Glow cartoon (`CartoonIconGlow*`, 15/09).** Substitui os `Rarity/IconGlow*` no `RarityConfig.asset`. Branco com o desenho no alpha (tintado por `RarityHelper.GlowColor`), 256² sem border, **borda dura e cor chapada, sem degradê**.
+
+**Regras (escolhidas pelo usuário por mockup):**
+- **Nenhum glow tem forma sólida no centro.** Uma primeira versão usava um disco com anel em todas as raridades, e a "bola no centro" foi reprovada. O miolo fica livre para o ícone branco.
+- **Cada raridade tem um motivo próprio**, não uma versão mais cheia do mesmo desenho. É o efeito que caracteriza a raridade:
+
+| Raridade | Efeito | Alpha |
+|---|---|---|
+| Comum | reflexo: duas faixas diagonais no canto superior esquerdo | 0.42 |
+| Incomum | folhinhas chapadas em três cantos | 0.62 |
+| Rara | 4 estrelinhas de 4 pontas nos cantos + 4 pontinhos | 0.9 |
+| Épica | chamas subindo da base em duas camadas de picos pontudos (trás mais alta e fraca, frente mais baixa e forte) | 0.3 / 0.5 |
+| Lendária | 7 raios de sol chapados saindo do centro + 2 estrelinhas | 0.38 / 0.95 |
+
+Opções mostradas e **descartadas** nessa escolha (não reintroduzir sem pedido): listras diagonais, anéis mágicos, estrela de fundo, explosão HQ, bolinhas na moldura, cruzinhas, arco de brilho, bolhas, losangos cardeais, ondinhas, cristais, raios elétricos e órbitas.
+
+> **Chama sem ponta vira morro.** A primeira passada da Épica usava curvas suaves e, dentro da placa de 112px, lia como um monte roxo. Picos só leem como fogo com **cúspide** (o fim de uma curva quadrática encontrando o começo da próxima com tangentes diferentes) e com duas camadas de altura diferente.
+
+A prévia do Editor (`cardBackground`/`iconGlow` nos cards, `IconBackground`/`Pattern` no tooltip, `BackGround`/`Pattern` no `WeaponUI.prefab`) aponta para os sprites cartoon, para "Find References" e a aba Scene baterem com o jogo. Em runtime placa e glow continuam vindo do `RarityConfig`.
+
+**Ajustes pós-teste em jogo (15/09):**
+- **Texto centrado na face da faixa, não no retângulo.** A `CartoonTitlePlank9Slice` tem ~16px nativos de contorno + filete de cobre embaixo e só ~7px em cima, então texto centralizado no rect "sentava" no filete. Correção por `TMP_Text.margin` inferior (deslocamento = margem/2): títulos de painel com margem `12`, `TitleContainer` `58 → 68`, fonte `40 → 38`; cabeçalhos de grupo com margem `8`, altura `44 → 52` e `WingLeft/Right` subindo para `y = 4.5`; `HeaderBand` do tooltip `38 → 46` com margem `8`. **Regra:** texto sobre a plank sempre leva margem inferior proporcional à espessura do filete na escala usada.
+- **Contador dos botões (`CountBadge`)**: `pivot (0.5,0.5)`, `56×44`, `anchoredPosition (0,10)` — o disco fica centrado na aresta de cima do botão. `Disc` esticado no badge, em Navy Deep (o marrom sumia sobre `Exilar`/`Atualizar`); `CountText` esticado, alinhamento central, **Lilita One 30** creme com o material cartoon. `AbilitySelectionUI` só escreve o número, nunca fonte, então o material persiste.
+- **Hover não invade mais a moldura.** O `CardsContainer` só tem `26px` de folga lateral. Duas coisas estouravam: `hoverScale` `1.035` (cresce ~15px por lado num card de 860) e as cantoneiras em `(±20)` para fora do card. Hoje `hoverScale = 1.015` e as cantoneiras ficam em `(±8)` para **dentro** (o `SelectionBracketsAnimator` lê a posição de repouso no `Awake`, então basta mexer na cena). **Orçamento:** meia cantoneira fora do card + crescimento do hover precisa ficar abaixo do padding do `CardsContainer`.
+- **Seções do inventário com o mesmo cabeçalho do Status.** Em `Weapons`/`Skills`/`Items`, `Title` + `TitleRule` viraram um `Header` clonado de `GroupVital/Header` (plank + asas + texto), com rótulos em caixa alta (`ARMAS DO CARRO`, `HABILIDADES`, `ITENS`), autosize `18–26` e o `Title` recuado `72px` de cada lado para não passar por cima das asas. `InventoryUI` só procura `Container` dentro de cada seção, então a troca não mexeu em código. Títulos de todos os cabeçalhos de grupo em **Bold**.
+
+#### Modo exílio (15/09)
+
+**O que é / ideia central:** antes, clicar em **Exilar** só trocava a cor do `gameBackground` atrás da UI, e o jogador não percebia que o próximo clique **removeria uma habilidade do sorteio**. Hoje o estado de exílio aparece nos próprios cards, e confirmar mostra o card sendo destruído.
+
+**Regras:**
+- **Nada do modo exílio pode cobrir o texto do card.** A primeira versão (carimbo grande no centro + camada vermelha por cima do card) foi reprovada em teste: escondia a descrição, e o jogador precisaria sair do modo para ler o que estava prestes a exilar. Hoje o card fica 100% legível e o estado é comunicado **pelas bordas**.
+- **Entrar no modo** (`AbilitySelectionUI.SetExileMode(true)`): fundo em `screenDimExile` (como antes); em cada card, uma **etiqueta "EXILAR"** pequena aparece presa na borda inferior direita, a área que a descrição quase nunca ocupa. Ela entra "batendo" (escala 1.6 → 1, `OutBack`, defasagem `exileStampStagger = 0.05s` por card), e o anel de raridade pisca em yoyo para `actionDestructive` (`exileBorderPulseDuration = 0.45s`). O título do painel vira `exileTitle` ("ESCOLHA UMA PARA EXILAR"), na cor destrutiva clareada por `exileTitleLighten = 0.3` (o vermelho puro sumia contra a faixa navy), e a dica **`ExileHint`** ("Habilidade exilada nunca mais aparece nesta run") aparece com fade entre o título e os cards — uma vez só, fora dos cards. O botão vira `exileCancelLabel` ("Cancelar") e pulsa (`exileButtonPulseScale = 1.06`). No hover, a etiqueta do card cresce para `exileStampHoverScale = 1.2`.
+- **Confirmar** (clique num card): `_busy` trava cards e os três botões; `AbilityCardUI.PlayExile` dá o golpe final no carimbo, treme o card (`DOShakeRotation` z), depois encolhe, gira -12° e some pelo `cardGroup` (`exileVanishDuration = 0.3s`, `InBack`). Só no `onComplete` roda a lógica que já existia (decrementa, `ExileSkill`/`ExileWeapon`, sorteia o substituto, `RenderCards`), e o substituto entra pelo `PlayEnter`.
+- **Sair sem exilar:** Cancelar, Pular, Atualizar e `Close` chamam `SetExileMode(false)`, que restaura overlay, anel (`_rarityColor`, gravado em `Setup`), título, rótulo e escala do botão. O botão Exilar fica interativo durante o modo mesmo com 0 exílios restantes, senão não haveria como cancelar.
+- **Legenda do carimbo:** "Nunca mais aparece nesta run" — fiel ao código (`ResetForNewRun` limpa os exílios). Não prometer "do jogo".
+
+**Peças de cena:**
+- **Por card (`Card01..03`):** `CanvasGroup` no root (`cardGroup`). Filho `ExileOverlay` (stretch, `ignoreLayout`, `CanvasGroup` alpha 0 sem raycast, logo antes de `SelectionBrackets`), contendo só o `Stamp`: `CartoonButtonPlate9Slice` vermelho, 176×50, âncora `(1,0)`, pivot `(1,0.5)`, `anchoredPosition (-60,0)`, -3°, `Shadow` (4,-5), com `Label` "EXILAR" (Lilita One 30 cartoon). A etiqueta fica metade para fora da borda inferior (cabe nos 26px de `spacing`/padding do `CardsContainer`). O recuo de 60px evita a cantoneira de seleção do canto.
+- **Painel:** `SkillPanel/ExileHint` (TMP duplicado de um título de `Header`, `ignoreLayout`, `CanvasGroup` alpha 0), ancorado no vão de 26px entre o título (`TitleContainer`) e o `CardsContainer` (`anchoredPosition.y = -121`). `AbilitySelectionUI.panelTitle` → `SkillPanel/TitleContainer/Title`; `AbilitySelectionUI.exileHint` → o `CanvasGroup` da dica.
+
+> **Não animar o mesmo `transform` com punch e loop.** O `PunchButton` saiu do Exilar porque o pulso em loop usa o mesmo `transform`; `DOKill(true)` num loop infinito brigaria com ele. Pela mesma razão, o crescimento de hover no modo exílio mira o `exileStamp`, não o card. O card também ignora hover enquanto `_vanishing`; senão o tween de hover rodaria junto com a sequência de sumiço.
+
+> **TMP criado por `AddComponent` quebrou após recompilar (15/09).** O `Label`/`Caption` do carimbo foram criados com `AddComponent<TextMeshProUGUI>()` e renderizaram certo na mesma sessão, mas depois do domain reload apareceram minúsculos, mesmo com `fontSize` 46/22 corretos no componente (nem `ForceMeshUpdate` resolveu). Isso se soma à armadilha de `enableWordWrapping` da 4.9: componente adicionado por script não passa pela inicialização do Editor. Correção: **duplicar um TMP que já funciona na cena** (`Instantiate` de `PassButton/ButtonText` e de um título de `Header`) e reconfigurar texto, tamanho e material. Ao montar UI via automação, prefira duplicar a criar TMP do zero.
+
+> **Efeito colateral intencional:** `WeaponUI.prefab` e `RarityConfig.asset` são compartilhados com a tela do baú (4.15), então slots e placas de raridade lá também ficaram cartoon. `Stats.prefab` só serve a tela de habilidades (o baú usa `StatsWood.prefab`). Os sprites antigos (`OrnateFrame9Slice`, `TitleBand9Slice`, `CardPlate9Slice`, `CardBorder9Slice`, `ButtonPlate9Slice`, `Rarity/IconPlate*`, `Ornaments/TitleWing`, `Ornaments/CornerBracket`) continuam no repo; os que ainda aparecem em outras telas (ex.: `ButtonPlate9Slice` nos botões do baú) seguem em uso lá. As seções anteriores desta 4.10 que descrevem a moldura ornamentada, a placa de botão com degradê e as placas de ícone de corpo em degradê são o **histórico** da tela; o estado atual é esta subseção.
 
 ### 4.11 Cenas
 

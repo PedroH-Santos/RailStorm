@@ -1,5 +1,6 @@
 using System;
 using Assets.Scripts.Systems.UITheme;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -39,12 +40,175 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     [Tooltip("Container das cantoneiras que marcam o card sob o cursor. Fica oculto até o mouse entrar no card.")]
     public GameObject selectionBrackets;
 
+    [Header("Animação")]
+    [Tooltip("Escala do card enquanto o cursor está sobre ele.")]
+    public float hoverScale = 1.015f;
+
+    [Tooltip("Duração do crescimento/retorno do hover.")]
+    public float hoverDuration = 0.18f;
+
+    [Tooltip("Escala inicial do card quando ele entra na tela.")]
+    public float enterFromScale = 0.6f;
+
+    [Tooltip("Duração da entrada do card.")]
+    public float enterDuration = 0.32f;
+
+    [Header("Exílio")]
+    [Tooltip("CanvasGroup no root do card. Usado para o card sumir ao ser exilado.")]
+    public CanvasGroup cardGroup;
+
+    [Tooltip("Camada vermelha + carimbo EXILAR mostrada enquanto o modo exílio está ligado.")]
+    public CanvasGroup exileOverlay;
+
+    [Tooltip("Etiqueta EXILAR presa na borda do card. Recebe o golpe de entrada, o crescimento de hover e o golpe final.")]
+    public RectTransform exileStamp;
+
+    [Tooltip("Escala da etiqueta EXILAR enquanto o cursor está sobre o card no modo exílio.")]
+    public float exileStampHoverScale = 1.2f;
+
+    [Tooltip("Meio ciclo do pisca-pisca vermelho do anel de raridade durante o modo exílio.")]
+    public float exileBorderPulseDuration = 0.45f;
+
+    [Tooltip("Duração do card encolhendo e sumindo ao ser exilado.")]
+    public float exileVanishDuration = 0.3f;
+
     Action _onClick;
     Button _selfButton;
+    bool _hovered;
+    bool _exileMode;
+    bool _vanishing;
+    Color _rarityColor = Color.white;
+    Tween _borderPulse;
 
     void Awake() => ApplyTheme();
 
-    void OnDisable() => SetSelected(false);
+    void OnDisable()
+    {
+        SetSelected(false);
+        transform.DOKill();
+        transform.localScale = Vector3.one;
+        ResetExileVisuals();
+    }
+
+    public void SetExileMode(bool on, float delay)
+    {
+        _exileMode = on;
+
+        if (exileOverlay != null)
+        {
+            exileOverlay.DOKill();
+            exileOverlay.DOFade(on ? 1f : 0f, 0.18f)
+                .SetDelay(on ? delay : 0f)
+                .SetUpdate(true)
+                .SetLink(gameObject);
+        }
+
+        if (exileStamp != null)
+        {
+            exileStamp.DOKill();
+            if (on)
+            {
+                exileStamp.localScale = Vector3.one * 1.6f;
+                exileStamp.DOScale(_hovered ? exileStampHoverScale : 1f, 0.28f)
+                    .SetDelay(delay)
+                    .SetEase(Ease.OutBack)
+                    .SetUpdate(true)
+                    .SetLink(gameObject);
+            }
+            else
+            {
+                exileStamp.localScale = Vector3.one;
+            }
+        }
+
+        _borderPulse?.Kill();
+        _borderPulse = null;
+        if (cardBorder == null) return;
+
+        cardBorder.color = _rarityColor;
+        var theme = UIThemeConfig.Instance;
+        if (on && theme != null)
+        {
+            _borderPulse = cardBorder.DOColor(theme.actionDestructive, exileBorderPulseDuration)
+                .SetLoops(-1, LoopType.Yoyo)
+                .SetEase(Ease.InOutSine)
+                .SetUpdate(true)
+                .SetLink(gameObject);
+        }
+    }
+
+    public void PlayExile(Action onComplete)
+    {
+        _vanishing = true;
+        _borderPulse?.Kill();
+        _borderPulse = null;
+        var theme = UIThemeConfig.Instance;
+        if (cardBorder != null && theme != null) cardBorder.color = theme.actionDestructive;
+
+        transform.DOKill();
+        var sequence = DOTween.Sequence().SetUpdate(true).SetLink(gameObject);
+
+        if (exileStamp != null)
+        {
+            exileStamp.DOKill();
+            exileStamp.localScale = Vector3.one;
+            sequence.Append(exileStamp.DOScale(1.35f, 0.08f).SetEase(Ease.OutQuad));
+            sequence.Append(exileStamp.DOScale(1f, 0.12f).SetEase(Ease.InQuad));
+        }
+
+        sequence.Join(transform.DOShakeRotation(0.3f, new Vector3(0f, 0f, 7f), 18, 90f, false));
+        sequence.Append(transform.DOScale(0.2f, exileVanishDuration).SetEase(Ease.InBack));
+        sequence.Join(transform.DORotate(new Vector3(0f, 0f, -12f), exileVanishDuration));
+        if (cardGroup != null) sequence.Join(cardGroup.DOFade(0f, exileVanishDuration));
+
+        sequence.OnComplete(() =>
+        {
+            ResetExileVisuals();
+            onComplete?.Invoke();
+        });
+    }
+
+    void ResetExileVisuals()
+    {
+        _exileMode = false;
+        _vanishing = false;
+        _borderPulse?.Kill();
+        _borderPulse = null;
+        if (cardBorder != null) cardBorder.color = _rarityColor;
+
+        if (exileOverlay != null)
+        {
+            exileOverlay.DOKill();
+            exileOverlay.alpha = 0f;
+        }
+
+        if (exileStamp != null)
+        {
+            exileStamp.DOKill();
+            exileStamp.localScale = Vector3.one;
+        }
+
+        if (cardGroup != null)
+        {
+            cardGroup.DOKill();
+            cardGroup.alpha = 1f;
+        }
+
+        transform.localRotation = Quaternion.identity;
+    }
+
+    public void PlayEnter(float delay)
+    {
+        transform.DOKill();
+        transform.localRotation = Quaternion.identity;
+        if (cardGroup != null) cardGroup.alpha = 1f;
+        transform.localScale = Vector3.one * enterFromScale;
+        transform.DOScale(_hovered ? hoverScale : 1f, enterDuration)
+            .SetDelay(delay)
+            .SetEase(Ease.OutBack)
+            .SetUpdate(true)
+            .SetLink(gameObject);
+    }
 
     void ApplyTheme()
     {
@@ -65,6 +229,26 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     {
         if (selectionBrackets != null)
             selectionBrackets.SetActive(selected);
+
+        if (_hovered == selected) return;
+        _hovered = selected;
+
+        if (!isActiveAndEnabled || _vanishing) return;
+
+        if (_exileMode && exileStamp != null)
+        {
+            exileStamp.DOKill(true);
+            exileStamp.DOScale(selected ? exileStampHoverScale : 1f, hoverDuration)
+                .SetEase(selected ? Ease.OutBack : Ease.OutCubic)
+                .SetUpdate(true)
+                .SetLink(gameObject);
+        }
+
+        transform.DOKill();
+        transform.DOScale(selected ? hoverScale : 1f, hoverDuration)
+            .SetEase(selected ? Ease.OutBack : Ease.OutCubic)
+            .SetUpdate(true)
+            .SetLink(gameObject);
     }
 
     public void Setup(AbilityCardData data, Action onClick)
@@ -108,6 +292,7 @@ public class AbilityCardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             iconGlow.color = RarityHelper.GlowColor(ri);
         }
 
+        _rarityColor = rarityColor;
         if (cardBorder != null) cardBorder.color = rarityColor;
         if (iconBorder != null) iconBorder.color = Shade(rarityColor, 0.45f);
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,8 +21,46 @@ public class AbilitySelectionUI : MonoBehaviour
     public int maxRefreshes = 2;
     public int maxExiles = 3;
 
+    [Header("Animação")]
+    [Tooltip("Atraso entre a entrada de um card e o seguinte.")]
+    public float cardEnterStagger = 0.06f;
+
+    [Tooltip("Força do punch de escala ao clicar num botão.")]
+    public float buttonPunch = 0.12f;
+
+    [Header("Modo exílio")]
+    [Tooltip("Título do painel de cards. Troca de texto e cor enquanto o modo exílio está ligado.")]
+    public TMP_Text panelTitle;
+
+    [Tooltip("Dica abaixo do título que explica o exílio. Aparece só durante o modo exílio, fora dos cards, para não cobrir a descrição das habilidades.")]
+    public CanvasGroup exileHint;
+
+    [Tooltip("Texto do título do painel durante o modo exílio.")]
+    public string exileTitle = "ESCOLHA UMA PARA EXILAR";
+
+    [Tooltip("Rótulo do botão Exilar enquanto o modo exílio está ligado.")]
+    public string exileCancelLabel = "Cancelar";
+
+    [Tooltip("Atraso entre o carimbo EXILAR de um card e o do seguinte.")]
+    public float exileStampStagger = 0.05f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Quanto de branco entra na cor destrutiva do título durante o modo exílio. O vermelho puro some contra a faixa navy.")]
+    public float exileTitleLighten = 0.3f;
+
+    [Tooltip("Escala máxima do pulso do botão Exilar durante o modo exílio.")]
+    public float exileButtonPulseScale = 1.06f;
+
     Color _normalBgColor;
     Color _exileBgColor;
+    Color _destructiveColor = Color.red;
+
+    string _normalTitle;
+    Color _normalTitleColor;
+    TMP_Text _exileLabel;
+    string _normalExileLabel;
+    Tween _exileButtonPulse;
+    bool _busy;
 
     StarterAssets.PlayerController _playerController;
     StarterAssets.PlayerSkillHandler _skillHandler;
@@ -46,6 +85,15 @@ public class AbilitySelectionUI : MonoBehaviour
         btnRefresh.onClick.AddListener(OnRefresh);
 
         ApplyTheme();
+
+        if (panelTitle != null)
+        {
+            _normalTitle = panelTitle.text;
+            _normalTitleColor = panelTitle.color;
+        }
+
+        _exileLabel = btnExile.GetComponentInChildren<TMP_Text>(true);
+        if (_exileLabel != null) _normalExileLabel = _exileLabel.text;
 
         if (gameBackground != null)
         {
@@ -72,6 +120,7 @@ public class AbilitySelectionUI : MonoBehaviour
 
         _normalBgColor = theme.screenDim;
         _exileBgColor = theme.screenDimExile;
+        _destructiveColor = theme.actionDestructive;
     }
 
     static void ApplyButtonLabel(UIThemeConfig theme, Button button)
@@ -107,14 +156,14 @@ public class AbilitySelectionUI : MonoBehaviour
         _onClosed = onClosed;
         _refreshesLeft = maxRefreshes;
         _exilesLeft = maxExiles;
-        _exileMode = false;
+        _busy = false;
 
         parentPanel.SetActive(true);
         if (gameBackground != null) gameBackground.gameObject.SetActive(true);
         Time.timeScale = 0f;
         Cursor.visible = true;
 
-        SetBackground(false);
+        SetExileMode(false);
         RenderCards();
         UpdateButtons();
 
@@ -131,6 +180,7 @@ public class AbilitySelectionUI : MonoBehaviour
                 int captured = i;
                 cards[i].gameObject.SetActive(true);
                 cards[i].Setup(_currentOptions[i], () => OnCardClicked(captured));
+                cards[i].PlayEnter(i * cardEnterStagger);
             }
             else
             {
@@ -141,23 +191,15 @@ public class AbilitySelectionUI : MonoBehaviour
 
     void OnCardClicked(int index)
     {
+        if (_busy || index >= _currentOptions.Count) return;
+
         AbilityCardData data = _currentOptions[index];
 
         if (_exileMode)
         {
-            _exilesLeft--;
-            _exileMode = false;
-            SetBackground(false);
-
-            if (data.drawable is SkillDefinition s) _skillHandler.ExileSkill(s);
-            if (data.drawable is WeaponDefinition w) _weaponHandler?.ExileWeapon(w);
-
-            _currentOptions.RemoveAt(index);
-            var rep = DrawReplacement();
-            if (rep != null) _currentOptions.Add(rep);
-
-            RenderCards();
-            UpdateButtons();
+            _busy = true;
+            LockButtons();
+            cards[index].PlayExile(() => ConfirmExile(data));
             return;
         }
 
@@ -174,19 +216,108 @@ public class AbilitySelectionUI : MonoBehaviour
         }
     }
 
-    void OnExile()
+    void PunchButton(Button button)
     {
-        if (_exilesLeft <= 0) return;
-        _exileMode = !_exileMode;
-        SetBackground(_exileMode);
+        if (button == null) return;
+        var target = button.transform;
+        target.DOKill(true);
+        target.DOPunchScale(Vector3.one * buttonPunch, 0.25f, 8, 0.6f)
+            .SetUpdate(true)
+            .SetLink(button.gameObject);
+    }
+
+    void ConfirmExile(AbilityCardData data)
+    {
+        _busy = false;
+        _exilesLeft--;
+        SetExileMode(false);
+
+        if (data.drawable is SkillDefinition s) _skillHandler.ExileSkill(s);
+        if (data.drawable is WeaponDefinition w) _weaponHandler?.ExileWeapon(w);
+
+        _currentOptions.Remove(data);
+        var rep = DrawReplacement();
+        if (rep != null) _currentOptions.Add(rep);
+
+        RenderCards();
         UpdateButtons();
     }
 
-    void OnPass() { Close(); _onPassed?.Invoke(); }
+    void OnExile()
+    {
+        if (_busy) return;
+        if (!_exileMode && _exilesLeft <= 0) return;
+        SetExileMode(!_exileMode);
+        UpdateButtons();
+    }
+
+    void SetExileMode(bool on)
+    {
+        _exileMode = on;
+        SetBackground(on);
+
+        for (int i = 0; i < cards.Count; i++)
+            if (cards[i] != null && cards[i].gameObject.activeSelf)
+                cards[i].SetExileMode(on, i * exileStampStagger);
+
+        if (panelTitle != null && _normalTitle != null)
+        {
+            panelTitle.text = on ? exileTitle : _normalTitle;
+            panelTitle.color = on ? Color.Lerp(_destructiveColor, Color.white, exileTitleLighten) : _normalTitleColor;
+            if (on && panelTitle.isActiveAndEnabled)
+            {
+                panelTitle.transform.DOKill(true);
+                panelTitle.transform.DOPunchScale(Vector3.one * 0.15f, 0.3f, 8, 0.6f)
+                    .SetUpdate(true)
+                    .SetLink(panelTitle.gameObject);
+            }
+        }
+
+        if (exileHint != null)
+        {
+            exileHint.DOKill();
+            if (exileHint.isActiveAndEnabled)
+                exileHint.DOFade(on ? 1f : 0f, 0.2f).SetUpdate(true).SetLink(exileHint.gameObject);
+            else
+                exileHint.alpha = on ? 1f : 0f;
+        }
+
+        if (_exileLabel != null && _normalExileLabel != null)
+            _exileLabel.text = on ? exileCancelLabel : _normalExileLabel;
+
+        _exileButtonPulse?.Kill();
+        _exileButtonPulse = null;
+        btnExile.transform.localScale = Vector3.one;
+        if (on && btnExile.isActiveAndEnabled)
+        {
+            _exileButtonPulse = btnExile.transform.DOScale(exileButtonPulseScale, 0.45f)
+                .SetLoops(-1, LoopType.Yoyo)
+                .SetEase(Ease.InOutSine)
+                .SetUpdate(true)
+                .SetLink(btnExile.gameObject);
+        }
+    }
+
+    void LockButtons()
+    {
+        btnExile.interactable = false;
+        btnPass.interactable = false;
+        btnRefresh.interactable = false;
+    }
+
+    void OnPass()
+    {
+        if (_busy) return;
+        SetExileMode(false);
+        Close();
+        _onPassed?.Invoke();
+    }
 
     void OnRefresh()
     {
-        if (_refreshesLeft <= 0) return;
+        if (_busy || _refreshesLeft <= 0) return;
+        SetExileMode(false);
+        PunchButton(btnRefresh);
         _refreshesLeft--;
         _currentOptions = AbilityDrawer.Draw(
             _fullSkillPool, _fullWeaponPool, _fullWeaponSkillPool, _skillHandler, _weaponHandler, cards.Count);
@@ -196,7 +327,8 @@ public class AbilitySelectionUI : MonoBehaviour
 
     void UpdateButtons()
     {
-        btnExile.interactable = _exilesLeft > 0;
+        btnExile.interactable = _exilesLeft > 0 || _exileMode;
+        btnPass.interactable = true;
         btnRefresh.interactable = _refreshesLeft > 0;
         if (exileCountText != null) exileCountText.text = $"{_exilesLeft}";
         if (refreshCountText != null) refreshCountText.text = $"{_refreshesLeft}";
@@ -217,6 +349,8 @@ public class AbilitySelectionUI : MonoBehaviour
 
     void Close()
     {
+        SetExileMode(false);
+        _busy = false;
         Time.timeScale = 1f;
         parentPanel.SetActive(false);
         if (gameBackground != null) gameBackground.gameObject.SetActive(false);

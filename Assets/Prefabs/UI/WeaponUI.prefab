@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a1171bd08e7f1d54397f0a63b7f929b1, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 7e8984a26fae76446b0cb56d0da0ca6a, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -167,7 +167,7 @@ MonoBehaviour:
   m_text: LVL 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: c2b13a9eb0cc9fd4ebac624ffdb0e207, type: 2}
-  m_sharedMaterial: {fileID: -7475475518148398672, guid: c2b13a9eb0cc9fd4ebac624ffdb0e207, type: 2}
+  m_sharedMaterial: {fileID: 2100000, guid: 4cd0f7b3569f6244987442fea289c773, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -243,7 +243,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 790027976636678419}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
   m_Name: 
@@ -316,7 +316,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a9a0ee876acbcf34dbb07dc6b7e3da81, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 4ecfefd99f4cad542b7f2519d7f0be1e, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -325,7 +325,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 4
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &5734242702623686959
 GameObject:
   m_ObjectHideFlags: 0
@@ -711,7 +711,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 1f5ebe7d4d96a2c409ff9573b1f616d2, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 43e7221513dd01e4f8ab9b1ef65be873, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -788,7 +788,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a9a0ee876acbcf34dbb07dc6b7e3da81, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 4ecfefd99f4cad542b7f2519d7f0be1e, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -797,7 +797,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 4
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &9213584393565165082
 GameObject:
   m_ObjectHideFlags: 0
