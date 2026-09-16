@@ -8,14 +8,11 @@ public class StatRowUI : MonoBehaviour
     public TMP_Text valueText;
     public GameObject dividerObject;
 
-    [Tooltip("Desligue quando a cor/fonte das linhas já vem configurada no prefab (ex.: variante em madeira do baú).")]
-    [SerializeField] private bool applyTheme = true;
-
     public void Setup(string label, string value)
     {
         if (dividerObject != null) dividerObject.SetActive(false);
 
-        var theme = applyTheme ? UIThemeConfig.Instance : null;
+        var theme = UIThemeConfig.Instance;
 
         if (labelText != null)
         {

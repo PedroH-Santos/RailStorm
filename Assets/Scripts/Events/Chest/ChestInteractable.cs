@@ -8,9 +8,6 @@ public class ChestInteractable : InteractableObject
     [Header("Loot")]
     [SerializeField] private ChestLootTable lootTable;
 
-    [Header("Partículas (opcional, tocadas ao abrir)")]
-    [SerializeField] private ParticleSystem openBurstParticles;
-
     public static event System.Action<ItemDefinition, int> OnChestOpened;
 
     PlayerController _player;
@@ -66,12 +63,10 @@ public class ChestInteractable : InteractableObject
         _player?.SetMovementLocked(true);
         Time.timeScale = 0f;
 
-        if (openBurstParticles != null) openBurstParticles.Play();
-
         List<ItemDefinition> reelPool = lootTable.possibleItems.Where(i => i != null && !IsUnavailable(i)).ToList();
         if (!reelPool.Contains(item)) reelPool.Add(item);
 
-        reveal.Show(item, _pendingRarityIndex, reelPool, transform.position, OnTake, OnExile, OnSkip);
+        reveal.Show(item, reelPool, OnTake, OnExile, OnSkip);
     }
 
     void OnTake()

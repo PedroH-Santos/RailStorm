@@ -27,6 +27,22 @@ public class TooltipUI : MonoBehaviour
         }
     }
 
+    public static TooltipUI For(Component context)
+    {
+        var canvas = context != null ? context.GetComponentInParent<Canvas>(true) : null;
+        if (canvas != null)
+        {
+            var local = canvas.rootCanvas.GetComponentInChildren<TooltipUI>(true);
+            if (local != null)
+            {
+                if (!local.gameObject.activeSelf) local.gameObject.SetActive(true);
+                return local;
+            }
+        }
+
+        return Instance;
+    }
+
     [Header("Painel")]
     public GameObject panel;
     public RectTransform panelRect;

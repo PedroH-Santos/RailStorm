@@ -115,4 +115,3 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ChestInteractable
   interactRadius: 2
   lootTable: {fileID: 11400000, guid: ebddf229c51c7684a97668dff81491cc, type: 2}
-  openBurstParticles: {fileID: 0}

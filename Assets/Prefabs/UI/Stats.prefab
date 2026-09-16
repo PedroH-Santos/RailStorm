@@ -242,7 +242,6 @@ MonoBehaviour:
   labelText: {fileID: 6750282425677294921}
   valueText: {fileID: 3459143496825992837}
   dividerObject: {fileID: 0}
-  applyTheme: 1
 --- !u!222 &6296898040194365846
 CanvasRenderer:
   m_ObjectHideFlags: 0

@@ -6,119 +6,84 @@ using Random = UnityEngine.Random;
 
 public class ChestSparksEmitter : MonoBehaviour
 {
-    [SerializeField] private RectTransform sparksRoot;
     [SerializeField] private Image sparkTemplate;
-    [SerializeField] private int poolSize = 30;
-    [SerializeField] private float rateSpinning = 18f;
-    [SerializeField] private float rateIdle = 6f;
-    [SerializeField, Range(0.5f, 1.5f)] private float riseFraction = 1.1f;
-    [SerializeField] private Vector2 lifetimeRange = new Vector2(0.9f, 1.6f);
-    [SerializeField] private float sideDrift = 40f;
+    [SerializeField] private int poolSize = 48;
+    [Tooltip("Distância do centro onde as estrelas nascem. Deve coincidir com o anel.")]
+    [SerializeField] private float radius = 170f;
+    [SerializeField] private float spinningRate = 22f;
+    [SerializeField] private float idleRate = 8f;
 
-    readonly List<Image> _pool = new();
-    readonly HashSet<Image> _busy = new();
-    Color _color = UnityEngine.Color.white;
+    readonly List<Image> _all = new();
+    readonly Queue<Image> _free = new();
     float _rate;
-    float _accumulator;
-    bool _active;
+    float _timer;
+    float _angle;
+
+    public Color Color { get; set; } = Color.white;
 
     void Awake()
     {
-        if (sparkTemplate != null) sparkTemplate.gameObject.SetActive(false);
-
+        sparkTemplate.gameObject.SetActive(false);
         for (int i = 0; i < poolSize; i++)
+            _all.Add(Instantiate(sparkTemplate, transform));
+    }
+
+    void OnEnable()
+    {
+        _free.Clear();
+        foreach (var spark in _all)
         {
-            var spark = Instantiate(sparkTemplate, sparksRoot);
             spark.gameObject.SetActive(false);
-            _pool.Add(spark);
+            _free.Enqueue(spark);
         }
+
+        _rate = idleRate;
     }
 
     void Update()
     {
-        if (!_active || sparksRoot == null) return;
-
-        _accumulator += Time.unscaledDeltaTime * _rate;
-        while (_accumulator >= 1f)
+        _timer += Time.unscaledDeltaTime * _rate;
+        while (_timer >= 1f)
         {
-            _accumulator -= 1f;
-            Emit();
+            _timer -= 1f;
+            _angle += 46.6f;
+            Launch(_angle, radius, 130f, Vector2.up * 60f, Random.Range(0.7f, 1.1f), 1f);
         }
     }
 
-    public void SetColor(Color color) => _color = color;
-
-    public void SetSpinning(bool spinning)
-    {
-        _rate = spinning ? rateSpinning : rateIdle;
-    }
-
-    public void Play()
-    {
-        _active = true;
-        _accumulator = 0f;
-        SetSpinning(true);
-    }
+    public void SetSpinning(bool spinning) => _rate = spinning ? spinningRate : idleRate;
 
     public void Burst(int count)
     {
-        for (int i = 0; i < count; i++) Emit();
+        float offset = Random.Range(0f, 360f);
+        for (int i = 0; i < count; i++)
+            Launch(offset + i * 360f / count, radius * 0.5f, 300f, Vector2.zero, 0.65f, 1.3f);
     }
 
-    public void Stop()
+    void Launch(float angle, float startDistance, float travel, Vector2 drift, float lifetime, float size)
     {
-        _active = false;
+        if (_free.Count == 0) return;
 
-        foreach (var spark in _pool)
-        {
-            spark.rectTransform.DOKill();
-            spark.gameObject.SetActive(false);
-        }
-
-        _busy.Clear();
-    }
-
-    void Emit()
-    {
-        var spark = GetFree();
-        if (spark == null) return;
-
-        _busy.Add(spark);
-
-        float width = sparksRoot.rect.width;
-        float height = sparksRoot.rect.height;
-        float rise = height * riseFraction;
+        var spark = _free.Dequeue();
         var rect = spark.rectTransform;
-        rect.anchoredPosition = new Vector2(Random.Range(-width * 0.5f, width * 0.5f), -height * 0.5f - rect.rect.height);
-        rect.localRotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
+        Vector2 direction = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
 
-        spark.color = new Color(_color.r, _color.g, _color.b, 0f);
+        rect.anchoredPosition = direction * startDistance;
+        rect.localEulerAngles = new Vector3(0f, 0f, Random.Range(0f, 90f));
+        rect.localScale = Vector3.zero;
+        spark.color = Color;
         spark.gameObject.SetActive(true);
 
-        float lifetime = Random.Range(lifetimeRange.x, lifetimeRange.y);
-        float drift = Random.Range(-sideDrift, sideDrift);
-        float rotation = Random.Range(-180f, 180f);
-
-        var sequence = DOTween.Sequence().SetUpdate(true).SetLink(spark.gameObject);
-        sequence.Join(rect.DOAnchorPos(rect.anchoredPosition + new Vector2(drift, rise), lifetime).SetEase(Ease.OutCubic));
-        sequence.Join(rect.DORotate(new Vector3(0f, 0f, rotation), lifetime, RotateMode.LocalAxisAdd));
-        sequence.Join(spark.DOFade(1f, lifetime * 0.15f));
-        sequence.Insert(lifetime * 0.7f, spark.DOFade(0f, lifetime * 0.3f));
-        sequence.OnComplete(() =>
-        {
-            spark.gameObject.SetActive(false);
-            _busy.Remove(spark);
-        });
+        float scale = Random.Range(0.7f, 1.2f) * size;
+        DOTween.Sequence()
+            .Join(rect.DOAnchorPos(direction * (startDistance + travel) + drift, lifetime).SetEase(Ease.OutCubic))
+            .Join(rect.DOScale(scale, lifetime * 0.25f).SetEase(Ease.OutBack))
+            .Insert(lifetime * 0.55f, rect.DOScale(0f, lifetime * 0.45f))
+            .AsUI(spark.gameObject)
+            .OnComplete(() =>
+            {
+                spark.gameObject.SetActive(false);
+                _free.Enqueue(spark);
+            });
     }
-
-    Image GetFree()
-    {
-        foreach (var spark in _pool)
-            if (!_busy.Contains(spark))
-                return spark;
-
-        return null;
-    }
-
-    void OnDisable() => Stop();
 }

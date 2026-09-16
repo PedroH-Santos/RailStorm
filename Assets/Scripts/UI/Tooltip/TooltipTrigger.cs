@@ -6,6 +6,7 @@ public class TooltipTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     IDrawable _source;
     int _currentRarity;
     bool _hovering;
+    TooltipUI _tooltip;
 
     public void SetSource(IDrawable source, int currentRarity)
     {
@@ -23,13 +24,20 @@ public class TooltipTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public void OnPointerExit(PointerEventData eventData)
     {
         _hovering = false;
-        if (TooltipUI.HasInstance) TooltipUI.Instance.Hide();
+        HideTooltip();
     }
+
+    void OnTransformParentChanged() => _tooltip = null;
 
     void OnDisable()
     {
         _hovering = false;
-        if (TooltipUI.HasInstance) TooltipUI.Instance.Hide();
+        HideTooltip();
+    }
+
+    void HideTooltip()
+    {
+        if (_tooltip != null) _tooltip.Hide();
     }
 
     void Refresh()
@@ -39,6 +47,7 @@ public class TooltipTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         var data = TooltipBuilder.Build(_source, _currentRarity);
         if (data == null) return;
 
-        TooltipUI.Instance?.Show(data);
+        if (_tooltip == null) _tooltip = TooltipUI.For(this);
+        _tooltip?.Show(data);
     }
 }
