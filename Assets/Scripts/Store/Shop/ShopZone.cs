@@ -49,15 +49,7 @@ public class ShopZone : MonoBehaviour
 
     void Update()
     {
-        if (_shopOpen)
-        {
-            if (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame)
-                CloseShop();
-
-            return;
-        }
-
-        if (!_playerInside) return;
+        if (_shopOpen || !_playerInside) return;
 
         InteractPromptUI.Instance?.Show();
 
@@ -78,11 +70,13 @@ public class ShopZone : MonoBehaviour
         shopUI.Open(
             _player.GetComponent<PlayerStatsAggregator>(),
             _player.GetComponent<PlayerItemHandler>(),
-            manager);
+            manager,
+            CloseShop);
     }
 
     void CloseShop()
     {
+        if (!_shopOpen) return;
         _shopOpen = false;
         _player?.SetMovementLocked(false);
         shopUI.Close();

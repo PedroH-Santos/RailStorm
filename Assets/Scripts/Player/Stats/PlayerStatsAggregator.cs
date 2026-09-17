@@ -90,11 +90,11 @@ namespace StarterAssets
             Add(EStatKey.HP, "Vida", "VitalContainer", () => $"{HP} / {MaxHP}");
             Add(EStatKey.MoveSpeed, "Velocidade", "AttributesContainer", () => $"{MoveSpeed:F1}");
             Add(EStatKey.LuckPercent, "Sorte", "AttributesContainer", () => $"{LuckPercent:F0}%");
-            Add(EStatKey.Coins, "Moedas", "ResourcesContainer", () => $"{Coins}");
+            Add(EStatKey.Coins, "Moedas", "ResourcesContainer", () => $"{Coins}", highlight: true);
         }
 
-        void Add(EStatKey key, string label, string group, Func<string> getValue) =>
-            _stats.Add(new StatDescriptor { Key = key, Label = label, Group = group, GetValue = getValue });
+        void Add(EStatKey key, string label, string group, Func<string> getValue, bool highlight = false) =>
+            _stats.Add(new StatDescriptor { Key = key, Label = label, Group = group, GetValue = getValue, Highlight = highlight });
 
         public void SpendCoins(int amount) => Coins -= amount;
     }

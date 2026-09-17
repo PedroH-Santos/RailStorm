@@ -53,6 +53,7 @@ public class ChooseWayScreenUI : MonoBehaviour
     [SerializeField] private TMP_Text unlockLabel;
     [SerializeField] private Button previousButton;
     [SerializeField] private Button nextButton;
+    [SerializeField] private BackButtonUI backButton;
 
     [Header("Dicas")]
     [SerializeField] private TMP_Text hintsText;
@@ -106,7 +107,7 @@ public class ChooseWayScreenUI : MonoBehaviour
         }
     }
 
-    public void Show(SplineEntry entry, int position, int total, bool affordable, int coins, Action onUnlock, Action onPrevious, Action onNext)
+    public void Show(SplineEntry entry, int position, int total, bool affordable, int coins, Action onUnlock, Action onPrevious, Action onNext, Action onBack)
     {
         bool wasVisible = barRoot != null && barRoot.activeSelf;
 
@@ -151,6 +152,12 @@ public class ChooseWayScreenUI : MonoBehaviour
         Wire(nextButton, onNext);
         nextButton.gameObject.SetActive(position < total - 1);
 
+        if (backButton != null)
+        {
+            backButton.SetAction(onBack);
+            backButton.Interactable = true;
+        }
+
         if (!wasVisible) _animator?.PlayEnter();
     }
 
@@ -162,6 +169,7 @@ public class ChooseWayScreenUI : MonoBehaviour
     public void PlayUnlocked(int cost)
     {
         if (unlockButton != null) unlockButton.interactable = false;
+        if (backButton != null) backButton.Interactable = false;
 
         if (unlockedStamp != null)
         {
@@ -213,6 +221,8 @@ public class ChooseWayScreenUI : MonoBehaviour
 
     public void Hide()
     {
+        if (backButton != null) backButton.Interactable = false;
+
         if (barRoot == null || !barRoot.activeSelf)
         {
             HideImmediate();

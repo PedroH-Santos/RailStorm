@@ -46,6 +46,12 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 - **Convenção de Canvas de UI**: toda UI começa **desativada** na cena — sem exceção, inclusive as que são singletons (`InteractPromptUI`, `ChestRevealEffect`). Duas formas de ativação, dependendo de quem é o dono do ciclo de vida:
   - **UI aberta por um "dono" explícito** (`ShopUI`, `AbilitySelectionUI`): quem abre chama `root.SetActive(true)`/`gameBackground.SetActive(true)` diretamente.
   - **UI singleton chamada via `Instance` de qualquer lugar** (`InteractPromptUI`, `ChestRevealEffect`): a própria propriedade estática `Instance` se auto-ativa na primeira vez que é acessada — usa `FindFirstObjectByType<T>(FindObjectsInactive.Include)` pra achar o componente mesmo com o GameObject desativado, chama `SetActive(true)` nele (o que dispara o `Awake()` na hora, registrando a instância de verdade), e só então retorna. Isso evita depender do checkbox "Active" estar certo manualmente na cena — se alguém desativar o Canvas por engano, o primeiro `Instance.Show(...)` religa ele sozinho. Ao criar uma UI singleton nova desse tipo, copie esse padrão de `Instance` (não um campo estático simples).
+- **Sair de menu — regra de consistência (17/09).** **O que é:** o jogador estranharia se um menu fechasse com Esc e outro só com botão. **Regras:**
+  - Todo menu que pode ser fechado **sem tomar uma decisão** (hoje Loja e Escolha de Caminho) tem um botão **VOLTAR** visível, instância de `Assets/Prefabs/UI/BackButton.prefab` (placa Steel cartoon + selo "Esc"). Esse botão é a **única** saída: clique, **Esc** ou **B/East do gamepad** acionam o mesmo `BackButtonUI`.
+  - **E não fecha menu**, só abre/interage no mundo.
+  - O dono da tela passa a ação de fechar por callback (`ShopUI.Open(..., onBack)`, `ChooseWayScreenUI.Show(..., onBack)`), e a tela deixa o botão não-interativo enquanto fecha ou durante animações que não podem ser interrompidas (ex.: celebração do desbloqueio, 4.14). Como o `BackButtonUI` só responde ao Esc quando está ativo e interativo, não há dois menus disputando a tecla.
+  - Menus de **decisão** (Habilidades pós-wave, Baú) **não** têm Voltar e o Esc não faz nada neles: a saída é a ação neutra `Pular`, que abre mão da recompensa e por isso não pode ser acionada por reflexo.
+  - Pendente: a tela de Venda (`SellZone`/`SellUI`) ainda fecha com E/Esc e não tem botão — adotar o `BackButton` quando ela for refeita.
 - **Padrão "handler" por responsabilidade** no Player: `PlayerItemHandler`, `PlayerSkillHandler`, `PlayerCartWeaponHandler` — cada um gerencia aquisição/upgrade/exílio de um tipo de coisa e aplica efeitos.
 - **Namespace `StarterAssets`** é usado de forma inconsistente — resíduo do pacote padrão da Unity (`Assets/StarterAssets/`), reaproveitado só em parte dos scripts (`PlayerController`, `PlayerStatsAggregator`, `PlayerSkillHandler`, `ShopManager`, entre outros).
 - **Pastas/arquivos a ignorar ao explorar o projeto** (não são conteúdo do jogo):
@@ -149,17 +155,16 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
 - O estoque tem `slotsCount = 9` itens e se renova automaticamente a cada `refreshInterval = 180s` (3 min), ou imediatamente quando um slot fica "obsoleto" (ex.: jogador conseguiu o item por outra via, como um baú).
 - Itens já possuídos pelo jogador nunca aparecem no estoque; por padrão, itens da leva anterior também não repetem (a menos que faltem candidatos suficientes).
 - Quanto maior a sorte (`LuckPercent`) do jogador, maior a chance de itens raros aparecerem no estoque (mesma fórmula de raridade usada nos baús — ver 4.7).
-- A compra é **tudo ou nada**: o jogador seleciona vários itens (carrinho) e só consegue confirmar se tiver moedas para pagar a soma total de tudo que selecionou — não há compra parcial do carrinho.
+- A compra é **imediata e por item (17/09)**: cada fileira da loja tem o próprio botão COMPRAR, e ele só fica ativo se o saldo cobre o preço daquele item. Não há mais carrinho nem seleção múltipla na compra (a venda continua com carrinho). A UI da loja está descrita na 4.16.
 
 - **`ShopManager.cs`** — núcleo de negócio:
   - Pool de itens: `Resources.LoadAll<ItemDefinition>("Items")` em `Awake()`.
   - Estoque: `slotsCount = 9` itens (`CurrentStock`), refresh automático a cada `refreshInterval = 180s` (`Time.unscaledDeltaTime`), evento `OnStockChanged`.
   - **Sorteio (`RollNewStock`)**: exclui itens da leva anterior e itens já possuídos; se sobrarem poucos candidatos, relaxa a exclusão de "leva anterior". Sorteio ponderado sem reposição via `RarityHelper.GetWeight(rarity, luck)` — mais sorte, mais chance de raros (mesma fórmula dos baús).
   - Reage a itens adquiridos fora da loja (ex.: baú): remove do estoque + `RefillStock()` imediato.
-  - **Compra tudo-ou-nada**: soma o preço de todos os itens selecionados; só executa se `Coins >= total`; debita, chama `AcquireItem` para cada item, `RefillStock()`, dispara `OnStockChanged`.
-- **`ShopUI.cs`** — pausa o jogo ao abrir (`Time.timeScale = 0`), carrinho (`HashSet<ItemDefinition>`), habilita confirmação só se houver seleção e saldo suficiente para o total.
-- **`ShopSlotUI.cs`** — popula slot; trava (`_locked`) se já possuído ou se o preço do item sozinho excede o saldo (checagem item a item — a validação real "tudo-ou-nada" do carrinho fica no `ShopManager`/`ShopUI`).
-- **`ShopZone.cs`** — `SphereCollider` auto-configurado por `interactRadius` (padrão `3f`) + `interactCenter` (offset local, pra alinhar a esfera com o centro visual do prefab quando o pivô não fica no meio), compensando a escala do objeto — mesmo cálculo de `InteractableObject`/`SplineUnlockZone`. Recalcula tanto em `Awake` (runtime) quanto em `OnValidate`/`OnDrawGizmosSelected` (Editor, sem precisar dar Play), desenhando um gizmo laranja com o range real. Trigger (`tag == "Player"`), tecla E abre/fecha, trava movimento do player enquanto aberta.
+  - **Compra por item**: `CanAfford(item, stats)` e `TryBuy(item, stats, itemHandler)` — valida saldo, se o item está no estoque e se não é possuído; debita, tira do estoque, `AcquireItem`, `RefillStock()` e dispara `OnStockChanged`. O antigo `TryBuyMultiple` (carrinho) foi removido.
+- **`ShopUI.cs`**, **`ShopRowUI.cs`** (antigo `ShopSlotUI`), **`ShopItemDetailUI.cs`** — tela da loja, ver 4.16.
+- **`ShopZone.cs`** — `SphereCollider` auto-configurado por `interactRadius` (padrão `3f`) + `interactCenter` (offset local, pra alinhar a esfera com o centro visual do prefab quando o pivô não fica no meio), compensando a escala do objeto — mesmo cálculo de `InteractableObject`/`SplineUnlockZone`. Recalcula tanto em `Awake` (runtime) quanto em `OnValidate`/`OnDrawGizmosSelected` (Editor, sem precisar dar Play), desenhando um gizmo laranja com o range real. Trigger (`tag == "Player"`), tecla E abre; fecha só pelo botão VOLTAR/Esc da `ShopUI` (callback `CloseShop` passado no `Open`, ver "Sair de menu" na seção 3); trava movimento do player enquanto aberta.
 
 **Venda de itens:**
 
@@ -250,7 +255,8 @@ Não há progressão permanente entre runs — tudo aqui reseta a cada partida (
 Não há `CurrencyManager` dedicado — `Coins` é um campo em `PlayerStatsAggregator` (`Assets/Scripts/Player/Stats/PlayerStatsAggregator.cs`), saldo inicial `50`, nunca negativo (`Mathf.Max(0, value)`).
 
 - **Ganha**: +10 por wave limpa (`EnemySpawner`); +`coinsPerKill` (padrão 2) por kill de horda + `coinsOnComplete` (padrão 50) ao concluir horda com o player vivo (`HordeSpawner`); itens/skills `StatChange` com alvo `Coins` (soma ou multiplicador do saldo atual); venda de itens já possuídos na loja (`SellManager`, ver 4.5) — sempre por um valor menor do que o item custaria comprado.
-- **Gasta**: compra na loja (`ShopManager.SpendCoins`); desbloqueio de spline (`SplineUnlockZone`).
+- **Gasta**: compra na loja, um item por vez (`ShopManager.TryBuy` → `PlayerStatsAggregator.SpendCoins`); desbloqueio de spline (`SplineUnlockZone`).
+- **Exibição**: o saldo é o stat em destaque do painel de Status de todas as telas que o têm (ver "Moedas em destaque" na 4.9), e a loja mostra também a caixa Custo/Carteira (4.16).
 - `EStatTarget.CoinDropRate` existe no enum mas **nenhum script o consome** ainda.
 
 ### 4.9 UI/HUD relacionada a gameplay
@@ -286,7 +292,7 @@ Não há `CurrencyManager` dedicado — `Coins` é um campo em `PlayerStatsAggre
 - `StatLabels` — nomes em PT-BR de `EStatTarget` e `EWeaponStatTarget`, para o tooltip não expor nome de enum.
 - `WeaponStatFormatting` — formatação **numérica/unidade** de um `EWeaponStatTarget` (ex.: `Damage`→`"15"`, `AttackRate`→`"1.2/s"`, `Range`→`"15m"`), complementar ao `StatLabels` (que só resolve o nome). É valor **absoluto**, não delta — não se confunde com `FormatDelta` (usado por skill/item/upgrade de arma). `BuildSummary(WeaponLevelData)` e `BuildTransitionSummary(prev, next)` montam a string "Label valor | Label valor" (e "Label prev→next" na versão de transição) consumida pelo `AbilityCardUI` (ver 4.4) fora do tooltip — o mesmo dicionário/lógica de formatação serve as duas telas.
 - `TooltipUI` — singleton com o padrão de auto-ativação do `Instance` (seção 3), instancia as linhas sob demanda a partir de um template inativo na cena (mesmo padrão de `InventorySection`/`SellUI`) e segue o cursor em `LateUpdate`, **invertendo o `pivot`** conforme o quadrante da tela para o painel nunca sair pra fora. O painel tem `CanvasGroup.blocksRaycasts = false` — sem isso ele entraria embaixo do cursor, disparando o `OnPointerExit` do slot e fazendo o tooltip piscar infinitamente. Largura fixa em `460`; o `ContentSizeFitter` é `Unconstrained` na horizontal e `PreferredSize` na vertical, então o painel cresce só pra baixo conforme a descrição e a quantidade de atributos.
-- **Um tooltip por canvas (16/09).** Cada tela que mostra slots de inventário tem o próprio `TooltipRoot` (hoje `CanvasSkillSelector` e `CanvasEventChestItem`), porque um tooltip dentro de um canvas desativado não aparece. `TooltipTrigger` resolve o tooltip por `TooltipUI.For(this)` — o `TooltipUI` do `rootCanvas` do próprio slot — e guarda a referência para esconder o mesmo que mostrou; `TooltipUI.Instance` só é usado como fallback. Tela nova com inventário precisa de um `TooltipRoot` duplicado dentro do seu canvas.
+- **Um tooltip por canvas (16/09).** Cada tela que mostra slots de inventário tem o próprio `TooltipRoot` (hoje `CanvasSkillSelector`, `CanvasEventChestItem` e `CanvasItemShop`), porque um tooltip dentro de um canvas desativado não aparece. `TooltipTrigger` resolve o tooltip por `TooltipUI.For(this)` — o `TooltipUI` do `rootCanvas` do próprio slot — e guarda a referência para esconder o mesmo que mostrou; `TooltipUI.Instance` só é usado como fallback. Tela nova com inventário precisa de um `TooltipRoot` duplicado dentro do seu canvas.
 
 > **Armadilha do TMP criado por script:** um `TextMeshProUGUI` adicionado via `AddComponent` nasce com **`enableWordWrapping = false`**, ao contrário do que acontece ao criar o objeto pelo menu do Editor. O texto simplesmente não quebra linha e vaza pra fora do painel, mesmo com o `RectTransform` na largura certa (o `VerticalLayoutGroup` estava dimensionando o rect corretamente em 412px — só o TMP ignorava). Ao montar UI por script, **sempre setar `enableWordWrapping = true` explicitamente** em qualquer texto que possa ter mais de uma linha.
 
@@ -301,6 +307,12 @@ Não há `CurrencyManager` dedicado — `Coins` é um campo em `PlayerStatsAggre
 | `VitalContainer` | VITAL | Vida |
 | `AttributesContainer` | ATRIBUTOS | Velocidade, Sorte |
 | `ResourcesContainer` | RECURSOS | Moedas |
+
+**Moedas em destaque (17/09).** **O que é:** o usuário mal percebia as moedas no Status porque eram só mais uma linha de atributo. **Regras:**
+- O grupo `GroupResources` (RECURSOS) é o **primeiro** do `EntitiesContainer` nas três telas com Status (`CanvasSkillSelector`, `CanvasEventChestItem`, `CanvasItemShop`).
+- Stat com `StatDescriptor.Highlight = true` (hoje só `Coins`, marcado em `PlayerStatsAggregator.RegisterDisplayStats`) usa `StatsUI.highlightRowPrefab` = **`Assets/Prefabs/UI/StatsCoins.prefab`**: placa Copper, 70px de altura, ícone `coin2` creme com `Outline`, rótulo Fredoka cartoon e valor **Lilita One 40 cartoon**. Stats normais continuam no `Stats.prefab`.
+- O prefab tem `StatRowUI.keepSceneTextStyle = true`, então `Setup` **não** aplica `ApplyStatLabel/Value` — senão a fonte volta para Nunito e o material cartoon se perde.
+- **O Status atualiza ao vivo:** `StatsUI` guarda as linhas do último `Bind` e, em `LateUpdate`, chama `StatRowUI.SetValue`, que só reescreve quando o texto mudou e dá um `DOPunchScale` no valor. É o que faz as moedas caírem na hora ao comprar na loja. Antes o painel só refletia o estado do momento do `Bind`.
 
 O `EntitiesContainer` fica dentro de um **`StatsScrollView`** (`ScrollRect` vertical, `horizontal = false`, `movementType = Clamped`) com `Viewport` mascarado por `RectMask2D` e uma barra vertical fina (8px) encostada na direita em `AutoHide` — assim novos grupos/stats não estouram o painel. O `EntitiesContainer` virou o *content*: âncora no topo, `pivot (0.5, 1)` e `ContentSizeFitter` vertical em `PreferredSize`. `StatsUI` não mudou por causa disso, porque já localizava os containers de grupo por busca recursiva.
 
@@ -555,7 +567,7 @@ Não há HUD clássico (vida/munição sempre visível) implementado — só pai
 
   `InventorySlotView` acha `Icon`/`LevelLabel`/`BackGround` por **busca recursiva** (`FindDeep`), não por caminho fixo, justamente pra a arte do slot poder ganhar níveis de aninhamento (shadow/plate) sem quebrar o script. O fundo do slot (`BackGround`) **é pintado com a cor de raridade em runtime** por `InventorySlotView.Apply` (`_rarityBorder.color = entry.RarityColor`), então qualquer cor definida nele no Inspector serve só de preview no Editor e é sobrescrita em jogo. A mesma chamada acha o `Pattern` e aplica o brilho da raridade (ver "Brilho de fundo por raridade"). O `LevelLabel` usa `ApplyBodyHighlight` (Fredoka + `textTitle`), não `ApplyBody`: em `textBody` o nível ficava apagado demais no meio da grade. Desde 25/08 o corpo da placa é escuro e o ícone é branco, então o ícone lê por contraste direto; ele usa `preserveAspect = true` + `Outline` escuro (`#0A0705`, alpha 0.85), o mesmo do card.
 - **Cantoneiras de seleção do card**: os 4 `Bracket*` ficam agrupados sob um filho `SelectionBrackets` (stretch no card, `LayoutElement.ignoreLayout = true`, sem `Image` própria pra não bloquear raycast) que **começa desativado**. `AbilityCardUI` implementa `IPointerEnterHandler`/`IPointerExitHandler` e liga/desliga esse container, então as cantoneiras marcam apenas o card sob o cursor — é indicador de seleção, não decoração fixa. `OnDisable` e `Setup` forçam o estado oculto para o card não reaparecer marcado ao ser reciclado. Os brackets em si têm `raycastTarget = false`, senão sairiam por fora do card e roubariam o hover.
-- Pendente de propagar pro resto da UI (`ShopSlotUI`, `SellInventorySlotUI`, `InteractPromptUI`) — o `TooltipUI` e a UI de escolha de caminho (`ChooseWayScreenUI`/`ChooseWayTotemBadge`, ver 4.13) já nascem no tema; hoje `AbilitySelectionUI` (incluindo card de habilidade, slot de inventário e linha de status), `TooltipUI`, a UI de escolha de caminho e a UI de revelação do baú (`ChestRevealEffect`, estilo cartoon igual à tela de habilidades, ver 4.15) seguem o tema; as demais telas ainda usam cor/fonte fixas do Inspector.
+- Pendente de propagar pro resto da UI (`SellInventorySlotUI`/`SellUI`, `InteractPromptUI`) — a loja de compra já segue o estilo cartoon desde 17/09 (4.16) — o `TooltipUI` e a UI de escolha de caminho (`ChooseWayScreenUI`/`ChooseWayTotemBadge`, ver 4.13) já nascem no tema; hoje `AbilitySelectionUI` (incluindo card de habilidade, slot de inventário e linha de status), `TooltipUI`, a UI de escolha de caminho e a UI de revelação do baú (`ChestRevealEffect`, estilo cartoon igual à tela de habilidades, ver 4.15) seguem o tema; as demais telas ainda usam cor/fonte fixas do Inspector.
 
 **Onde mora a arte de cada tela (26/08).** `Assets/UI/Theme/` é a pasta **compartilhada**: só entra ali o que mais de uma tela usa (`OrnateFrame9Slice`, `ButtonPlate9Slice`, `CardPlate9Slice`, ornamentos, `Rarity/`). Arte que existe para **uma tela só** ganha pasta própria por tela — hoje `Assets/UI/ChooseWay/` (placa dos totens). Ao criar uma tela nova com arte exclusiva, crie a pasta dela em vez de despejar em `Theme/`. (A menção antiga a "manter o gerador em `Assets/Editor/`" não vale mais — ver regra da seção 3.)
 
@@ -738,7 +750,8 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 | `InfoColumn` (740) | título (Lilita One, caixa alta) → descrição (Fredoka) → linha de `Pips` (um por caminho da bifurcação, o atual cheio) |
 | `CostColumn` (320) | moeda + custo em Nunito, **sem moldura atrás** → botão `Desbloquear` |
 | `PreviousButton`/`NextButton` | discos chanfrados (`ChevronPlate`) fora do layout, nas laterais da barra |
-| `Hints` | `[A/D] Trocar · [Enter] Desbloquear · [E] Sair`, **fora da placa**, 46px abaixo dela |
+| `Hints` | `[A/D] Trocar · [Enter] Desbloquear · [Esc] Voltar`, **fora da placa**, 46px abaixo dela |
+| `BackButton` | instância de `BackButton.prefab` **dentro da `CostColumn`**, logo abaixo do `Desbloquear` (260×54, `ignoreLayout = false`); é a única saída do menu (clique, Esc ou B do gamepad). Para caber nos 208px úteis, `CostRow` caiu para 50, `UnlockButton` para 64 e o `spacing` da coluna para 6 (50 + 64 + 54 + 2×6 = 180). A primeira versão ficava por fora da barra, flutuando no canto, e foi reprovada |
 
 > **A largura das colunas é um orçamento fechado — estourar comprime todas (28/08).** O `Content` é a barra menos `sizeDelta {-60, -32}` (altura reduzida de `-60` para `-32` em 31/08, ver nota de folga vertical abaixo), ou seja **1340×208 úteis**. As três colunas têm `flexibleWidth = 0` e `minWidth = -1`, então quando a soma `220 + 740 + 320` mais `2 × spacing 16` passa do box, o `HorizontalLayoutGroup` **encolhe as três proporcionalmente** — e o título, que cabia, passa a quebrar. Era exatamente o que acontecia com a barra em `1240×260`: as colunas pediam 1232 num box de 1180 e a `InfoColumn` recebia ~631 dos 660 pedidos. **O sintoma aparece na fonte, mas a causa é geométrica** — ao mexer em qualquer largura de coluna, refaça a soma antes de culpar o tamanho do texto.
 
@@ -830,7 +843,7 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 
 **Regras:**
 - O desbloqueio é uma **sequência com beats**, não um efeito único, e roda inteira com `Time.timeScale = 0` — portanto **tudo** mede `Time.unscaledDeltaTime`, como o resto do fluxo de escolha de caminho.
-- Durante a sequência o input de desbloqueio fica travado (`_unlocking`): `Update` retorna cedo, `E`/`Esc` não fecham o menu e `OnTriggerExit` é ignorado.
+- Durante a sequência o input de desbloqueio fica travado (`_unlocking`): `Update` retorna cedo, o `BackButton` fica não-interativo (`ChooseWayScreenUI.PlayUnlocked`), então nem clique nem Esc fecham o menu, e `OnTriggerExit` é ignorado.
 - A onda de construção sempre corre **do totem em direção ao destino**, nunca ao contrário.
 - As moedas são debitadas **uma vez só**, no beat de pagamento, e o `Unblock` só acontece no fim — a spline não fica atravessável antes de a animação terminar.
 - Todas as durações são `[SerializeField]`, para calibrar em jogo sem tocar em código.
@@ -919,12 +932,33 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 
 > **Testar via automação com o Editor sem foco:** `Time.frameCount` fica parado. `EditorApplication.isPaused = true` + `EditorApplication.Step()` com `Thread.Sleep(33)` entre passos avança frames de forma síncrona (o tempo não escalado acompanha o sleep).
 
+### 4.16 UI da loja de compra — `Assets/Scripts/Store/Shop/`, `CanvasItemShop`
+
+**O que é / ideia central:** a tela aberta no `ShopZone`. Inspirada na loja de almas do Rogue Legacy 2 (lista de fileiras + painel de detalhe com "Custo / Carteira"), mas no **mesmo estilo cartoon** das telas de habilidade e baú (4.10/4.15): moldura de madeira, faixas de título, cards com anel de raridade, botões e fontes/materiais iguais. O jogador vê de relance o que tem à venda, quanto custa, quanto tem e quanto falta para o estoque renovar.
+
+**Regras:**
+- Layout de três painéis igual ao baú: `InventoryPanel` | `ShopPanel` | `StatsPanel`, mais `TooltipRoot` como último filho do canvas. Inventário, Status e tooltip são **cópias diretas** dos de `CanvasEventChestItem` — mudança visual numa das três telas precisa ser replicada nas outras.
+- `ShopPanel` = título "LOJA" → `RefreshTimer` ("NOVOS ITENS EM mm:ss", relógio) → `Body` com `ItemList` (rolável) e `DetailCard` (350px).
+- **Uma fileira por item do estoque**, instanciada em runtime de `Assets/Prefabs/UI/ShopRow.prefab` (o `Awake` do `ShopUI` apaga qualquer filho deixado na cena, mesmo padrão de `SellUI`). Fileira: placa com corpo e anel na cor da raridade (mesma fórmula do card de habilidade: `Lerp(panelBackground, Shade(cor, 0.3), 0.7)`), placa de ícone + glow do `RarityConfig`, nome (Lilita) e raridade (Fredoka), preço com moeda, botão **COMPRAR**.
+- **Compra imediata**: COMPRAR chama `ShopManager.TryBuy`. Sem saldo, o botão fica desativado e o preço vira `actionDestructive`. Ao comprar: punch no botão, fileira encolhe/some, `-{preço}` sobe na caixa Carteira; só no fim da animação o estoque (já reabastecido pelo manager) é re-renderizado, com as fileiras entrando em cascata (`rowEnterStagger = 0.05s`). `OnStockChanged` durante a animação só marca `_stockDirty`.
+- **Foco**: hover ou clique numa fileira mostra as cantoneiras de seleção nela e troca o `DetailCard` (pop leve). Ao abrir, a primeira fileira começa em foco.
+- **DetailCard**: ícone/nome/raridade, descrição, linhas de efeito e bloco "Habilidade Especial" vindos de `TooltipBuilder.Build` (o mesmo conteúdo do tooltip, nada duplicado), e a caixa **Custo / Carteira**. Custo fica em `actionDestructive` quando não dá para pagar. Com o estoque vazio, mostra "Estoque esgotado".
+- **Cronômetro**: lê `ShopManager.TimeUntilRefresh` todo frame; nos últimos `urgentSeconds = 10` fica em `actionDestructive` e pulsa em loop.
+- **Voltar**: `BackButton` (240×74) centralizado no `Footer` (HLG, 92px) no fim do `ShopPanel`, abaixo da lista e do detalhe. A primeira versão ficava sobre a faixa do título e foi reprovada. Fecha por clique, Esc ou B do gamepad (regra "Sair de menu", seção 3).
+- **Abrir/fechar**: mesma animação do baú (dim em fade, painel `0.85 → 1` `OutBack`; fechar `→ 0.9` + fade). `Time.timeScale` volta a 1 só no fim do fechamento. O Status é ligado com `statsUI.Bind` no `Open` (antes a loja nunca preenchia o painel).
+- Cor/fonte/tamanho ficam no prefab/cena; o código só escreve o que depende da raridade e do saldo. As cores "normais" de preço/custo são lidas do objeto no `Awake` — **não deixe esses textos salvos com alpha 0** (aconteceu ao pré-visualizar em Edit mode, onde o `Awake` não roda e a cor capturada é transparente).
+
+**Scripts:**
+- **`ShopUI.cs`** — fluxo da tela: `Open`/`Close`, render das fileiras, foco, compra, cronômetro. Referências: `root`, `dimBackground`, `panel` (`CanvasGroup` do `ItemSelectionPanel`), `rowsContainer`, `rowPrefab`, `scrollRect`, `detail`, `timerText`, `inventoryUI`, `statsUI`.
+- **`ShopRowUI.cs`** — uma fileira: `Setup(item, affordable, onFocus, onBuy)`, `SetAffordable`, `SetFocused`, `PlayEnter(delay)`, `PlayBought(onDone)`.
+- **`ShopItemDetailUI.cs`** — o card de detalhe: `Show(item, coins, animate)`, `SetWallet(coins, affordable)`, `PlaySpent(amount)`.
+
 ## 5. Fluxo integrado (resumo)
 
 1. `EnemySpawner` dispara `OnWaveStarted`/`OnWaveCleared` → `EventOrchestrator` decide (roleta, um evento por vez) se spawna baú ou totem de horda, conforme o `EventTiming` de cada tipo.
 2. **Baú**: interação → raridade (`RarityRoller`, influenciado por sorte) → item (`ChestLootRoller`) → Take/Exile/Skip → `PlayerItemHandler.AcquireItem`.
 3. **Horda**: aceite no totem → `HordeSpawner` gera pool ponderado, spawna em lotes, aplica multiplicador de dano global, recompensa por kill + bônus condicionado à sobrevivência.
-4. **Loja de compra**: `ShopZone` (E) → estoque renovado a cada 3min ou sob demanda, sorteado por raridade+sorte, compra tudo-ou-nada debitando `PlayerStatsAggregator.Coins`. **Loja de venda** (local separado no mapa): `SellZone` (E) → jogador seleciona itens do próprio inventário, vende tudo-ou-nada por `SellManager.TrySellMultiple`, recebendo `preço de compra × (1 - sellDiscountPercent)` por item.
+4. **Loja de compra**: `ShopZone` (E) → estoque renovado a cada 3min ou sob demanda, sorteado por raridade+sorte, compra imediata por fileira (botão COMPRAR) debitando `PlayerStatsAggregator.Coins`. **Loja de venda** (local separado no mapa): `SellZone` (E) → jogador seleciona itens do próprio inventário, vende tudo-ou-nada por `SellManager.TrySellMultiple`, recebendo `preço de compra × (1 - sellDiscountPercent)` por item.
 5. Ao limpar uma wave → `AbilityOrb` → 3 cartas (skill/arma nova/upgrade) via `AbilityDrawer`/`AbilitySelectionUI` → próxima wave liberada.
 6. Moedas de waves/hordas/itens alimentam loja e desbloqueio de splines.
 

@@ -6,9 +6,16 @@ public class StatsUI : MonoBehaviour
     public Transform entitiesContainer;
     public GameObject statRowPrefab;
 
+    [Tooltip("Linha usada para stats marcados como destaque (ex.: Moedas). Se vazio, usa a linha padrão.")]
+    public GameObject highlightRowPrefab;
+
+    readonly List<(StatRowUI row, StatDescriptor stat)> _bound = new();
+
     public void Bind(StarterAssets.PlayerStatsAggregator aggregator)
     {
         if (aggregator == null) return;
+
+        _bound.Clear();
 
         var groups = new Dictionary<string, Transform>();
 
@@ -28,10 +35,22 @@ public class StatsUI : MonoBehaviour
         {
             if (!groups.TryGetValue(stat.Group, out var container)) continue;
 
-            var row = Instantiate(statRowPrefab, container);
+            var prefab = stat.Highlight && highlightRowPrefab != null ? highlightRowPrefab : statRowPrefab;
+            var row = Instantiate(prefab, container);
             row.SetActive(true);
-            row.GetComponent<StatRowUI>()?.Setup(stat.Label, stat.GetValue());
+
+            var rowUI = row.GetComponent<StatRowUI>();
+            if (rowUI == null) continue;
+
+            rowUI.Setup(stat.Label, stat.GetValue());
+            _bound.Add((rowUI, stat));
         }
+    }
+
+    void LateUpdate()
+    {
+        foreach (var (row, stat) in _bound)
+            if (row != null) row.SetValue(stat.GetValue());
     }
 
     static Transform FindDeep(Transform root, string name)

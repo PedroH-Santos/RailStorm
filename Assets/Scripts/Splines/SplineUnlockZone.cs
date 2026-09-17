@@ -63,13 +63,6 @@ public class SplineUnlockZone : MonoBehaviour
             return;
         }
 
-        if (_menuOpen && (Keyboard.current.eKey.wasPressedThisFrame
-                       || Keyboard.current.escapeKey.wasPressedThisFrame))
-        {
-            CloseMenu();
-            return;
-        }
-
         if (_menuOpen)
             HandleUnlockInput();
     }
@@ -202,7 +195,8 @@ public class SplineUnlockZone : MonoBehaviour
             _stats.Coins,
             TryUnlock,
             () => MoveSelection(-1),
-            () => MoveSelection(1));
+            () => MoveSelection(1),
+            CloseMenu);
 
         if (pop) ChooseWayScreenUI.Instance?.Pop();
 

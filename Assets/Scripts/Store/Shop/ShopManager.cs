@@ -170,42 +170,23 @@ namespace StarterAssets
             return result;
         }
 
-        /// <summary>
-        /// Buys every valid item in one go: only succeeds if the player can afford the
-        /// combined total. Either everything in the cart is purchased, or nothing is.
-        /// Purchased items are removed from stock and the shop tries to refill their slots.
-        /// </summary>
-        public bool TryBuyMultiple(IEnumerable<ItemDefinition> items, PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
+        public bool CanAfford(ItemDefinition item, PlayerStatsAggregator stats) =>
+            item != null && stats != null && stats.Coins >= item.price;
+
+        public bool TryBuy(ItemDefinition item, PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
         {
-            if (stats == null || items == null) return false;
+            if (!CanAfford(item, stats)) return false;
+            if (!_currentStock.Contains(item)) return false;
+            if (itemHandler != null && itemHandler.HasItem(item)) return false;
 
-            var toBuy = items
-                .Where(i => i != null && _currentStock.Contains(i))
-                .Where(i => itemHandler == null || !itemHandler.HasItem(i))
-                .Distinct()
-                .ToList();
-
-            if (toBuy.Count == 0) return false;
-
-            int total = toBuy.Sum(i => i.price);
-            if (stats.Coins < total) return false;
-
-            stats.SpendCoins(total);
-
-            foreach (var item in toBuy)
-                itemHandler?.AcquireItem(item);
-
-            foreach (var item in toBuy)
-                _currentStock.Remove(item);
+            stats.SpendCoins(item.price);
+            _currentStock.Remove(item);
+            itemHandler?.AcquireItem(item);
 
             RefillStock();
-
             OnStockChanged?.Invoke();
 
             return true;
         }
-
-        public bool TryBuy(ItemDefinition item, PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
-            => TryBuyMultiple(new[] { item }, stats, itemHandler);
     }
 }
