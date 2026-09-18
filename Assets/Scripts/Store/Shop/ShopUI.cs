@@ -193,7 +193,7 @@ public class ShopUI : MonoBehaviour
                 continue;
             }
 
-            row.Setup(stock[i], coins >= stock[i].price, FocusRow, BuyRow);
+            row.Setup(stock[i], stock[i].price, coins >= stock[i].price, FocusRow, BuyRow);
             row.PlayEnter(i * rowEnterStagger);
 
             if (stock[i] == _focusedItem) focusTarget = row;
@@ -220,7 +220,11 @@ public class ShopUI : MonoBehaviour
 
         if (_focused != null) _focused.SetFocused(true);
 
-        if (detail != null) detail.Show(_focusedItem, _stats != null ? _stats.Coins : 0, animate);
+        if (detail == null) return;
+
+        int coins = _stats != null ? _stats.Coins : 0;
+        int price = _focusedItem != null ? _focusedItem.price : 0;
+        detail.Show(_focusedItem, price, coins, coins >= price, animate);
     }
 
     void BuyRow(ShopRowUI row)
@@ -248,12 +252,12 @@ public class ShopUI : MonoBehaviour
         if (detail != null)
         {
             detail.SetWallet(_stats.Coins, true);
-            detail.PlaySpent(item.price);
+            detail.PlayWalletDelta(-item.price);
         }
 
         _focusedItem = null;
 
-        row.PlayBought(() =>
+        row.PlayConsumed(() =>
         {
             _buying = false;
             row.gameObject.SetActive(false);

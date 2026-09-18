@@ -58,7 +58,7 @@ public class ShopItemDetailUI : MonoBehaviour
         }
     }
 
-    public void Show(ItemDefinition item, int coins, bool animate)
+    public void Show(ItemDefinition item, int price, int coins, bool affordable, bool animate)
     {
         bool hasItem = item != null;
         if (contentRoot != null) contentRoot.SetActive(hasItem);
@@ -129,8 +129,8 @@ public class ShopItemDetailUI : MonoBehaviour
             if (abilityDescriptionText != null) abilityDescriptionText.text = data.AbilityDescription;
         }
 
-        if (costText != null) costText.text = item.price.ToString();
-        SetWallet(coins, coins >= item.price);
+        if (costText != null) costText.text = price.ToString();
+        SetWallet(coins, affordable);
 
         if (animate && card != null)
         {
@@ -151,7 +151,7 @@ public class ShopItemDetailUI : MonoBehaviour
         }
     }
 
-    public void PlaySpent(int amount)
+    public void PlayWalletDelta(int delta)
     {
         if (costBurnText == null) return;
 
@@ -160,7 +160,7 @@ public class ShopItemDetailUI : MonoBehaviour
         costBurnText.DOKill();
 
         costBurnText.gameObject.SetActive(true);
-        costBurnText.text = $"-{amount}";
+        costBurnText.text = delta >= 0 ? $"+{delta}" : $"{delta}";
         costBurnText.alpha = 1f;
         rect.anchoredPosition = _costBurnRest;
         rect.localScale = Vector3.one * 1.4f;

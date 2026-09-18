@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace StarterAssets
@@ -35,34 +33,17 @@ namespace StarterAssets
             return Mathf.Max(0, Mathf.RoundToInt(item.price * (1f - sellDiscountPercent)));
         }
 
-        /// <summary>
-        /// Vende todos os itens válidos de uma vez: soma o valor de venda de cada item
-        /// (preço de compra menos o desconto configurado), credita as moedas e remove
-        /// os itens do inventário do player, revertendo o efeito que eles concederam.
-        /// </summary>
-        public bool TrySellMultiple(IEnumerable<ItemDefinition> items, PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
+        public bool TrySell(ItemDefinition item, PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
         {
-            if (stats == null || itemHandler == null || items == null) return false;
+            if (item == null || stats == null || itemHandler == null) return false;
+            if (!itemHandler.HasItem(item)) return false;
 
-            var toSell = items
-                .Where(i => i != null && itemHandler.HasItem(i))
-                .Distinct()
-                .ToList();
-
-            if (toSell.Count == 0) return false;
-
-            int total = toSell.Sum(GetSellPrice);
-
-            foreach (var item in toSell)
-                itemHandler.RemoveItem(item);
-
-            stats.Coins += total;
+            int price = GetSellPrice(item);
+            itemHandler.RemoveItem(item);
+            stats.Coins += price;
 
             OnItemSold?.Invoke();
             return true;
         }
-
-        public bool TrySell(ItemDefinition item, PlayerStatsAggregator stats, PlayerItemHandler itemHandler)
-            => TrySellMultiple(new[] { item }, stats, itemHandler);
     }
 }

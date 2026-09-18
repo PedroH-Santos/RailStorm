@@ -12,16 +12,10 @@ public class ChooseWayTotemBadge : MonoBehaviour
     [Header("Pecas")]
     [SerializeField] private Image cardFill;
     [SerializeField] private Image accentPlate;
-    [SerializeField] private Image crest;
     [SerializeField] private Image icon;
-    [SerializeField] private Image lock_;
-    [SerializeField] private Image lockGlyph;
-    [SerializeField] private Image costPill;
-    [SerializeField] private Image costIcon;
 
     [Header("Textos")]
     [SerializeField] private TMP_Text titleText;
-    [SerializeField] private TMP_Text descriptionText;
     [SerializeField] private TMP_Text costText;
 
     [Header("Desbloqueio")]
@@ -37,13 +31,14 @@ public class ChooseWayTotemBadge : MonoBehaviour
     Canvas _canvas;
     static Camera _mainCamera;
     Color _accent = Color.white;
+    Color _costColor;
     Coroutine _routine;
 
     void Awake()
     {
         _animator = GetComponentInChildren<ChooseWayBadgeAnimator>(true);
         _canvas = GetComponent<Canvas>();
-        ApplyTheme();
+        if (costText != null) _costColor = costText.color;
         if (root != null) root.SetActive(false);
     }
 
@@ -59,37 +54,6 @@ public class ChooseWayTotemBadge : MonoBehaviour
         _canvas.sortingOrder = Mathf.RoundToInt(-depth * 10f);
     }
 
-    public void ApplyTheme()
-    {
-        var theme = UIThemeConfig.Instance;
-        if (theme == null) return;
-
-        theme.ApplyTitle(titleText);
-        theme.ApplyBody(descriptionText);
-        theme.ApplyStatValue(costText);
-
-        if (titleText != null)
-        {
-            titleText.fontStyle = FontStyles.UpperCase;
-            titleText.color = theme.woodOutline;
-        }
-
-        if (descriptionText != null) descriptionText.color = theme.woodOutline;
-        if (costText != null) costText.color = theme.woodOutline;
-
-        if (crest != null) crest.color = theme.woodDark;
-        if (lock_ != null) lock_.color = Color.white;
-        if (lockGlyph != null) lockGlyph.color = theme.woodOutline;
-        if (costIcon != null) costIcon.color = theme.panelBorder;
-        if (costPill != null) costPill.color = Color.white;
-
-        foreach (var shadow in GetComponentsInChildren<Shadow>(true))
-        {
-            if (shadow is Outline) theme.ApplyIconOutline(shadow);
-            else theme.ApplyTextShadow(shadow);
-        }
-    }
-
     public void SetAccent(Color color)
     {
         _accent = color;
@@ -98,17 +62,12 @@ public class ChooseWayTotemBadge : MonoBehaviour
 
     public void Bind(SplineEntry entry, bool affordable)
     {
-        var theme = UIThemeConfig.Instance;
-
         if (titleText != null) titleText.text = entry.destinationName;
-        if (descriptionText != null) descriptionText.text = entry.description;
 
         if (costText != null)
         {
             costText.text = entry.unlockCost.ToString();
-            costText.color = theme == null
-                ? (affordable ? Color.black : new Color(0.6f, 0.1f, 0.1f))
-                : (affordable ? theme.woodOutline : theme.actionDestructive);
+            costText.color = affordable ? _costColor : UIThemeConfig.Instance.actionDestructive;
         }
 
         if (icon != null)
@@ -150,15 +109,12 @@ public class ChooseWayTotemBadge : MonoBehaviour
             float p = Mathf.Clamp01(t / flashDuration);
             float flash = 1f - p;
 
-            Color lit = Color.Lerp(_accent, Color.white, flash);
-            if (accentPlate != null) accentPlate.color = lit;
-            if (icon != null) icon.color = lit;
+            if (accentPlate != null) accentPlate.color = Color.Lerp(_accent, Color.white, flash);
 
             yield return null;
         }
 
         if (accentPlate != null) accentPlate.color = _accent;
-        if (icon != null) icon.color = _accent;
         _routine = null;
     }
 
@@ -207,7 +163,7 @@ public class ChooseWayTotemBadge : MonoBehaviour
             cardFill.color = selected ? Color.white : Color.Lerp(Color.white, dim, restingCardBlend);
 
         if (icon != null)
-            icon.color = selected ? _accent : Color.Lerp(_accent, dim, restingBlend);
+            icon.color = selected ? Color.white : Color.Lerp(Color.white, dim, restingCardBlend);
 
         _animator?.SetSelected(selected);
     }

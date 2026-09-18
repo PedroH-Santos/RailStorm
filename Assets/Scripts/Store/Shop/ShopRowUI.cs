@@ -4,6 +4,7 @@ using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class ShopRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandler
@@ -29,26 +30,28 @@ public class ShopRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandl
     public float cardFillDarkness = 0.3f;
 
     [Header("Interação")]
-    public Button buyButton;
+    [FormerlySerializedAs("buyButton")]
+    public Button actionButton;
     public GameObject selectionBrackets;
     public CanvasGroup group;
 
     [Header("Animação")]
     public float enterFromScale = 0.6f;
     public float enterDuration = 0.32f;
-    public float boughtDuration = 0.3f;
+    [FormerlySerializedAs("boughtDuration")]
+    public float consumedDuration = 0.3f;
 
     public ItemDefinition Item { get; private set; }
 
     Action<ShopRowUI> _onFocus;
-    Action<ShopRowUI> _onBuy;
+    Action<ShopRowUI> _onAction;
     Color _priceColor;
     bool _priceColorCaptured;
 
     void Awake()
     {
         CapturePriceColor();
-        if (buyButton != null) buyButton.onClick.AddListener(HandleBuyClicked);
+        if (actionButton != null) actionButton.onClick.AddListener(HandleActionClicked);
     }
 
     void OnDisable()
@@ -59,11 +62,11 @@ public class ShopRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandl
         if (group != null) group.alpha = 1f;
     }
 
-    public void Setup(ItemDefinition item, bool affordable, Action<ShopRowUI> onFocus, Action<ShopRowUI> onBuy)
+    public void Setup(ItemDefinition item, int price, bool affordable, Action<ShopRowUI> onFocus, Action<ShopRowUI> onAction)
     {
         Item = item;
         _onFocus = onFocus;
-        _onBuy = onBuy;
+        _onAction = onAction;
 
         gameObject.SetActive(true);
 
@@ -73,7 +76,7 @@ public class ShopRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandl
             iconImage.enabled = item.icon != null;
         }
         if (nameText != null) nameText.text = item.itemName;
-        if (priceText != null) priceText.text = item.price.ToString();
+        if (priceText != null) priceText.text = price.ToString();
 
         Color rarityColor = RarityHelper.Color(item.rarity);
 
@@ -112,7 +115,7 @@ public class ShopRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandl
     {
         CapturePriceColor();
 
-        if (buyButton != null) buyButton.interactable = affordable;
+        if (actionButton != null) actionButton.interactable = affordable;
 
         if (priceText != null)
         {
@@ -140,20 +143,20 @@ public class ShopRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandl
         transform.DOScale(1f, enterDuration).SetDelay(delay).SetEase(Ease.OutBack).AsUI(gameObject);
     }
 
-    public void PlayBought(Action onDone)
+    public void PlayConsumed(Action onDone)
     {
         transform.DOKill();
         group?.DOKill();
 
         var sequence = DOTween.Sequence()
             .Append(transform.DOPunchScale(Vector3.one * 0.08f, 0.2f, 6, 0.5f))
-            .Append(transform.DOScale(0.2f, boughtDuration).SetEase(Ease.InBack))
-            .Join(transform.DOLocalRotate(new Vector3(0f, 0f, -6f), boughtDuration));
+            .Append(transform.DOScale(0.2f, consumedDuration).SetEase(Ease.InBack))
+            .Join(transform.DOLocalRotate(new Vector3(0f, 0f, -6f), consumedDuration));
 
-        if (group != null) sequence.Join(group.DOFade(0f, boughtDuration));
+        if (group != null) sequence.Join(group.DOFade(0f, consumedDuration));
 
-        if (buyButton != null)
-            buyButton.transform.DOPunchScale(Vector3.one * 0.12f, 0.25f, 8, 0.6f).AsUI(buyButton.gameObject);
+        if (actionButton != null)
+            actionButton.transform.DOPunchScale(Vector3.one * 0.12f, 0.25f, 8, 0.6f).AsUI(actionButton.gameObject);
 
         sequence.AsUI(gameObject).OnComplete(() => onDone?.Invoke());
     }
@@ -162,7 +165,7 @@ public class ShopRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandl
 
     public void OnPointerClick(PointerEventData eventData) => _onFocus?.Invoke(this);
 
-    void HandleBuyClicked() => _onBuy?.Invoke(this);
+    void HandleActionClicked() => _onAction?.Invoke(this);
 
     void CapturePriceColor()
     {

@@ -49,15 +49,7 @@ public class SellZone : MonoBehaviour
 
     void Update()
     {
-        if (_sellOpen)
-        {
-            if (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame)
-                CloseSellUI();
-
-            return;
-        }
-
-        if (!_playerInside) return;
+        if (_sellOpen || !_playerInside) return;
 
         InteractPromptUI.Instance?.Show();
 
@@ -76,11 +68,13 @@ public class SellZone : MonoBehaviour
         sellUI.Open(
             _player.GetComponent<PlayerStatsAggregator>(),
             _player.GetComponent<PlayerItemHandler>(),
-            manager);
+            manager,
+            CloseSellUI);
     }
 
     void CloseSellUI()
     {
+        if (!_sellOpen) return;
         _sellOpen = false;
         _player?.SetMovementLocked(false);
         sellUI.Close();
