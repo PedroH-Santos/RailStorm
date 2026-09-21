@@ -8,8 +8,12 @@ public class LifeSystem : MonoBehaviour
     [SerializeField] private int life = 100;
 
     public event Action<GameObject> OnDeath;
+    public static event Action<GameObject> OnAnyDeath;
 
     PlayerStatsAggregator _stats;
+    bool _dead;
+
+    public bool IsDead => _dead;
 
     void Awake()
     {
@@ -18,12 +22,14 @@ public class LifeSystem : MonoBehaviour
 
     public void Damage(int damage)
     {
+        if (_dead) return;
+
         if (_stats != null)
         {
             _stats.HP -= damage;
 
             if (_stats.HP <= 0)
-                OnDeath?.Invoke(gameObject);
+                Die();
         }
         else
         {
@@ -31,9 +37,16 @@ public class LifeSystem : MonoBehaviour
 
             if (life <= 0)
             {
-                OnDeath?.Invoke(gameObject);
+                Die();
                 Destroy(gameObject);
             }
         }
+    }
+
+    void Die()
+    {
+        _dead = true;
+        OnDeath?.Invoke(gameObject);
+        OnAnyDeath?.Invoke(gameObject);
     }
 }
