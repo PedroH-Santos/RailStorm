@@ -1,3 +1,4 @@
+using UnityEngine.Serialization;
 using DG.Tweening;
 using StarterAssets;
 using TMPro;
@@ -10,9 +11,10 @@ public class HUDUI : MonoBehaviour
     [Header("Fontes de dados")]
     [SerializeField] private PlayerStatsAggregator stats;
     [SerializeField] private EnemySpawner spawner;
-    [SerializeField] private PlayerCartWeaponHandler weaponHandler;
-    [SerializeField] private PlayerSkillHandler skillHandler;
+    [SerializeField] private PlayerCarWeaponHandler weaponHandler;
+    [FormerlySerializedAs("skillHandler")][SerializeField] private PlayerPerkHandler perkHandler;
     [SerializeField] private PlayerItemHandler itemHandler;
+    [SerializeField] private PlayerSkillHandler playerSkillHandler;
 
     [Header("Contadores")]
     [SerializeField] private TMP_Text coinsText;
@@ -66,9 +68,10 @@ public class HUDUI : MonoBehaviour
 
         if (stats == null) stats = FindFirstObjectByType<PlayerStatsAggregator>();
         if (spawner == null) spawner = FindFirstObjectByType<EnemySpawner>();
-        if (weaponHandler == null) weaponHandler = FindFirstObjectByType<PlayerCartWeaponHandler>();
-        if (skillHandler == null) skillHandler = FindFirstObjectByType<PlayerSkillHandler>();
+        if (weaponHandler == null) weaponHandler = FindFirstObjectByType<PlayerCarWeaponHandler>();
+        if (perkHandler == null) perkHandler = FindFirstObjectByType<PlayerPerkHandler>();
         if (itemHandler == null) itemHandler = FindFirstObjectByType<PlayerItemHandler>();
+        if (playerSkillHandler == null) playerSkillHandler = FindFirstObjectByType<PlayerSkillHandler>();
 
         if (healthFill != null) _healthColor = healthFill.color;
 
@@ -87,8 +90,9 @@ public class HUDUI : MonoBehaviour
         EnemySpawner.OnWaveCleared += HandleWaveChanged;
         if (RunTracker.Instance != null) RunTracker.Instance.OnKillsChanged += HandleKillsChanged;
         if (weaponHandler != null) weaponHandler.OnWeaponsChanged += PunchBackpack;
-        if (skillHandler != null) skillHandler.OnSkillsChanged += PunchBackpack;
+        if (perkHandler != null) perkHandler.OnPerksChanged += PunchBackpack;
         if (itemHandler != null) itemHandler.OnItemsChanged += PunchBackpack;
+        if (playerSkillHandler != null) playerSkillHandler.OnSkillsChanged += PunchBackpack;
     }
 
     void OnDisable()
@@ -97,8 +101,9 @@ public class HUDUI : MonoBehaviour
         EnemySpawner.OnWaveCleared -= HandleWaveChanged;
         if (RunTracker.Instance != null) RunTracker.Instance.OnKillsChanged -= HandleKillsChanged;
         if (weaponHandler != null) weaponHandler.OnWeaponsChanged -= PunchBackpack;
-        if (skillHandler != null) skillHandler.OnSkillsChanged -= PunchBackpack;
+        if (perkHandler != null) perkHandler.OnPerksChanged -= PunchBackpack;
         if (itemHandler != null) itemHandler.OnItemsChanged -= PunchBackpack;
+        if (playerSkillHandler != null) playerSkillHandler.OnSkillsChanged -= PunchBackpack;
         _lowHealthPulse = null;
     }
 

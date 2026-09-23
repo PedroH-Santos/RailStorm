@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32a35c58f002d14480651df8d2aa24d, type: 3}
+  m_Name: Fireball
+  m_EditorClassIdentifier: Assembly-CSharp::FireballSkillDefinition
+  skillName: Bola de Fogo
+  icon: {fileID: 21300000, guid: 3d470df9a9c7dba4396105716b8737ff, type: 3}
+  description: "Dispara bolas de fogo na dire\xE7\xE3o da mira. Segure a tecla para
+    atirar sem parar."
+  projectilePrefab: {fileID: 4630507691419853009, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
+  levels:
+  - damage: 15
+    speed: 25
+    range: 15
+    cooldown: 0.3
+    projectileCount: 1
+    spreadAngle: 0
+    upgradeCost: 20
+  - damage: 20
+    speed: 26
+    range: 16
+    cooldown: 0.28
+    projectileCount: 1
+    spreadAngle: 0
+    upgradeCost: 35
+  - damage: 25
+    speed: 27
+    range: 17
+    cooldown: 0.26
+    projectileCount: 2
+    spreadAngle: 12
+    upgradeCost: 55
+  - damage: 32
+    speed: 28
+    range: 18
+    cooldown: 0.23
+    projectileCount: 2
+    spreadAngle: 12
+    upgradeCost: 80
+  - damage: 40
+    speed: 30
+    range: 20
+    cooldown: 0.2
+    projectileCount: 3
+    spreadAngle: 18
+    upgradeCost: 0

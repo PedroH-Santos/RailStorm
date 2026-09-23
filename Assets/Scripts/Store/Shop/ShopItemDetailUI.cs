@@ -25,6 +25,7 @@ public class ShopItemDetailUI : MonoBehaviour
     public TMP_Text nameText;
     public TMP_Text rarityText;
     public TMP_Text descriptionText;
+    public GameObject descriptionBox;
 
     [Header("Efeitos")]
     public Transform statsContainer;
@@ -84,6 +85,7 @@ public class ShopItemDetailUI : MonoBehaviour
         {
             bool hasDescription = !string.IsNullOrWhiteSpace(data.Description);
             descriptionText.gameObject.SetActive(hasDescription);
+            if (descriptionBox != null) descriptionBox.SetActive(hasDescription);
             descriptionText.text = data.Description;
         }
 

@@ -28,20 +28,33 @@ public static class StatLabels
         { EStatTarget.XpMultiplier, "Multiplicador de XP" },
     };
 
-    static readonly Dictionary<EWeaponStatTarget, string> WeaponStats = new()
+    static readonly Dictionary<ECarWeaponStatTarget, string> WeaponStats = new()
     {
-        { EWeaponStatTarget.Damage, "Dano" },
-        { EWeaponStatTarget.AttackRate, "Cadência" },
-        { EWeaponStatTarget.Range, "Alcance" },
-        { EWeaponStatTarget.Speed, "Velocidade" },
-        { EWeaponStatTarget.ArrowCount, "Flechas" },
-        { EWeaponStatTarget.Area, "Área" },
-        { EWeaponStatTarget.CastTime, "Conjuração" },
+        { ECarWeaponStatTarget.Damage, "Dano" },
+        { ECarWeaponStatTarget.AttackRate, "Cadência" },
+        { ECarWeaponStatTarget.Range, "Alcance" },
+        { ECarWeaponStatTarget.Speed, "Velocidade" },
+        { ECarWeaponStatTarget.ArrowCount, "Flechas" },
+        { ECarWeaponStatTarget.Area, "Área" },
+        { ECarWeaponStatTarget.CastTime, "Conjuração" },
     };
+
+    static readonly Dictionary<ESkillStatTarget, string> SkillStats = new()
+    {
+        { ESkillStatTarget.Damage, "Dano" },
+        { ESkillStatTarget.Cooldown, "Recarga" },
+        { ESkillStatTarget.Range, "Alcance" },
+        { ESkillStatTarget.Speed, "Velocidade" },
+        { ESkillStatTarget.ProjectileCount, "Projéteis" },
+        { ESkillStatTarget.Spread, "Abertura" },
+    };
+
+    public static string Of(ESkillStatTarget target)
+        => SkillStats.TryGetValue(target, out var label) ? label : target.ToString();
 
     public static string Of(EStatTarget target)
         => PlayerStats.TryGetValue(target, out var label) ? label : target.ToString();
 
-    public static string Of(EWeaponStatTarget target)
+    public static string Of(ECarWeaponStatTarget target)
         => WeaponStats.TryGetValue(target, out var label) ? label : target.ToString();
 }

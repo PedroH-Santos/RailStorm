@@ -1,119 +1,216 @@
 using System;
 using System.Collections.Generic;
+using StarterAssets;
 using UnityEngine;
 
-namespace StarterAssets
+public class PlayerSkillHandler : MonoBehaviour
 {
-    public class PlayerSkillHandler : MonoBehaviour
+    public const int SlotLimit = 3;
+
+    public static PlayerSkillHandler Instance { get; private set; }
+
+    [Header("Arma")]
+    [SerializeField] private PlayerWeaponDefinition weapon;
+
+    [Header("Loadout inicial (escolhido antes da run)")]
+    [SerializeField] private List<SkillDefinition> startingSkills = new();
+    [SerializeField] private List<SkillDefinition> startingEquipped = new();
+
+    [Header("Slots")]
+    [Range(1, SlotLimit)]
+    [SerializeField] private int maxSlots = SlotLimit;
+    [Range(1, SlotLimit)]
+    [SerializeField] private int startingUnlockedSlots = 1;
+
+    readonly List<SkillDefinition> _owned = new();
+    readonly Dictionary<SkillDefinition, int> _levelBySkill = new();
+    SkillDefinition[] _slots = Array.Empty<SkillDefinition>();
+    float[] _cooldownRemaining = Array.Empty<float>();
+    float[] _cooldownDuration = Array.Empty<float>();
+    int _unlockedSlots;
+
+    public event Action OnSkillsChanged;
+    public event Action OnLoadoutChanged;
+    public event Action<SkillDefinition> OnSkillUpgraded;
+    public event Action<int> OnSkillCast;
+
+    public PlayerWeaponDefinition Weapon => weapon;
+    public IReadOnlyList<SkillDefinition> Owned => _owned;
+    public int MaxSlots => _slots.Length;
+    public int UnlockedSlots => _unlockedSlots;
+
+    void Awake()
     {
-        public static PlayerSkillHandler Instance { get; private set; }
+        Instance = this;
+        BuildInitialLoadout();
+    }
 
-        PlayerStatsAggregator _stats;
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
 
-        readonly Dictionary<SkillDefinition, int> _rarityBySkill = new();
-        readonly List<SkillDefinition> _acquired = new();
-        readonly HashSet<SkillDefinition> _exiled = new();
+    void Update()
+    {
+        for (int i = 0; i < _cooldownRemaining.Length; i++)
+            if (_cooldownRemaining[i] > 0f)
+                _cooldownRemaining[i] = Mathf.Max(0f, _cooldownRemaining[i] - Time.deltaTime);
+    }
 
-        public event Action OnSkillsChanged;
+    void BuildInitialLoadout()
+    {
+        _owned.Clear();
+        _levelBySkill.Clear();
 
-        public IReadOnlyList<SkillDefinition> AcquiredSkills => _acquired;
-        public IReadOnlyCollection<SkillDefinition> ExiledSkills => _exiled;
-
-        public float luckPercent => _stats != null ? _stats.LuckPercent : 0f;
-
-        void Awake()
+        foreach (var skill in startingSkills)
         {
-            Instance = this;
-            _stats = GetComponent<PlayerStatsAggregator>();
+            if (skill == null || _owned.Contains(skill)) continue;
+            if (weapon != null && !weapon.Supports(skill)) continue;
+
+            _owned.Add(skill);
+            _levelBySkill[skill] = 0;
         }
 
-        void OnDestroy()
+        int slotCount = Mathf.Clamp(maxSlots, 1, SlotLimit);
+        _slots = new SkillDefinition[slotCount];
+        _cooldownRemaining = new float[slotCount];
+        _cooldownDuration = new float[slotCount];
+        _unlockedSlots = Mathf.Clamp(startingUnlockedSlots, 1, slotCount);
+
+        for (int i = 0; i < startingEquipped.Count && i < _unlockedSlots; i++)
+            if (Owns(startingEquipped[i]) && IndexOf(startingEquipped[i]) < 0)
+                _slots[i] = startingEquipped[i];
+
+        if (IsEmpty() && _owned.Count > 0)
+            _slots[0] = _owned[0];
+    }
+
+    bool IsEmpty()
+    {
+        foreach (var slot in _slots)
+            if (slot != null) return false;
+        return true;
+    }
+
+    public bool Owns(SkillDefinition skill) => skill != null && _levelBySkill.ContainsKey(skill);
+
+    public int GetLevel(SkillDefinition skill)
+        => skill != null && _levelBySkill.TryGetValue(skill, out int level) ? level : -1;
+
+    public bool IsMaxLevel(SkillDefinition skill) => Owns(skill) && GetLevel(skill) >= skill.MaxLevel;
+
+    public int GetUpgradeCost(SkillDefinition skill)
+        => Owns(skill) && !IsMaxLevel(skill) ? skill.GetUpgradeCost(GetLevel(skill)) : 0;
+
+    public bool CanUpgrade(SkillDefinition skill, PlayerStatsAggregator stats)
+        => Owns(skill) && !IsMaxLevel(skill) && stats != null && stats.Coins >= GetUpgradeCost(skill);
+
+    public bool TryUpgrade(SkillDefinition skill, PlayerStatsAggregator stats)
+    {
+        if (!CanUpgrade(skill, stats)) return false;
+
+        stats.SpendCoins(GetUpgradeCost(skill));
+        _levelBySkill[skill] = GetLevel(skill) + 1;
+
+        Debug.Log($"[Skills] {skill.skillName} → Nv. {GetLevel(skill) + 1}");
+        OnSkillUpgraded?.Invoke(skill);
+        OnSkillsChanged?.Invoke();
+        OnLoadoutChanged?.Invoke();
+        return true;
+    }
+
+    public bool IsSlotUnlocked(int slot) => slot >= 0 && slot < _unlockedSlots;
+
+    public SkillDefinition GetSlot(int slot)
+        => slot >= 0 && slot < _slots.Length ? _slots[slot] : null;
+
+    public int IndexOf(SkillDefinition skill)
+    {
+        if (skill == null) return -1;
+        for (int i = 0; i < _slots.Length; i++)
+            if (_slots[i] == skill) return i;
+        return -1;
+    }
+
+    public bool Equip(int slot, SkillDefinition skill)
+    {
+        if (!IsSlotUnlocked(slot) || !Owns(skill)) return false;
+        if (_slots[slot] == skill) return false;
+
+        int previousSlot = IndexOf(skill);
+        if (previousSlot >= 0)
         {
-            if (Instance == this) Instance = null;
+            _slots[previousSlot] = _slots[slot];
+            (_cooldownRemaining[previousSlot], _cooldownRemaining[slot]) = (_cooldownRemaining[slot], _cooldownRemaining[previousSlot]);
+            (_cooldownDuration[previousSlot], _cooldownDuration[slot]) = (_cooldownDuration[slot], _cooldownDuration[previousSlot]);
+        }
+        else
+        {
+            _cooldownRemaining[slot] = 0f;
+            _cooldownDuration[slot] = 0f;
         }
 
-        public int GetRarity(SkillDefinition skill)
-            => skill != null && _rarityBySkill.TryGetValue(skill, out int r) ? r : -1;
+        _slots[slot] = skill;
+        OnLoadoutChanged?.Invoke();
+        return true;
+    }
 
-        public bool HasSkill(SkillDefinition skill) => skill != null && _rarityBySkill.ContainsKey(skill);
-        public bool IsExiled(SkillDefinition skill) => _exiled.Contains(skill);
-        public bool CanLevelUp(SkillDefinition skill) => skill != null && GetRarity(skill) < skill.MaxRarity;
-        public int NextRarity(SkillDefinition skill) => GetRarity(skill) + 1;
-        public int GetSkillRarityIndex(SkillDefinition skill) => GetRarity(skill);
+    public bool Unequip(int slot)
+    {
+        if (GetSlot(slot) == null) return false;
 
-        public void ApplySkill(SkillDefinition skill, int rarityIndex)
-        {
-            if (skill == null) return;
+        _slots[slot] = null;
+        _cooldownRemaining[slot] = 0f;
+        OnLoadoutChanged?.Invoke();
+        return true;
+    }
 
-            int current = GetRarity(skill);
+    public bool UnlockSlot()
+    {
+        if (_unlockedSlots >= _slots.Length) return false;
 
-            if (rarityIndex <= current)
-            {
-                Debug.LogWarning($"[Skills] {skill.skillName}: rarityIndex {rarityIndex} não supera o atual {current}.");
-                return;
-            }
+        _unlockedSlots++;
+        OnLoadoutChanged?.Invoke();
+        return true;
+    }
 
-            int applied = Mathf.Clamp(rarityIndex, 0, skill.MaxRarity);
-            if (applied <= current) return;
+    public bool HasCooldown(int slot)
+    {
+        var skill = GetSlot(slot);
+        return skill != null && skill.HasCooldown(GetLevel(skill));
+    }
 
-            _rarityBySkill[skill] = applied;
+    public float CooldownRemaining(int slot)
+        => slot >= 0 && slot < _cooldownRemaining.Length ? _cooldownRemaining[slot] : 0f;
 
-            ApplyStat(skill, applied);
+    public float CooldownNormalized(int slot)
+    {
+        if (slot < 0 || slot >= _cooldownRemaining.Length || _cooldownDuration[slot] <= 0f) return 0f;
+        return Mathf.Clamp01(_cooldownRemaining[slot] / _cooldownDuration[slot]);
+    }
 
-            if (!_acquired.Contains(skill))
-                _acquired.Add(skill);
+    public bool IsReady(int slot) => GetSlot(slot) != null && IsSlotUnlocked(slot) && CooldownRemaining(slot) <= 0f;
 
-            Debug.Log($"[Skills] {skill.skillName} → {RarityHelper.DisplayName(applied)}");
-            OnSkillsChanged?.Invoke();
-        }
+    public bool TryCast(int slot, SkillCastContext context)
+    {
+        if (!IsReady(slot)) return false;
 
-        void ApplyStat(SkillDefinition skill, int rarityIndex)
-        {
-            if (_stats == null) return;
+        var skill = _slots[slot];
+        int level = GetLevel(skill);
+        skill.Cast(context, level);
 
-            SkillLevelData data = skill.GetLevelForRarity(rarityIndex);
+        float cooldown = skill.GetCooldown(level);
+        _cooldownDuration[slot] = cooldown;
+        _cooldownRemaining[slot] = cooldown;
 
-            switch (skill.statTarget)
-            {
-                case EStatTarget.MoveSpeed:
-                    _stats.MoveSpeed = data.isMultiplier
-                        ? _stats.MoveSpeed * data.statValue
-                        : _stats.MoveSpeed + data.statValue;
-                    break;
+        OnSkillCast?.Invoke(slot);
+        return true;
+    }
 
-                case EStatTarget.MaxHP:
-                    _stats.MaxHP = data.isMultiplier
-                        ? _stats.MaxHP * (int)data.statValue
-                        : _stats.MaxHP + (int)data.statValue;
-                    break;
-
-                case EStatTarget.Coins:
-                    _stats.Coins = data.isMultiplier
-                        ? _stats.Coins * (int)data.statValue
-                        : _stats.Coins + (int)data.statValue;
-                    break;
-
-                case EStatTarget.LuckPercent:
-                    _stats.LuckPercent = data.isMultiplier
-                        ? _stats.LuckPercent * data.statValue
-                        : _stats.LuckPercent + data.statValue;
-                    break;
-            }
-        }
-
-        public void ExileSkill(SkillDefinition skill)
-        {
-            _exiled.Add(skill);
-            Debug.Log($"[Skills] {skill.skillName} exilada.");
-            OnSkillsChanged?.Invoke();
-        }
-
-        public void ResetForNewRun()
-        {
-            _rarityBySkill.Clear();
-            _acquired.Clear();
-            _exiled.Clear();
-            OnSkillsChanged?.Invoke();
-        }
+    public void ResetForNewRun()
+    {
+        BuildInitialLoadout();
+        OnSkillsChanged?.Invoke();
+        OnLoadoutChanged?.Invoke();
     }
 }

@@ -139,7 +139,7 @@ namespace StarterAssets
             _currentStock.AddRange(WeightedDraw(candidates, missing, luck));
         }
 
-        // Weighted draw without replacement, same approach as AbilityDrawer.Draw:
+        // Weighted draw without replacement, same approach as PerkDrawer.Draw:
         // each item's chance is proportional to RarityHelper.GetWeight(item.rarity, luck),
         // so higher luck skews the shop towards rarer items.
         static List<ItemDefinition> WeightedDraw(List<ItemDefinition> pool, int count, float luck)

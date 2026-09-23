@@ -8,19 +8,20 @@ public static class TooltipBuilder
     {
         switch (drawable)
         {
-            case WeaponDefinition weapon: return BuildWeapon(weapon, currentRarity);
-            case SkillDefinition skill: return BuildSkill(skill, currentRarity);
+            case CarWeaponDefinition weapon: return BuildWeapon(weapon, currentRarity);
+            case PerkDefinition perk: return BuildPerk(perk, currentRarity);
+            case SkillDefinition skill: return BuildSkill(skill);
             case ItemDefinition item: return BuildItem(item);
             default: return null;
         }
     }
 
-    static TooltipData BuildWeapon(WeaponDefinition weapon, int currentRarity)
+    static TooltipData BuildWeapon(CarWeaponDefinition weapon, int currentRarity)
     {
         var data = NewData("Estatísticas da Arma", weapon, currentRarity);
         data.Description = weapon.description;
 
-        var weaponHandler = PlayerCartWeaponHandler.Instance;
+        var weaponHandler = PlayerCarWeaponHandler.Instance;
 
         var stats = weaponHandler != null
             ? weaponHandler.GetEffectiveStats(weapon)
@@ -29,16 +30,16 @@ public static class TooltipBuilder
         if (stats == null) return data;
 
         foreach (var target in stats.DisplayStats)
-            data.Stats.Add(new TooltipStatLine(StatLabels.Of(target), WeaponStatFormatting.Format(target, stats.GetStatValue(target))));
+            data.Stats.Add(new TooltipStatLine(StatLabels.Of(target), CarWeaponStatFormatting.Format(target, stats.GetStatValue(target))));
 
         if (weaponHandler == null) return data;
 
-        foreach (var skill in weaponHandler.GetAppliedSkills(weapon))
+        foreach (var perk in weaponHandler.GetAppliedPerks(weapon))
         {
-            if (skill == null) continue;
+            if (perk == null) continue;
 
-            int skillRarity = weaponHandler.GetRarity(skill);
-            if (skillRarity < 0) continue;
+            int perkRarity = weaponHandler.GetRarity(perk);
+            if (perkRarity < 0) continue;
 
             if (data.Upgrades.Count >= MaxUpgradeLines)
             {
@@ -46,26 +47,49 @@ public static class TooltipBuilder
                 continue;
             }
 
-            var level = skill.GetLevelForRarity(skillRarity);
-            string effect = $"{StatLabels.Of(skill.statTarget)} {FormatDelta(level.statValue, level.isMultiplier, true)}";
-            string levelLabel = $"Nv. {skillRarity + 1}/{skill.LevelCount}";
+            var level = perk.GetLevelForRarity(perkRarity);
+            string effect = $"{StatLabels.Of(perk.statTarget)} {FormatDelta(level.statValue, level.isMultiplier, true)}";
+            string levelLabel = $"Nv. {perkRarity + 1}/{perk.LevelCount}";
 
-            data.Upgrades.Add(new TooltipUpgradeLine(skill.DisplayName, effect, levelLabel));
+            data.Upgrades.Add(new TooltipUpgradeLine(perk.DisplayName, effect, levelLabel));
         }
 
         return data;
     }
 
-    static TooltipData BuildSkill(SkillDefinition skill, int currentRarity)
+    static TooltipData BuildPerk(PerkDefinition perk, int currentRarity)
     {
-        var data = NewData("Habilidade", skill, currentRarity);
-        data.Description = skill.description;
+        var data = NewData("Perk", perk, currentRarity);
+        data.Description = perk.description;
 
         int rarity = Mathf.Max(currentRarity, 0);
-        var level = skill.GetLevelForRarity(rarity);
+        var level = perk.GetLevelForRarity(rarity);
 
-        data.Stats.Add(new TooltipStatLine(StatLabels.Of(skill.statTarget), FormatDelta(level.statValue, level.isMultiplier, false)));
-        data.Stats.Add(new TooltipStatLine("Nível", $"{rarity + 1} / {skill.LevelCount}"));
+        data.Stats.Add(new TooltipStatLine(StatLabels.Of(perk.statTarget), FormatDelta(level.statValue, level.isMultiplier, false)));
+        data.Stats.Add(new TooltipStatLine("Nível", $"{rarity + 1} / {perk.LevelCount}"));
+
+        return data;
+    }
+
+    static TooltipData BuildSkill(SkillDefinition skill)
+    {
+        var data = NewData("Skill", skill, 0);
+        data.Description = skill.description;
+
+        var handler = PlayerSkillHandler.Instance;
+        int level = handler != null ? Mathf.Max(handler.GetLevel(skill), 0) : 0;
+
+        foreach (var target in skill.VisibleStats(level))
+            data.Stats.Add(new TooltipStatLine(StatLabels.Of(target), SkillStatFormatting.Format(target, skill.GetStatValue(level, target))));
+
+        if (!skill.HasCooldown(level))
+            data.Stats.Add(new TooltipStatLine(StatLabels.Of(ESkillStatTarget.Cooldown), "Sem recarga"));
+
+        data.Stats.Add(new TooltipStatLine("Nível", $"{level + 1} / {skill.LevelCount}"));
+
+        int slot = handler != null ? handler.IndexOf(skill) : -1;
+        if (slot >= 0 && PlayerSkillCaster.Instance != null)
+            data.Stats.Add(new TooltipStatLine("Tecla", PlayerSkillCaster.Instance.GetKeyLabel(slot)));
 
         return data;
     }
