@@ -28,6 +28,7 @@ public class ShopItemDetailUI : MonoBehaviour
     public GameObject descriptionBox;
 
     [Header("Efeitos")]
+    public GameObject statsHeader;
     public Transform statsContainer;
     public TooltipStatRowUI statRowTemplate;
     public GameObject abilitySection;
@@ -182,6 +183,7 @@ public class ShopItemDetailUI : MonoBehaviour
 
     void BuildRows(List<TooltipStatLine> lines)
     {
+        if (statsHeader != null) statsHeader.SetActive(lines.Count > 0);
         if (statsContainer == null || statRowTemplate == null) return;
 
         while (_rows.Count < lines.Count)

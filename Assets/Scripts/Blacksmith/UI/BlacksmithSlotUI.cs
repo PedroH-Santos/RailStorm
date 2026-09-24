@@ -14,7 +14,7 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
     public TMP_Text keyText;
     public GameObject keyBadge;
     public GameObject lockIcon;
-    public GameObject selectionBrackets;
+    public Image slotPlate;
     public TooltipTrigger tooltip;
     public CanvasGroup group;
 
@@ -25,6 +25,13 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
     [Range(0f, 1f)]
     [Tooltip("Opacidade do slot bloqueado.")]
     public float lockedAlpha = 0.55f;
+
+    [Header("Slot alvo")]
+    [Tooltip("Cor da bandeja quando o slot não é o alvo do EQUIPAR.")]
+    public Color normalPlate = new Color(0.047f, 0.133f, 0.220f, 1f);
+
+    [Tooltip("Cor da bandeja do slot que vai receber a skill ao clicar em EQUIPAR.")]
+    public Color selectedPlate = new Color(0.325f, 0.192f, 0.078f, 1f);
 
     public int Index { get; private set; }
 
@@ -38,6 +45,7 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
         _unlocked = unlocked;
 
         bool hasSkill = unlocked && skill != null;
+        int rarity = hasSkill ? skill.RarityForLevel(level) : 0;
 
         if (iconImage != null)
         {
@@ -47,17 +55,17 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
 
         if (iconPlate != null)
         {
-            var plate = RarityHelper.IconPlate(0);
+            var plate = RarityHelper.IconPlate(rarity);
             if (plate != null) iconPlate.sprite = plate;
-            iconPlate.color = RarityHelper.Color(0);
+            iconPlate.color = RarityHelper.Color(rarity);
         }
 
         if (iconGlow != null)
         {
-            var glow = RarityHelper.IconGlow(0);
+            var glow = RarityHelper.IconGlow(rarity);
             iconGlow.enabled = hasSkill && glow != null;
             if (glow != null) iconGlow.sprite = glow;
-            iconGlow.color = RarityHelper.GlowColor(0);
+            iconGlow.color = RarityHelper.GlowColor(rarity);
         }
 
         if (levelLabel != null)
@@ -71,7 +79,7 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
         if (tooltip != null)
         {
             tooltip.enabled = hasSkill;
-            if (hasSkill) tooltip.SetSource(skill, 0);
+            if (hasSkill) tooltip.SetSource(skill, rarity);
         }
 
         SetSelected(selected && unlocked);
@@ -79,7 +87,7 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
 
     public void SetSelected(bool selected)
     {
-        if (selectionBrackets != null) selectionBrackets.SetActive(selected);
+        if (slotPlate != null) slotPlate.color = selected ? selectedPlate : normalPlate;
     }
 
     public void PlayEquipped()

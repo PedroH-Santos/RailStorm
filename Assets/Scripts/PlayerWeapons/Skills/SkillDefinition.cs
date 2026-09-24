@@ -13,6 +13,8 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
     public abstract int LevelCount { get; }
     public int MaxLevel => Mathf.Max(0, LevelCount - 1);
 
+    public int RarityForLevel(int level) => Mathf.Clamp(level, 0, Mathf.Max(0, RarityHelper.Count - 1));
+
     public abstract int GetUpgradeCost(int level);
     public abstract float GetCooldown(int level);
     public bool HasCooldown(int level) => GetCooldown(level) > 0f;

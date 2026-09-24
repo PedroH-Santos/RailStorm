@@ -89,21 +89,22 @@ public class BlacksmithDetailUI : MonoBehaviour
             iconImage.enabled = skill.icon != null;
         }
 
-        Color plateColor = RarityHelper.Color(0);
+        int rarity = skill.RarityForLevel(level);
+        Color plateColor = RarityHelper.Color(rarity);
 
         if (iconPlate != null)
         {
-            var plate = RarityHelper.IconPlate(0);
+            var plate = RarityHelper.IconPlate(rarity);
             if (plate != null) iconPlate.sprite = plate;
             iconPlate.color = plateColor;
         }
 
         if (iconGlow != null)
         {
-            var glow = RarityHelper.IconGlow(0);
+            var glow = RarityHelper.IconGlow(rarity);
             iconGlow.enabled = glow != null;
             if (glow != null) iconGlow.sprite = glow;
-            iconGlow.color = RarityHelper.GlowColor(0);
+            iconGlow.color = RarityHelper.GlowColor(rarity);
         }
 
         if (cardBorder != null) cardBorder.color = plateColor;

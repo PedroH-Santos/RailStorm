@@ -61,7 +61,10 @@ public class InventoryUI : MonoBehaviour
 
         var entries = new List<InventoryEntry>();
         foreach (var s in playerSkillHandler.Owned)
-            entries.Add(new InventoryEntry(s, 0, playerSkillHandler.GetLevel(s)));
+        {
+            int level = playerSkillHandler.GetLevel(s);
+            entries.Add(new InventoryEntry(s, s.RarityForLevel(level), level));
+        }
 
         SetSection(SectionSkills, entries);
     }

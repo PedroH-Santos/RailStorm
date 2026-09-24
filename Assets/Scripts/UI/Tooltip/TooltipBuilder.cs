@@ -73,11 +73,11 @@ public static class TooltipBuilder
 
     static TooltipData BuildSkill(SkillDefinition skill)
     {
-        var data = NewData("Skill", skill, 0);
-        data.Description = skill.description;
-
         var handler = PlayerSkillHandler.Instance;
         int level = handler != null ? Mathf.Max(handler.GetLevel(skill), 0) : 0;
+
+        var data = NewData("Skill", skill, skill.RarityForLevel(level));
+        data.Description = skill.description;
 
         foreach (var target in skill.VisibleStats(level))
             data.Stats.Add(new TooltipStatLine(StatLabels.Of(target), SkillStatFormatting.Format(target, skill.GetStatValue(level, target))));
