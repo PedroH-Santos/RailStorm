@@ -22,6 +22,7 @@ public class PlayerSkillHandler : MonoBehaviour
     [Range(1, SlotLimit)]
     [SerializeField] private int startingUnlockedSlots = 1;
 
+    readonly List<SkillDefinition> _catalog = new();
     readonly List<SkillDefinition> _owned = new();
     readonly Dictionary<SkillDefinition, int> _levelBySkill = new();
     SkillDefinition[] _slots = Array.Empty<SkillDefinition>();
@@ -30,12 +31,14 @@ public class PlayerSkillHandler : MonoBehaviour
     int _unlockedSlots;
 
     public event Action OnSkillsChanged;
+    public event Action<SkillDefinition> OnSkillAcquired;
     public event Action OnLoadoutChanged;
     public event Action<SkillDefinition> OnSkillUpgraded;
     public event Action<int> OnSkillCast;
 
     public PlayerWeaponDefinition Weapon => weapon;
     public IReadOnlyList<SkillDefinition> Owned => _owned;
+    public IReadOnlyList<SkillDefinition> Catalog => _catalog;
     public int MaxSlots => _slots.Length;
     public int UnlockedSlots => _unlockedSlots;
 
@@ -57,8 +60,25 @@ public class PlayerSkillHandler : MonoBehaviour
                 _cooldownRemaining[i] = Mathf.Max(0f, _cooldownRemaining[i] - Time.deltaTime);
     }
 
+    void BuildCatalog()
+    {
+        _catalog.Clear();
+
+        IEnumerable<SkillDefinition> source = weapon != null && weapon.availableSkills.Count > 0
+            ? weapon.availableSkills
+            : Resources.LoadAll<SkillDefinition>("Skills");
+
+        foreach (var skill in source)
+        {
+            if (skill == null || _catalog.Contains(skill)) continue;
+            if (weapon != null && !weapon.Supports(skill)) continue;
+            _catalog.Add(skill);
+        }
+    }
+
     void BuildInitialLoadout()
     {
+        BuildCatalog();
         _owned.Clear();
         _levelBySkill.Clear();
 
@@ -114,6 +134,44 @@ public class PlayerSkillHandler : MonoBehaviour
 
         Debug.Log($"[Skills] {skill.skillName} → Nv. {GetLevel(skill) + 1}");
         OnSkillUpgraded?.Invoke(skill);
+        OnSkillsChanged?.Invoke();
+        OnLoadoutChanged?.Invoke();
+        return true;
+    }
+
+    public int GetPurchaseCost(SkillDefinition skill) => skill != null ? skill.purchaseCost : 0;
+
+    public bool CanBuy(SkillDefinition skill, PlayerStatsAggregator stats)
+        => skill != null && !Owns(skill) && (weapon == null || weapon.Supports(skill))
+           && stats != null && stats.Coins >= GetPurchaseCost(skill);
+
+    public bool TryBuy(SkillDefinition skill, PlayerStatsAggregator stats)
+    {
+        if (!CanBuy(skill, stats)) return false;
+
+        stats.SpendCoins(GetPurchaseCost(skill));
+        return AcquireSkill(skill);
+    }
+
+    public bool AcquireSkill(SkillDefinition skill)
+    {
+        if (skill == null || Owns(skill)) return false;
+        if (weapon != null && !weapon.Supports(skill)) return false;
+
+        _owned.Add(skill);
+        _levelBySkill[skill] = 0;
+
+        for (int i = 0; i < _unlockedSlots; i++)
+        {
+            if (_slots[i] != null) continue;
+            _slots[i] = skill;
+            _cooldownRemaining[i] = 0f;
+            _cooldownDuration[i] = 0f;
+            break;
+        }
+
+        Debug.Log($"[Skills] Nova skill: {skill.skillName}");
+        OnSkillAcquired?.Invoke(skill);
         OnSkillsChanged?.Invoke();
         OnLoadoutChanged?.Invoke();
         return true;

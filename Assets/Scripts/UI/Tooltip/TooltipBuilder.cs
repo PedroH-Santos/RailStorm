@@ -128,6 +128,19 @@ public static class TooltipBuilder
         };
     }
 
+    public static string FormatStatValue(EStatTarget target, float value)
+    {
+        switch (target)
+        {
+            case EStatTarget.MoveSpeed: return $"{value:F1}";
+            case EStatTarget.LuckPercent: return $"{value:F0}%";
+            case EStatTarget.MaxHP:
+            case EStatTarget.HP:
+            case EStatTarget.Coins: return $"{Mathf.RoundToInt(value)}";
+            default: return $"{value:0.##}";
+        }
+    }
+
     static string FormatDelta(float value, bool isMultiplier, bool multiplierIsPercent)
     {
         if (isMultiplier)

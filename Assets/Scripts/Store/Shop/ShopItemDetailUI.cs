@@ -35,6 +35,11 @@ public class ShopItemDetailUI : MonoBehaviour
     public TMP_Text abilityNameText;
     public TMP_Text abilityDescriptionText;
 
+    [Header("Bônus atual » depois")]
+    public Color improvementColor = new Color(0.208f, 0.78f, 0.353f, 1f);
+    public bool useThemeLossColor = true;
+    public Color lossColor = new Color(0.659f, 0.224f, 0.165f, 1f);
+
     [Header("Custo / Carteira")]
     public TMP_Text costText;
     public TMP_Text walletText;
@@ -60,7 +65,7 @@ public class ShopItemDetailUI : MonoBehaviour
         }
     }
 
-    public void Show(ItemDefinition item, int price, int coins, bool affordable, bool animate)
+    public void Show(ItemDefinition item, int price, int coins, bool affordable, bool animate, PlayerItemHandler itemHandler = null, bool removing = false)
     {
         bool hasItem = item != null;
         if (contentRoot != null) contentRoot.SetActive(hasItem);
@@ -117,6 +122,7 @@ public class ShopItemDetailUI : MonoBehaviour
         if (cardFill != null && theme != null)
             cardFill.color = Color.Lerp(theme.panelBackground, Shade(rarityColor, cardFillDarkness), cardFillRarityBlend);
 
+        if (itemHandler != null) ApplyBonusTransition(data.Stats, item, itemHandler, removing);
         BuildRows(data.Stats);
 
         if (abilitySection != null) abilitySection.SetActive(data.HasAbility);
@@ -179,6 +185,18 @@ public class ShopItemDetailUI : MonoBehaviour
             walletText.transform.localScale = Vector3.one;
             walletText.transform.DOPunchScale(Vector3.one * 0.25f, 0.3f, 6, 0.5f).AsUI(walletText.gameObject);
         }
+    }
+
+    void ApplyBonusTransition(List<TooltipStatLine> lines, ItemDefinition item, PlayerItemHandler itemHandler, bool removing)
+    {
+        if (lines.Count == 0 || !itemHandler.TryPreviewStatChange(item, removing, out float before, out float after)) return;
+
+        var theme = UIThemeConfig.Instance;
+        Color loss = useThemeLossColor && theme != null ? theme.actionDestructive : lossColor;
+        string hex = ColorUtility.ToHtmlStringRGB(after >= before ? improvementColor : loss);
+
+        string value = $"{TooltipBuilder.FormatStatValue(item.statTarget, before)} <color=#{hex}>» {TooltipBuilder.FormatStatValue(item.statTarget, after)}</color>";
+        lines[0] = new TooltipStatLine(StatLabels.Of(item.statTarget), value);
     }
 
     void BuildRows(List<TooltipStatLine> lines)

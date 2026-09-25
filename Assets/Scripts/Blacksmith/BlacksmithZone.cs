@@ -58,6 +58,7 @@ public class BlacksmithZone : MonoBehaviour
 
     void Open()
     {
+        if (blacksmithUI == null) blacksmithUI = BlacksmithUI.Instance;
         if (blacksmithUI == null || _player == null) return;
 
         _open = true;

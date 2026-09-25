@@ -197,7 +197,7 @@ public class SellUI : MonoBehaviour
         if (_focused != null) _focused.SetFocused(true);
 
         if (detail != null)
-            detail.Show(_focusedItem, SellPrice(_focusedItem), _stats != null ? _stats.Coins : 0, true, animate);
+            detail.Show(_focusedItem, SellPrice(_focusedItem), _stats != null ? _stats.Coins : 0, true, animate, _itemHandler, true);
     }
 
     void SellRow(ShopRowUI row)

@@ -7,6 +7,12 @@ public class SkillBarUI : MonoBehaviour
     [SerializeField] private PlayerSkillCaster caster;
     [SerializeField] private List<SkillSlotHUD> slots = new();
 
+    [Header("Leque")]
+    [Tooltip("Graus de inclinação entre uma carta e a vizinha.")]
+    [SerializeField] private float fanAngle = 7f;
+    [Tooltip("Quanto cada carta desce por passo de distância do centro do leque.")]
+    [SerializeField] private float fanDrop = 8f;
+
     void Awake()
     {
         if (handler == null) handler = FindFirstObjectByType<PlayerSkillHandler>();
@@ -41,6 +47,25 @@ public class SkillBarUI : MonoBehaviour
             bool visible = handler != null && handler.IsSlotUnlocked(i);
             slot.gameObject.SetActive(visible);
             if (visible) slot.Bind(handler.GetSlot(i));
+        }
+
+        ApplyFan();
+    }
+
+    void ApplyFan()
+    {
+        int visibleCount = 0;
+        foreach (var slot in slots)
+            if (slot != null && slot.gameObject.activeSelf) visibleCount++;
+
+        float center = (visibleCount - 1) * 0.5f;
+        int index = 0;
+        foreach (var slot in slots)
+        {
+            if (slot == null || !slot.gameObject.activeSelf) continue;
+            float offset = index - center;
+            slot.SetFan(-offset * fanAngle, Mathf.Abs(offset) * fanDrop);
+            index++;
         }
     }
 

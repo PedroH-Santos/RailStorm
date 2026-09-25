@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 3d470df9a9c7dba4396105716b8737ff, type: 3}
   description: "Dispara bolas de fogo na dire\xE7\xE3o da mira. Segure a tecla para
     atirar sem parar."
+  purchaseCost: 40
   projectilePrefab: {fileID: 4630507691419853009, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
   levels:
   - damage: 15

@@ -7,10 +7,27 @@ using UnityEngine.UI;
 
 public class BlacksmithUI : MonoBehaviour
 {
+    static BlacksmithUI _instance;
+
+    public static BlacksmithUI Instance
+    {
+        get
+        {
+            if (_instance == null)
+                _instance = FindFirstObjectByType<BlacksmithUI>(FindObjectsInactive.Include);
+
+            return _instance;
+        }
+    }
+
     [Header("Tela")]
     public GameObject root;
     public Image dimBackground;
     public CanvasGroup panel;
+
+    [Header("Abas")]
+    public List<BlacksmithTabUI> tabs = new();
+    public BlacksmithTab startingTab = BlacksmithTab.Shop;
 
     [Header("Slots")]
     public List<BlacksmithSlotUI> slots = new();
@@ -23,8 +40,6 @@ public class BlacksmithUI : MonoBehaviour
 
     [Header("Detalhe")]
     public BlacksmithDetailUI detail;
-    public string equipFormat = "EQUIPAR EM {0}";
-    public string equippedFormat = "EQUIPADA EM {0}";
 
     [Header("Arma")]
     public TMP_Text weaponNameText;
@@ -43,20 +58,22 @@ public class BlacksmithUI : MonoBehaviour
     readonly List<BlacksmithSkillRowUI> _rows = new();
     BlacksmithSkillRowUI _focused;
     SkillDefinition _focusedSkill;
-    int _targetSlot;
+    BlacksmithTab _tab;
     float _dimAlpha;
     Sequence _closeSequence;
 
     void Awake()
     {
+        _instance = this;
+
         if (dimBackground != null) _dimAlpha = dimBackground.color.a;
 
         if (rowsContainer != null)
             for (int i = rowsContainer.childCount - 1; i >= 0; i--)
                 Destroy(rowsContainer.GetChild(i).gameObject);
 
-        if (detail != null && detail.equipButton != null)
-            detail.equipButton.onClick.AddListener(EquipFocused);
+        foreach (var tab in tabs)
+            if (tab != null) tab.Bind(SelectTab);
     }
 
     public void Open(PlayerStatsAggregator stats, PlayerSkillHandler handler, PlayerSkillCaster caster, System.Action onBack)
@@ -65,7 +82,8 @@ public class BlacksmithUI : MonoBehaviour
         _handler = handler;
         _caster = caster;
         _focusedSkill = null;
-        _targetSlot = DefaultTargetSlot();
+        _tab = startingTab;
+        RenderTabs(false);
 
         _closeSequence?.Kill();
         _closeSequence = null;
@@ -141,14 +159,20 @@ public class BlacksmithUI : MonoBehaviour
         }
     }
 
-    int DefaultTargetSlot()
+    void SelectTab(BlacksmithTab tab)
     {
-        if (_handler == null) return 0;
+        if (tab == _tab) return;
 
-        for (int i = 0; i < _handler.UnlockedSlots; i++)
-            if (_handler.GetSlot(i) == null) return i;
+        _tab = tab;
+        RenderTabs(true);
+        if (scrollRect != null) scrollRect.verticalNormalizedPosition = 1f;
+        RenderRows(true);
+    }
 
-        return 0;
+    void RenderTabs(bool animate)
+    {
+        foreach (var tab in tabs)
+            if (tab != null) tab.SetActive(tab.tab == _tab, animate);
     }
 
     string KeyLabel(int slot) => _caster != null ? _caster.GetKeyLabel(slot) : (slot + 1).ToString();
@@ -165,24 +189,60 @@ public class BlacksmithUI : MonoBehaviour
             if (!exists) continue;
 
             var skill = _handler.GetSlot(i);
-            slot.Setup(i, skill, _handler.GetLevel(skill), _handler.IsSlotUnlocked(i), KeyLabel(i), i == _targetSlot, SelectTargetSlot);
+            bool holdsFocused = skill != null && skill == _focusedSkill;
+            slot.Setup(i, skill, _handler.GetLevel(skill), _handler.IsSlotUnlocked(i), KeyLabel(i), holdsFocused, OnInventorySlotClicked);
         }
     }
 
-    void SelectTargetSlot(int slot)
+    List<string> SlotKeys()
     {
-        if (_handler == null || !_handler.IsSlotUnlocked(slot)) return;
+        var keys = new List<string>();
+        int count = _handler != null ? _handler.MaxSlots : 0;
+        for (int i = 0; i < count; i++) keys.Add(KeyLabel(i));
+        return keys;
+    }
 
-        _targetSlot = slot;
-        RenderSlots();
-        RefreshDetail(false);
+    void OnInventorySlotClicked(int slot)
+    {
+        if (_handler == null) return;
+
+        var skill = _handler.GetSlot(slot);
+        if (skill != null) _focusedSkill = skill;
+
+        if (_tab != BlacksmithTab.Equip)
+        {
+            SelectTab(BlacksmithTab.Equip);
+            return;
+        }
+
+        RenderRows(false);
+    }
+
+    List<SkillDefinition> ListedSkills()
+    {
+        var list = new List<SkillDefinition>();
+        if (_handler == null) return list;
+
+        list.AddRange(_handler.Owned);
+
+        if (_tab == BlacksmithTab.Shop)
+            foreach (var skill in _handler.Catalog)
+                if (!_handler.Owns(skill)) list.Add(skill);
+
+        return list;
+    }
+
+    BlacksmithRowMode ModeFor(SkillDefinition skill)
+    {
+        if (_tab == BlacksmithTab.Equip) return BlacksmithRowMode.Equip;
+        return _handler.Owns(skill) ? BlacksmithRowMode.Upgrade : BlacksmithRowMode.Buy;
     }
 
     void RenderRows(bool animateEnter)
     {
-        var owned = _handler != null ? _handler.Owned : (IReadOnlyList<SkillDefinition>)System.Array.Empty<SkillDefinition>();
+        var listed = ListedSkills();
 
-        while (_rows.Count < owned.Count)
+        while (_rows.Count < listed.Count)
             _rows.Add(Instantiate(rowPrefab, rowsContainer));
 
         BlacksmithSkillRowUI focusTarget = null;
@@ -190,35 +250,52 @@ public class BlacksmithUI : MonoBehaviour
         for (int i = 0; i < _rows.Count; i++)
         {
             var row = _rows[i];
-            if (i >= owned.Count)
+            if (i >= listed.Count)
             {
                 row.gameObject.SetActive(false);
                 continue;
             }
 
-            SetupRow(row, owned[i]);
+            SetupRow(row, listed[i]);
             if (animateEnter) row.PlayEnter(i * rowEnterStagger);
-            if (owned[i] == _focusedSkill) focusTarget = row;
+            if (listed[i] == _focusedSkill) focusTarget = row;
         }
 
-        if (focusTarget == null && owned.Count > 0) focusTarget = _rows[0];
+        if (focusTarget == null && listed.Count > 0) focusTarget = _rows[0];
 
         _focused = null;
         SetFocus(focusTarget, false);
     }
 
+    void RefreshRows()
+    {
+        foreach (var row in _rows)
+            if (row.gameObject.activeSelf && row.Skill != null)
+                SetupRow(row, row.Skill);
+
+        _focused?.SetFocused(true);
+    }
+
     void SetupRow(BlacksmithSkillRowUI row, SkillDefinition skill)
     {
         int slot = _handler.IndexOf(skill);
-        row.Setup(
-            skill,
-            _handler.GetLevel(skill),
-            _handler.GetUpgradeCost(skill),
-            _handler.IsMaxLevel(skill),
-            _handler.CanUpgrade(skill, _stats),
-            slot >= 0 ? KeyLabel(slot) : null,
-            FocusRow,
-            UpgradeRow);
+        string key = slot >= 0 ? KeyLabel(slot) : null;
+
+        switch (ModeFor(skill))
+        {
+            case BlacksmithRowMode.Buy:
+                row.SetupBuy(skill, _handler.GetPurchaseCost(skill), _handler.CanBuy(skill, _stats), FocusRow, OnRowAction);
+                break;
+
+            case BlacksmithRowMode.Equip:
+                row.SetupEquip(skill, _handler.GetLevel(skill), slot, SlotKeys(), _handler.UnlockedSlots, FocusRow, EquipRowInSlot);
+                break;
+
+            default:
+                row.SetupUpgrade(skill, _handler.GetLevel(skill), _handler.GetUpgradeCost(skill), _handler.IsMaxLevel(skill),
+                    _handler.CanUpgrade(skill, _stats), key, FocusRow, OnRowAction);
+                break;
+        }
     }
 
     void FocusRow(BlacksmithSkillRowUI row)
@@ -236,6 +313,7 @@ public class BlacksmithUI : MonoBehaviour
 
         if (_focused != null) _focused.SetFocused(true);
 
+        RenderSlots();
         RefreshDetail(animate);
     }
 
@@ -248,34 +326,74 @@ public class BlacksmithUI : MonoBehaviour
 
         if (skill == null || _handler == null)
         {
-            detail.Show(null, 0, 0, true, coins, true, animate);
+            var emptyMode = _tab == BlacksmithTab.Equip ? BlacksmithRowMode.Equip : BlacksmithRowMode.Upgrade;
+            detail.Show(emptyMode, null, 0, 0, true, coins, true, animate);
             return;
         }
 
-        detail.Show(skill, _handler.GetLevel(skill), _handler.GetUpgradeCost(skill), _handler.IsMaxLevel(skill),
-            coins, _handler.CanUpgrade(skill, _stats), animate);
+        var mode = ModeFor(skill);
+        if (mode == BlacksmithRowMode.Buy)
+            detail.Show(mode, skill, 0, _handler.GetPurchaseCost(skill), false, coins, _handler.CanBuy(skill, _stats), animate);
+        else
+            detail.Show(mode, skill, _handler.GetLevel(skill), _handler.GetUpgradeCost(skill), _handler.IsMaxLevel(skill),
+                coins, _handler.CanUpgrade(skill, _stats), animate);
+    }
 
-        bool alreadyThere = _handler.GetSlot(_targetSlot) == skill;
-        string key = KeyLabel(_targetSlot);
-        detail.SetEquip(string.Format(alreadyThere ? equippedFormat : equipFormat, key),
-            !alreadyThere && _handler.IsSlotUnlocked(_targetSlot));
+    void OnRowAction(BlacksmithSkillRowUI row)
+    {
+        if (row == null || row.Skill == null || _handler == null) return;
+
+        if (row.Mode == BlacksmithRowMode.Buy) BuyRow(row);
+        else UpgradeRow(row);
+    }
+
+    void BuyRow(BlacksmithSkillRowUI row)
+    {
+        var skill = row.Skill;
+        int cost = _handler.GetPurchaseCost(skill);
+        if (!_handler.TryBuy(skill, _stats)) return;
+
+        _focusedSkill = skill;
+        RenderRows(false);
+        _focused?.PlayUpgraded();
+
+        if (detail != null)
+        {
+            detail.PlayUpgraded();
+            detail.PlayWalletDelta(-cost);
+        }
+
+        RenderSlots();
+        int equippedSlot = _handler.IndexOf(skill);
+        if (equippedSlot >= 0 && equippedSlot < slots.Count && slots[equippedSlot] != null)
+            slots[equippedSlot].PlayEquipped();
+    }
+
+    void EquipRowInSlot(BlacksmithSkillRowUI row, int slot)
+    {
+        if (row == null || row.Skill == null || _handler == null) return;
+
+        if (row != _focused) SetFocus(row, false);
+        if (!_handler.Equip(slot, row.Skill)) return;
+
+        RefreshRows();
+        RenderSlots();
+        RefreshDetail(false);
+
+        row.PlaySlotEquipped(slot);
+        if (slot >= 0 && slot < slots.Count && slots[slot] != null)
+            slots[slot].PlayEquipped();
     }
 
     void UpgradeRow(BlacksmithSkillRowUI row)
     {
-        if (row == null || row.Skill == null || _handler == null) return;
-
         var skill = row.Skill;
         int cost = _handler.GetUpgradeCost(skill);
         if (!_handler.TryUpgrade(skill, _stats)) return;
 
         if (row != _focused) SetFocus(row, false);
 
-        foreach (var other in _rows)
-            if (other.gameObject.activeSelf && other.Skill != null)
-                SetupRow(other, other.Skill);
-
-        _focused?.SetFocused(true);
+        RefreshRows();
         row.PlayUpgraded();
 
         RefreshDetail(true);
@@ -286,24 +404,6 @@ public class BlacksmithUI : MonoBehaviour
         }
 
         RenderSlots();
-    }
-
-    void EquipFocused()
-    {
-        if (_handler == null || _focusedSkill == null) return;
-        if (!_handler.Equip(_targetSlot, _focusedSkill)) return;
-
-        RenderSlots();
-        if (_targetSlot >= 0 && _targetSlot < slots.Count && slots[_targetSlot] != null)
-            slots[_targetSlot].PlayEquipped();
-
-        foreach (var other in _rows)
-            if (other.gameObject.activeSelf && other.Skill != null)
-                SetupRow(other, other.Skill);
-
-        _focused?.SetFocused(true);
-        RefreshDetail(false);
-        detail?.PlayEquipped();
     }
 
     static Color WithAlpha(Color color, float alpha) => new Color(color.r, color.g, color.b, alpha);

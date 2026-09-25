@@ -31,15 +31,13 @@ public class BlacksmithDetailUI : MonoBehaviour
     public string noCooldownText = "Sem recarga";
 
     [Header("Custo / Carteira")]
+    public GameObject walletBox;
     public TMP_Text costText;
     public TMP_Text walletText;
     public TMP_Text costBurnText;
     public float costBurnRise = 60f;
     public string maxLevelCostText = "MÁX";
-
-    [Header("Equipar")]
-    public Button equipButton;
-    public TMP_Text equipLabel;
+    public string newSkillText = "NOVA";
 
     [Header("Vazio")]
     public GameObject contentRoot;
@@ -60,11 +58,13 @@ public class BlacksmithDetailUI : MonoBehaviour
         }
     }
 
-    public void Show(SkillDefinition skill, int level, int cost, bool isMax, int coins, bool affordable, bool animate)
+    public void Show(BlacksmithRowMode mode, SkillDefinition skill, int level, int cost, bool isMax, int coins, bool affordable, bool animate)
     {
         bool hasSkill = skill != null;
         if (contentRoot != null) contentRoot.SetActive(hasSkill);
         if (emptyState != null) emptyState.SetActive(!hasSkill);
+
+        if (walletBox != null) walletBox.SetActive(mode != BlacksmithRowMode.Equip);
 
         if (!hasSkill)
         {
@@ -73,7 +73,13 @@ public class BlacksmithDetailUI : MonoBehaviour
         }
 
         if (nameText != null) nameText.text = skill.skillName;
-        if (levelText != null) levelText.text = isMax ? $"Nível {level + 1} / {skill.LevelCount} (máx.)" : $"Nível {level + 1} / {skill.LevelCount}";
+        if (levelText != null)
+        {
+            string levelLabel = $"Nível {level + 1} / {skill.LevelCount}";
+            if (mode == BlacksmithRowMode.Buy) levelText.text = $"{newSkillText}  ·  {levelLabel}";
+            else if (isMax) levelText.text = $"{levelLabel} (máx.)";
+            else levelText.text = levelLabel;
+        }
 
         if (descriptionText != null)
         {
@@ -113,8 +119,8 @@ public class BlacksmithDetailUI : MonoBehaviour
         if (cardFill != null && theme != null)
             cardFill.color = Color.Lerp(theme.panelBackground, Shade(plateColor, cardFillDarkness), cardFillRarityBlend);
 
-        BuildRows(BuildLines(skill, level, isMax));
-        SetWallet(coins, affordable, isMax, cost);
+        BuildRows(BuildLines(skill, level, isMax || mode != BlacksmithRowMode.Upgrade));
+        SetWallet(coins, affordable, isMax && mode == BlacksmithRowMode.Upgrade, cost);
 
         if (animate && card != null)
         {
@@ -124,7 +130,7 @@ public class BlacksmithDetailUI : MonoBehaviour
         }
     }
 
-    List<TooltipStatLine> BuildLines(SkillDefinition skill, int level, bool isMax)
+    List<TooltipStatLine> BuildLines(SkillDefinition skill, int level, bool currentOnly)
     {
         var lines = new List<TooltipStatLine>();
         int next = Mathf.Min(level + 1, skill.MaxLevel);
@@ -137,7 +143,7 @@ public class BlacksmithDetailUI : MonoBehaviour
             bool nextHas = !isCooldown || skill.HasCooldown(next);
 
             string current = currentHas ? SkillStatFormatting.Format(target, skill.GetStatValue(level, target)) : noCooldownText;
-            if (isMax)
+            if (currentOnly)
             {
                 lines.Add(new TooltipStatLine(StatLabels.Of(target), current));
                 continue;
@@ -167,12 +173,6 @@ public class BlacksmithDetailUI : MonoBehaviour
         }
     }
 
-    public void SetEquip(string label, bool interactable)
-    {
-        if (equipLabel != null) equipLabel.text = label;
-        if (equipButton != null) equipButton.interactable = interactable;
-    }
-
     public void PlayUpgraded()
     {
         foreach (var row in _rows)
@@ -190,15 +190,6 @@ public class BlacksmithDetailUI : MonoBehaviour
             levelText.transform.localScale = Vector3.one;
             levelText.transform.DOPunchScale(Vector3.one * 0.3f, 0.35f, 6, 0.5f).AsUI(levelText.gameObject);
         }
-    }
-
-    public void PlayEquipped()
-    {
-        if (equipButton == null) return;
-        var t = equipButton.transform;
-        t.DOKill(true);
-        t.localScale = Vector3.one;
-        t.DOPunchScale(Vector3.one * 0.12f, 0.25f, 8, 0.6f).AsUI(equipButton.gameObject);
     }
 
     public void PlayWalletDelta(int delta)

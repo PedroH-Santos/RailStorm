@@ -224,7 +224,7 @@ public class ShopUI : MonoBehaviour
 
         int coins = _stats != null ? _stats.Coins : 0;
         int price = _focusedItem != null ? _focusedItem.price : 0;
-        detail.Show(_focusedItem, price, coins, coins >= price, animate);
+        detail.Show(_focusedItem, price, coins, coins >= price, animate, _itemHandler, false);
     }
 
     void BuyRow(ShopRowUI row)

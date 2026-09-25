@@ -26,11 +26,11 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
     [Tooltip("Opacidade do slot bloqueado.")]
     public float lockedAlpha = 0.55f;
 
-    [Header("Slot alvo")]
-    [Tooltip("Cor da bandeja quando o slot não é o alvo do EQUIPAR.")]
+    [Header("Destaque")]
+    [Tooltip("Cor da bandeja do slot.")]
     public Color normalPlate = new Color(0.047f, 0.133f, 0.220f, 1f);
 
-    [Tooltip("Cor da bandeja do slot que vai receber a skill ao clicar em EQUIPAR.")]
+    [Tooltip("Cor da bandeja do slot que guarda a skill em foco na lista.")]
     public Color selectedPlate = new Color(0.325f, 0.192f, 0.078f, 1f);
 
     public int Index { get; private set; }

@@ -7,6 +7,9 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
     public Sprite icon;
     [TextArea] public string description = "";
 
+    [Header("Loja do ferreiro")]
+    [Min(0)] public int purchaseCost = 50;
+
     public string DisplayName => skillName;
     public Sprite Icon => icon;
 

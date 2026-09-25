@@ -17,3 +17,4 @@ MonoBehaviour:
   description: A arma do personagem. Cada skill equipada vira uma tecla de ataque.
   availableSkills:
   - {fileID: 11400000, guid: 253035a6ecf1d6c4399a71bbe8a7c8cf, type: 2}
+  - {fileID: 11400000, guid: 8f3c1a7e2b9d4e6fa1c05b7d3e9f2a64, type: 2}

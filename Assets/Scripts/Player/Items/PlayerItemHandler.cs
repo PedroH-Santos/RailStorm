@@ -48,44 +48,71 @@ public class PlayerItemHandler : MonoBehaviour
 
     void ApplyStatChange(ItemDefinition item)
     {
-        if (_stats == null) return;
-
-        switch (item.statTarget)
+        if (!TryGetStatValue(item.statTarget, out float current))
         {
-            case EStatTarget.MoveSpeed:
-                _stats.MoveSpeed = item.isMultiplier
-                    ? _stats.MoveSpeed * (1f + item.statValue / 100f)
-                    : _stats.MoveSpeed + item.statValue;
-                break;
-
-            case EStatTarget.MaxHP:
-                _stats.MaxHP = item.isMultiplier
-                    ? Mathf.RoundToInt(_stats.MaxHP * (1f + item.statValue / 100f))
-                    : _stats.MaxHP + (int)item.statValue;
-                break;
-
-            case EStatTarget.HP:
-                _stats.HP = item.isMultiplier
-                    ? Mathf.RoundToInt(_stats.HP * (1f + item.statValue / 100f))
-                    : _stats.HP + (int)item.statValue;
-                break;
-
-            case EStatTarget.Coins:
-                _stats.Coins = item.isMultiplier
-                    ? Mathf.RoundToInt(_stats.Coins * (1f + item.statValue / 100f))
-                    : _stats.Coins + (int)item.statValue;
-                break;
-
-            case EStatTarget.LuckPercent:
-                _stats.LuckPercent = item.isMultiplier
-                    ? _stats.LuckPercent * (1f + item.statValue / 100f)
-                    : _stats.LuckPercent + item.statValue;
-                break;
-
-            default:
-                Debug.LogWarning($"[Items] EStatTarget.{item.statTarget} não tratado em PlayerItemHandler.");
-                break;
+            Debug.LogWarning($"[Items] EStatTarget.{item.statTarget} não tratado em PlayerItemHandler.");
+            return;
         }
+
+        SetStatValue(item.statTarget, WithItem(item, current));
+    }
+
+    public bool TryGetStatValue(EStatTarget target, out float value)
+    {
+        value = 0f;
+        if (_stats == null) return false;
+
+        switch (target)
+        {
+            case EStatTarget.MoveSpeed: value = _stats.MoveSpeed; return true;
+            case EStatTarget.MaxHP: value = _stats.MaxHP; return true;
+            case EStatTarget.HP: value = _stats.HP; return true;
+            case EStatTarget.Coins: value = _stats.Coins; return true;
+            case EStatTarget.LuckPercent: value = _stats.LuckPercent; return true;
+            default: return false;
+        }
+    }
+
+    public bool TryPreviewStatChange(ItemDefinition item, bool removing, out float before, out float after)
+    {
+        after = 0f;
+        if (item == null || item.effectType != EItemEffectType.StatChange || !TryGetStatValue(item.statTarget, out before))
+        {
+            before = 0f;
+            return false;
+        }
+
+        after = RoundIfInteger(item.statTarget, removing ? WithoutItem(item, before) : WithItem(item, before));
+        return true;
+    }
+
+    void SetStatValue(EStatTarget target, float value)
+    {
+        switch (target)
+        {
+            case EStatTarget.MoveSpeed: _stats.MoveSpeed = value; break;
+            case EStatTarget.MaxHP: _stats.MaxHP = Mathf.RoundToInt(value); break;
+            case EStatTarget.HP: _stats.HP = Mathf.RoundToInt(value); break;
+            case EStatTarget.Coins: _stats.Coins = Mathf.RoundToInt(value); break;
+            case EStatTarget.LuckPercent: _stats.LuckPercent = value; break;
+        }
+    }
+
+    static bool IsIntegerStat(EStatTarget target) =>
+        target == EStatTarget.MaxHP || target == EStatTarget.HP || target == EStatTarget.Coins;
+
+    static float RoundIfInteger(EStatTarget target, float value) =>
+        IsIntegerStat(target) ? Mathf.RoundToInt(value) : value;
+
+    static float WithItem(ItemDefinition item, float current) =>
+        item.isMultiplier ? current * (1f + item.statValue / 100f) : current + item.statValue;
+
+    static float WithoutItem(ItemDefinition item, float current)
+    {
+        if (!item.isMultiplier) return current - item.statValue;
+
+        float inverseMultiplier = 1f + item.statValue / 100f;
+        return Mathf.Approximately(inverseMultiplier, 0f) ? current : current / inverseMultiplier;
     }
 
     void ApplyAbility(ItemDefinition item)
@@ -128,47 +155,13 @@ public class PlayerItemHandler : MonoBehaviour
 
     void RevertStatChange(ItemDefinition item)
     {
-        if (_stats == null) return;
-
-        float inverseMultiplier = 1f + item.statValue / 100f;
-        bool canDivide = !Mathf.Approximately(inverseMultiplier, 0f);
-
-        switch (item.statTarget)
+        if (!TryGetStatValue(item.statTarget, out float current))
         {
-            case EStatTarget.MoveSpeed:
-                _stats.MoveSpeed = item.isMultiplier
-                    ? (canDivide ? _stats.MoveSpeed / inverseMultiplier : _stats.MoveSpeed)
-                    : _stats.MoveSpeed - item.statValue;
-                break;
-
-            case EStatTarget.MaxHP:
-                _stats.MaxHP = item.isMultiplier
-                    ? (canDivide ? Mathf.RoundToInt(_stats.MaxHP / inverseMultiplier) : _stats.MaxHP)
-                    : _stats.MaxHP - (int)item.statValue;
-                break;
-
-            case EStatTarget.HP:
-                _stats.HP = item.isMultiplier
-                    ? (canDivide ? Mathf.RoundToInt(_stats.HP / inverseMultiplier) : _stats.HP)
-                    : _stats.HP - (int)item.statValue;
-                break;
-
-            case EStatTarget.Coins:
-                _stats.Coins = item.isMultiplier
-                    ? (canDivide ? Mathf.RoundToInt(_stats.Coins / inverseMultiplier) : _stats.Coins)
-                    : _stats.Coins - (int)item.statValue;
-                break;
-
-            case EStatTarget.LuckPercent:
-                _stats.LuckPercent = item.isMultiplier
-                    ? (canDivide ? _stats.LuckPercent / inverseMultiplier : _stats.LuckPercent)
-                    : _stats.LuckPercent - item.statValue;
-                break;
-
-            default:
-                Debug.LogWarning($"[Items] EStatTarget.{item.statTarget} não tratado ao reverter em PlayerItemHandler.");
-                break;
+            Debug.LogWarning($"[Items] EStatTarget.{item.statTarget} não tratado ao reverter em PlayerItemHandler.");
+            return;
         }
+
+        SetStatValue(item.statTarget, WithoutItem(item, current));
     }
 
     void RevertAbility(ItemDefinition item)

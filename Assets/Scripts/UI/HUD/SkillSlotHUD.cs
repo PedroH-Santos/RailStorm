@@ -12,6 +12,9 @@ public class SkillSlotHUD : MonoBehaviour
     public Image readyFlash;
     public CanvasGroup group;
 
+    [Tooltip("Carta que gira e desce para formar o leque. Filho do slot, para o punch de escala não brigar com a rotação.")]
+    public RectTransform card;
+
     [Range(0f, 1f)]
     [Tooltip("Opacidade do slot sem skill equipada.")]
     public float emptyAlpha = 0.45f;
@@ -52,6 +55,13 @@ public class SkillSlotHUD : MonoBehaviour
         if (cooldownOverlay != null) cooldownOverlay.fillAmount = 0f;
         if (cooldownText != null) cooldownText.gameObject.SetActive(false);
         if (readyFlash != null) readyFlash.color = WithAlpha(readyFlash.color, 0f);
+    }
+
+    public void SetFan(float angle, float drop)
+    {
+        if (card == null) return;
+        card.localEulerAngles = new Vector3(0f, 0f, angle);
+        card.anchoredPosition = new Vector2(card.anchoredPosition.x, -drop);
     }
 
     public void SetKey(string key)
