@@ -74,6 +74,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 457c4985cece91240be2dbebc82aa1a1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7357859377592601471}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 457c4985cece91240be2dbebc82aa1a1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5406728113564089891}
   m_SourcePrefab: {fileID: 100100000, guid: 457c4985cece91240be2dbebc82aa1a1, type: 3}
 --- !u!1 &5146051595660814176 stripped
 GameObject:
@@ -116,3 +119,22 @@ MonoBehaviour:
   interactRadius: 3
   interactCenter: {x: 0, y: 0, z: 0}
   blacksmithUI: {fileID: 0}
+--- !u!114 &5406728113564089891
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5146051595660814176}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ffe88aac05de32418e61da65b979011, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MinimapMarker
+  icon: {fileID: 21300000, guid: 4821f9c494b79774fbbf0c49f2ea9056, type: 3}
+  discColor: {r: 0.7372549, g: 0.38431373, b: 0.105882354, a: 1}
+  size: 26
+  clampToEdge: 1
+  worldOffset: {x: 0, y: 0, z: 0}
+  useSplineThemeColor: 0
+  splineIndex: -1

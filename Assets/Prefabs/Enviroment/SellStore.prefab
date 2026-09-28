@@ -293,6 +293,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a4866a8cb3ff89443b830fa835e0b6e7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3837994441331390522}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a4866a8cb3ff89443b830fa835e0b6e7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3540992991713637367}
   m_SourcePrefab: {fileID: 100100000, guid: a4866a8cb3ff89443b830fa835e0b6e7, type: 3}
 --- !u!1 &4253053526389598908 stripped
 GameObject:
@@ -349,3 +352,22 @@ MonoBehaviour:
   interactCenter: {x: 0, y: 0, z: 0}
   sellUI: {fileID: 0}
   sellManager: {fileID: 2610137838422539627}
+--- !u!114 &3540992991713637367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4253053526389598908}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ffe88aac05de32418e61da65b979011, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MinimapMarker
+  icon: {fileID: 21300000, guid: e8e00495370d7a9479493d1a56c190c9, type: 3}
+  discColor: {r: 0.20784314, g: 0.78039217, b: 0.3529412, a: 1}
+  size: 26
+  clampToEdge: 1
+  worldOffset: {x: 0, y: 0, z: 0}
+  useSplineThemeColor: 0
+  splineIndex: -1

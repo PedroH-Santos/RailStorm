@@ -1031,13 +1031,13 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
   | Região | Conteúdo |
   |---|---|
   | topo esquerdo (`TopLeft`, VLG `UpperLeft`, em `(32, -24)`, spacing 4) | `Wave` (Lilita 44, alinhado à esquerda) → `Timer` (Lilita 38) → `ObjectivesPanel` (300 de largura) |
-  | topo direito (`MinimapFrame`, 280×220, em `(-32, -24)`) | quadro do minimapa |
+  | topo direito (`MinimapFrame`, 220×220 redondo, em `(-32, -24)`) | minimapa (4.20) |
   | base esquerda (`BottomLeft`, VLG `LowerLeft`, em `(32, 28)`) | **mochila pequena** (46px, selo 24px com letra 16) em cima → `VitalsRow` (HLG, spacing 24): barra de vida com `HP / MaxHP` + moedas e kills (`Counters`, spacing 16) |
   | base, à direita da vida (`SkillBar`, âncora/pivot `(0,0)`, em `(864, 16)`) | Skills equipadas como **cartas em leque** (4.19) |
 
   Versões anteriores reprovadas: tudo no topo esquerdo; barra de skills no centro inferior (atrapalhava a visão); painel de skills emoldurado abaixo da mochila; o layout de 24/09 com o tempo na base direita e a wave no topo direito; e, em 25/09, Objetivos e Skills dentro de uma moldura de madeira translúcida (`CartoonWoodFrame9Slice` com `fillCenter = false`), que o usuário achou "horrível". Os dois foram escolhidos em seguida por mockup (Objetivos opção D, Skills opção I).
 - **Objetivos: um cartão por objetivo (25/09).** **O que é:** lista de metas da run, cada uma com o próprio progresso, sem painel grande em volta. **Regras:** `ObjectivesPanel` (VLG, spacing 8) = título "OBJETIVOS" (Lilita 26, clone do `Timer`) → `List` (VLG, spacing 8). Cada objetivo é uma instância de **`Assets/Prefabs/UI/ObjectiveCard.prefab`** (300px): placa `CartoonSlotPlate9Slice` em `#0A1E33` a alpha 0.78, `Row` com `Label` (Fredoka cartoon, autosize 14–19, sem quebra) e `Count` (Lilita 22 em `#FFB020`, 64px), e `Progress` (trilho `#050F1C` de 12px com `Fill` Copper; o progresso é o `anchorMax.x` do `Fill`). **Ainda não há sistema de objetivos:** o `List` tem uma instância de exemplo **desativada**, só para preview no Editor. Ver seção 6.
-- **Minimapa é só espaço visual (25/09):** `MinimapFrame` tem a moldura de madeira leve (`Fill` navy a alpha 0.22 recuado 14px + `WoodFrame` com `CartoonWoodFrame9Slice`, `fillCenter = false`, `ppum 3.2`) e um `Viewport` (`RectMask2D`) com `MapImage` (`RawImage` transparente) reservado para a RenderTexture futura.
+- **Minimapa (28/09):** o `MinimapFrame` virou o minimapa redondo descrito na 4.20. A moldura de madeira retangular (`Fill`/`WoodFrame`) e o `MapImage` ficaram desativados na cena.
 - **O HUD não mostra item, arma do vagão nem perk** (pedido do usuário): a mochila só indica que o inventário existe e dá um `DOPunchScale` quando o jogador ganha algo novo (`OnWeaponsChanged`/`OnPerksChanged`/`OnItemsChanged`/`PlayerSkillHandler.OnSkillsChanged`). A exceção são as **Skills equipadas**, que aparecem no painel de Skills com a recarga (ver "Painel de Skills" na 4.19). O conteúdo fica na tela de inventário (4.18). Clicar na mochila também abre o inventário.
 - **Selo da mochila:** mostra `I`, e troca para `Y` quando o último input veio de um gamepad (`InventoryScreenInput.UsingGamepad`).
 - **Cronômetro** conta só tempo jogado (`Time.deltaTime`, para sozinho com `timeScale = 0` nas telas modais). Formato `mm:ss`, `h:mm:ss` acima de 1h. A string só é refeita quando o segundo muda.
@@ -1159,6 +1159,46 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 
 > **Renderizar UI por RenderTexture pode destruir canvas world-space (24/09).** O truque de trocar `Canvas.renderMode` para `ScreenSpaceCamera` só para capturar uma tela **reescreve o transform do canvas**: aplicado por engano nos dois `BadgeCanvas` dos totens (4.13), eles voltaram com `localScale = 1`, `sizeDelta = 1920×1080` e posição de tela. Ao usar esse truque, filtre pelo canvas que você quer (nunca por "todos os root canvases") e, se precisar restaurar, os valores certos estão na última versão salva da cena (`m_LocalRotation`/`m_LocalScale`/`m_SizeDelta` do `RectTransform` no YAML). Para um canvas que é filho de um objeto do mundo (como o `CanvasBlacksmith`), desparente antes de capturar, senão ele renderiza como uma miniatura na cena.
 
+### 4.20 Minimapa — `Assets/Scripts/UI/Minimap/`, `CanvasHUD/MinimapFrame` (28/09)
+
+**O que é / ideia central:** um mapa redondo no canto superior direito do HUD que mostra, ao redor do vagão, os trilhos (liberados e bloqueados) e os pontos de interesse da run. Serve para o jogador saber para onde fica a loja, o ferreiro, o baú ou o orbe sem precisar procurar na tela. É **esquemático**: é desenhado a partir das próprias splines e de marcadores, sem câmera nem RenderTexture. A referência de leitura é o minimapa do Megabonk (círculo escuro, letras de direção, ícones pequenos), mas no estilo cartoon do projeto e com ícones que **representam** cada elemento.
+
+**Regras:**
+- **Orientação fixa, alinhada à câmera isométrica.** "Cima" no mapa é "cima" na tela (eixo `forward` da `Camera.main` achatado em XZ), e "direita" é o `right` da câmera. Os eixos são lidos uma vez, porque a rotação da câmera é fixa. O **N** no topo representa esse "cima" (o jogo não tem norte real). O mapa não gira.
+- **O jogador fica sempre no centro.** O `Content` com os trilhos é deslocado para `-posição do vagão` a cada frame. O disco azul com o rosto não gira. Quem mostra a direção é o `Pointer`, um triângulo creme que orbita o disco pelo `forward` do vagão.
+- **Escala:** `pixelsPerUnit = 8` (1 unidade do mundo = 8px). Com o mapa de hoje (~30×10 unidades), o recorte mostra um pedaço grande do trilho em volta do vagão.
+- **Trilhos:** um por spline do `SplineContainer`. Liberado = linha contínua creme (alpha 0.85, 6px). Bloqueado = tracejado na `themeColor` do `SplineEntry`, escurecida 15% e com alpha 0.7, 4px. Se o `themeColor` for branco (não configurado), usa Steel. Os bloqueados ficam por baixo dos liberados. Ao desbloquear um caminho (`SplineRuntimeState.OnSplineUnblocked`), o trilho vira contínuo.
+- **Fora do recorte:** o **próprio ícone** fica preso na borda do círculo (raio − `edgeMargin` 16px), no ponto da direção do elemento, com escala 0.8 e alpha 0.75. **Não há seta** (pedido do usuário). Marcadores com `clampToEdge = false` (os totens, que são muitos) simplesmente somem fora do recorte.
+- **Ícones = disco colorido + glifo branco** do pack `Assets/SkymonIconPackFree/skymon-icons-white/`, com contorno escuro. Nada realista, mas cada ícone representa o elemento:
+
+  | Elemento | Glifo | Cor do disco | Tamanho | Preso na borda |
+  |---|---|---|---|---|
+  | Jogador | `user.png` (placeholder do rosto do personagem) | Rare `#2E86F0` | 34 | — |
+  | Loja (compra) | `money` | Legendary `#FFB020` | 26 | sim |
+  | Venda | `pouch` | Uncommon `#35C75A` | 26 | sim |
+  | Ferreiro | `axe` | Copper `#BC621B` | 26 | sim |
+  | Baú | `chest` | Legendary `#FFB020` | 28 | sim |
+  | Orbe de perk | `up-arrow-alt` | Epic `#A94BEB` | 26 | sim |
+  | Totem de bifurcação | `padlock-locked` | `themeColor` do caminho (Steel se não configurado) | 20 | não |
+
+- **O minimapa não conhece os sistemas.** Quem aparece no mapa é qualquer objeto com `MinimapMarker`, que se registra no `OnEnable` e sai no `OnDisable`. Por isso o baú (spawn/despawn), o orbe (liga ao limpar a wave) e o totem (desativado ao desbloquear) aparecem e somem sozinhos. **Elemento novo no mapa = adicionar `MinimapMarker` no objeto/prefab**, sem código.
+- Some junto com o HUD nas telas modais (é filho do `CanvasHUD`, 4.17).
+
+**Código:**
+- **`MinimapUI`** — no `MinimapFrame`. Acha sozinho o `SplineContainer` e o vagão (`PlayerController`). Gera um `MinimapTrackGraphic` por spline a partir do `TrackTemplate`, move o `Content`, posiciona/prende os ícones (instâncias recicladas de `Assets/Prefabs/UI/MinimapIcon.prefab`) e gira o `PointerPivot`. Cores, larguras, escala e borda são campos do Inspector.
+- **`MinimapTrackGraphic : MaskableGraphic`** — malha de uma spline como polilinha: um quad por segmento, com modo tracejado cortado por comprimento de arco. Precisa de `[RequireComponent(typeof(CanvasRenderer))]` — sem o `CanvasRenderer` (que não é adicionado sozinho por `AddComponent` de um `Graphic` próprio) o trilho simplesmente não desenha, sem erro nenhum.
+- **`MinimapMarker`** — `icon`, `discColor`, `size`, `clampToEdge`, `worldOffset`, e `useSplineThemeColor` + `splineIndex` para os totens.
+- **`MinimapMarkerRegistry`** — registro estático com eventos `OnMarkerAdded`/`OnMarkerRemoved` (mesmo padrão do `TotemRegistry`).
+- **`MinimapIconUI`** — no prefab do ícone: `Bind(marker)`, `Place(pos, escala, alpha)`, `SetVisible`.
+
+**Cena (`UI/CanvasHUD/MinimapFrame`, 220×220):** `Rim` (disco Brown Deep `#663300` + `Shadow (0,-5)`) → `RimAccent` (disco Copper recuado 4px) → `Viewport` (recuado 8px, disco Navy Recess `#050F1C` com `Mask`; dentro, `Content` com o `TrackTemplate` inativo e `Markers`) → `Player` (34px: `PointerPivot/Pointer`, `Disc` azul com `Outline`, `Face`) → `Compass` (N/L/S/O duplicados do `Timer` do HUD, Lilita 22 cartoon, a 108px do centro, em cima do aro).
+
+**Sprites:** `Assets/UI/Minimap/MapDisc.png` (disco branco 128², usado no aro, no fundo/máscara e nos discos dos ícones) e `MapPlayerPointer.png` (triângulo branco 64²).
+
+**Marcadores colocados:** na cena, `WizardTowerStore` (loja), `Abilities` (orbe) e os dois `Totem` da `UnlockZone` (splines 1 e 2). Nos prefabs, `SellStore`, `BlackSmithUpgradeSkills` e `ItemChest`.
+
+> **Pendências:** falta um PNG do rosto do personagem (hoje é o `user.png` genérico do pack). Inimigos não aparecem no mapa, de propósito, na v1.
+
 ## 5. Fluxo integrado (resumo)
 
 1. `EnemySpawner` dispara `OnWaveStarted`/`OnWaveCleared` → `EventOrchestrator` decide (roleta, um evento por vez) se spawna baú ou totem de horda, conforme o `EventTiming` de cada tipo.
@@ -1175,12 +1215,12 @@ Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 
 - **Sem `GameManager` central** — nenhuma classe orquestra estado global, transições de cena ou game over. **Pendência concreta ligada a isso (25/08):** `PlayerPerkHandler.ResetForNewRun()`, `PlayerCarWeaponHandler.ResetForNewRun()` e `PlayerItemHandler.ResetForNewRun()` existem e funcionam, mas **ninguém os chama**. Hoje isso não causa bug porque o progresso vive em runtime e morre com o GameObject (ver 4.12); passa a causar no momento em que existir uma segunda run sem recarregar a cena (morrer → recomeçar). Quem criar o `GameManager` deve chamar os três, mais `RunTracker.ResetForNewRun()` (tempo e kills do HUD, 4.17) e `PlayerSkillHandler.ResetForNewRun()` (níveis, slots e recargas das Skills, 4.19).
 - **Escolha do loadout antes da run (22/09, revisto 25/09)** — o design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Só existem **Bola de Fogo** e **Chuva de Brasas**, e as duas usam o mesmo código de skill.
-- **Objetivos e Minimapa do HUD (25/09)** — o `ObjectivesPanel` (com o prefab `ObjectiveCard`) e o `MinimapFrame` do `CanvasHUD` existem só como visual (4.17). Não há sistema de objetivos que instancie os cartões nem câmera/RenderTexture de minimapa.
+- **Objetivos do HUD (25/09)** — o `ObjectivesPanel` (com o prefab `ObjectiveCard`) do `CanvasHUD` existe só como visual (4.17). Não há sistema de objetivos que instancie os cartões. O minimapa foi implementado em 28/09 (4.20).
 - **Sem save/load** — nenhum `PlayerPrefs`, `JsonUtility`, arquivo em disco, `SceneManager` ou `DontDestroyOnLoad` encontrado.
-- **Sem meta-progressão persistente** — nenhuma segunda moeda entre runs; `Coins` é só por run e reseta (`PlayerItemHandler.ResetForNewRun()`).
+- **Sem meta-progressão persistente** — nenhuma segunda moeda entre runs; `Coins` é só por run e reseta (`PlayerItemHandler.ResetForNewRun()`). Desenho em refinamento na 7.1 (E6).
 - **Sem personagens desbloqueáveis** nem seleção de personagem.
 - **Sem upgrades permanentes** entre partidas.
-- **Sem boss** implementado.
+- **Sem boss** implementado. O redesenho da progressão (7.1) propõe um guardião por região.
 - **Sem múltiplos mapas** com dificuldade progressiva.
 - **Evento de Horda desativado de propósito (10/08)** — `Resources/Events/HordeEventConfig.asset` e `HordeEventDefinition.asset` foram removidos a pedido do usuário para reformular o evento mais tarde; os scripts (`Assets/Scripts/Events/Horde/*`) continuam no repo intactos, só sem dado de config apontando pra eles. Hoje só o evento de Baú roda de fato.
 - **Arma `Magic`** só como dado (`ECarWeaponType.Magic`, `MagicLevelData`) — sem `MagicWeaponController`.
@@ -1192,4 +1232,245 @@ Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 
 Funcionalidades cujo escopo o usuário já decidiu, registradas aqui para não se perderem até serem construídas. Ao implementar uma delas, **mova a subsection para a seção 4** (no formato padrão) e remova a entrada correspondente da seção 6.
 
-Nenhuma no momento (o HUD, antes 7.1, foi implementado em 21/09 — ver 4.17).
+O HUD, que já foi uma entrada desta seção, foi implementado em 21/09 (ver 4.17).
+
+### 7.1 Redesenho da progressão da run (em refinamento desde 28/09)
+
+**O que é / ideia central:** hoje a run é wave → carta → wave, sem fim. Com isso o jogador fica entediado rápido. O redesenho dá à run um formato de **atos por região**, com objetivos, eventos que mudam a gameplay, destinos que valem a viagem e uma meta-progressão entre runs no estilo Megabonk. **Nada daqui está implementado.** O desenho está sendo refinado com o usuário **um elemento por vez**, antes de programar.
+
+#### Como retomar este refinamento (inclusive num chat novo)
+
+- Ler esta subseção inteira. O elemento marcado **▶ PRÓXIMO** na tabela de ordem é o que se refina agora.
+- **Ao abrir um elemento, trazer o contexto antes de perguntar:** o problema que ele resolve, o que já está decidido (dele e dos elementos de que depende), a proposta atual e as dúvidas em aberto. O usuário pode estar num chat novo, sem histórico.
+- Cada decisão do usuário sai de **Dúvidas** e entra em **Decidido**, com a data, na mesma conversa. Proposta rejeitada vai para **Descartado**, com o motivo.
+- Um elemento só é programado depois de ficar sem dúvidas bloqueantes. Ao implementar, ele vira subseção da seção 4 (formato padrão) e sai daqui.
+- Não misturar com implementação: esta subseção é design. Nomes de classe citados em "Onde toca no código" são sugestões.
+
+#### Diagnóstico (aceito pelo usuário)
+
+Um roguelike segura o jogador com três ritmos ao mesmo tempo, e hoje só existe o primeiro:
+
+| Ritmo | Escala | Hoje |
+|---|---|---|
+| Micro | segundos: mirar, desviar, trocar de trilho | existe |
+| Meso | minutos: "o que eu faço agora nesta run?" | só wave → carta → wave |
+| Macro | entre runs: "por que jogar de novo?" | nada persiste |
+
+Além disso, o mapa não pesa na progressão: estar em qualquer trilho dá no mesmo, e os trilhos são a ideia mais original do jogo.
+
+#### Glossário (decidido em 28/09)
+
+Os termos abaixo valem para a doc, o código e as conversas. Três deles são fáceis de confundir (**Objetivo**, **Evento**, **Desafio**) e por isso têm escopos separados.
+
+| Termo | Significado |
+|---|---|
+| **Região** | área grande do mapa. **Não é um caminho.** Cada região é um ato da run |
+| **Ato** | o trecho da run passado numa região |
+| **Caminho** | trilho bloqueado **dentro** de uma região, pago com moedas (o `SplineUnlockZone` de hoje) |
+| **Wave com modificador** | wave normal com uma regra extra sorteada. Conta como wave comum |
+| **Objetivo** | meta **da região atual**, mostrada no HUD. Faz a run avançar |
+| **Evento** | algo que acontece no mapa (Elite, Comboio, Altar...). Pode ser alvo de um objetivo |
+| **Desafio** | meta **entre runs** (conquista). Desbloqueia conteúdo da meta-progressão |
+| **Guardião** | chefe que fecha a região (proposta, ver E3) |
+| **Moeda de meta** | segunda moeda, ganha na run e gasta fora dela (nome em aberto, ver E6) |
+
+#### Estado atual que o redesenho aproveita
+
+- `EnemySpawner` roda waves infinitas; `PerkOrb` segura a próxima wave até a escolha da carta (4.3, 4.4).
+- `EventOrchestrator` já sorteia um evento por gatilho de wave, mas só o Baú está ativo. A Horda está escrita e desativada (4.6).
+- `SplineUnlockZone` desbloqueia caminhos com moedas (4.1, 4.13).
+- O HUD já tem o `ObjectivesPanel` com o prefab `ObjectiveCard` e o `MinimapFrame`, só visuais (4.17).
+- Não há `GameManager`, boss, fim de run, save ou segunda moeda (seção 6).
+
+#### Ordem de refinamento
+
+| # | Elemento | Status | Depende de |
+|---|---|---|---|
+| E1 | Regiões e atos | **▶ PRÓXIMO** | — |
+| E2 | Waves com modificador | parcialmente decidido | E1 |
+| E3 | Objetivos da região e guardião | em aberto | E1, E4 |
+| E4 | Eventos | parcialmente decidido | E1 |
+| E5 | Destinos por região | em aberto | E1 |
+| E6 | Meta-progressão | parcialmente decidido | E3, E4 |
+| E7 | Sinergias de build | anotado, refinar quando criar armas/perks novos | — |
+
+---
+
+#### E1 — Regiões e atos
+
+**Ideia central:** a run é dividida em atos, e cada ato acontece numa região diferente do mapa. Passar de região é o marco de progresso da run.
+
+**Decidido:**
+- (28/09) A run tem **3 atos**, e cada ato é uma **região**. Região é área, não caminho.
+- (28/09) Dentro de uma região o jogador **desbloqueia vários caminhos** diferentes. A região não se abre inteira de uma vez (ver a dúvida sobre isso abaixo, o usuário ainda pondera).
+
+**Proposta (não aprovada):**
+- **Dois tipos de desbloqueio, com recursos diferentes.** Caminho dentro da região = moedas (como hoje). Nova região = progresso da região atual (E3), não moedas. Motivo: se a região custasse moedas, as duas coisas disputariam o mesmo saldo e o jogador passaria a guardar dinheiro.
+- **Anel base:** ao entrar numa região, um circuito de trilhos já vem aberto, suficiente para jogar. Os destinos (E5) ficam atrás de caminhos pagos.
+- **Mais regiões que atos:** o mapa tem região inicial + 4 regiões, e em cada portão o jogador escolhe entre 2 próximas (estilo Slay the Spire). Cada run tem um percurso diferente, reforçando que o jogador não vê o mapa inteiro numa run.
+- **Identidade por região:** cada região define seus destinos, eventos, modificadores de wave e inimigos. Exemplo ilustrativo: Floresta (Serraria, Santuário, Neblina), Minas (Mina de ouro, Forja, Desmoronamento), Deserto (Oásis, Mercado, Tempestade de areia).
+- **Sem volta:** região encerrada fica fechada.
+- **Custo:** cada região pede ~4 a 6 caminhos de level design. Validar com **uma região completa** antes de fazer as outras.
+
+**Dúvidas abertas:**
+1. "3 atos" = região inicial + 3 novas, ou 3 no total (a inicial é o ato 1)? O usuário falou em "liberar apenas 3 novas áreas".
+2. Região por caminhos (proposta) ou região inteira de uma vez? O usuário está em dúvida entre os dois.
+3. Portão com escolha entre 2 regiões, ou ordem fixa?
+4. Dá para voltar a uma região anterior?
+5. O que abre o portão: guardião derrotado (E3), tempo, ou decisão do jogador?
+6. Quanto tempo dura uma run? (Referência discutida: 15 a 20 minutos.)
+7. Moedas e itens passam de uma região para a outra? (Presumido que sim.)
+
+**Onde toca no código:** um `GameManager`/`RunDirector` novo (lacuna da seção 6), dados de região (SO com a lista de splines, destinos, eventos, modificadores, inimigos), `SplineRuntimeState`, `EnemySpawner` (spawners por região), câmera e minimapa.
+
+---
+
+#### E2 — Waves com modificador
+
+**Ideia central:** quebrar a repetição das waves sem criar uma fase separada. Uma wave comum às vezes vem com uma regra a mais.
+
+**Decidido (28/09):**
+- Uma wave com modificador **conta como wave normal**. Não é evento à parte.
+- O modificador é **aleatório**. O jogador não pode decorar "na wave 4 sempre tem modificador".
+
+**Proposta (não aprovada):**
+- Chance por wave que cresce com o ato (ex.: 15% → 25% → 35%).
+- Nunca na primeira wave de uma região, e nunca duas seguidas.
+- Anunciado no início da wave com um banner ("WAVE BLINDADA").
+- Recompensa extra: mais moedas ou carta pós-wave com raridade mínima maior. Assim ele é risco com recompensa, não só punição.
+- Conjunto de modificadores por região (E1). Exemplos: Blindada (inimigos com mais vida), Veloz, Elites, Neblina, Enxame (mais inimigos e mais fracos).
+
+**Dúvidas abertas:**
+1. Anunciar antes ou surpresa?
+2. Modificador dá recompensa extra? Qual?
+3. Pode acumular dois modificadores em atos avançados?
+4. Quais modificadores existem, e quais são de cada região?
+
+**Onde toca no código:** `EnemySpawner`/`WaveDefinition`, um `WaveModifierDefinition` (SO, só dado), `Enemy` (multiplicadores; `HordeDamageMultiplier` é o precedente), banner no HUD.
+
+---
+
+#### E3 — Objetivos da região e guardião
+
+**Ideia central:** os objetivos dão ao jogador uma meta de curto prazo e são **o caminho para avançar a run**. Não podem ser confundidos com os Desafios de meta.
+
+**Decidido (28/09):**
+- Objetivos ficam **acoplados aos eventos e à progressão da run**, não são uma lista solta.
+- Metas do tipo "mate 40 inimigos sem sair do trilho X" parecem conquista e ficam com os **Desafios** (E6), não com os Objetivos.
+
+**Proposta (não aprovada):**
+- Cada região tem uma **barra de progresso** (nome provisório "Carga do Portal"). Completar objetivos enche a barra. Waves limpas enchem um pouco, para o jogador nunca travar.
+- Barra cheia → surge o **guardião da região**. Guardião derrotado → portão para a próxima região (E1). O guardião do ato 3 é o boss final do mapa.
+- Os objetivos são **gerados do que existe na região**: 1 ou 2 vindos dos eventos ativos ("Escolte o comboio"), 1 da região ("Alcance a Mina", que obriga a comprar um caminho).
+- Cada objetivo tem recompensa própria: moedas, chave de baú, carta extra, reroll ou moeda de meta.
+- O jogador controla o ritmo: quem faz os objetivos avança rápido, quem prefere se fortalecer fica mais tempo.
+- Separação de UI: Objetivos no painel do HUD; Desafios só no menu e num aviso ao completar.
+
+**Dúvidas abertas:**
+1. Barra de progresso ou lista fechada ("complete os 3 objetivos")?
+2. Objetivos são obrigatórios, opcionais ou os dois (1 principal + secundários)?
+3. Sorteados, fixos por região, ou o jogador escolhe 1 entre 3?
+4. O guardião substitui o "mini-boss" da ideia inicial?
+5. Existe pressão de tempo para quem fica farmando (ex.: waves ficam mais fortes com o tempo na região)?
+
+**Onde toca no código:** `ObjectiveDefinition` (SO, só dado) + `ObjectiveTracker` em runtime (regra da 4.12), escutando eventos que já existem (`LifeSystem.OnAnyDeath`, `SplineRuntimeState.OnSplineUnblocked`, `ChestInteractable.OnChestOpened`, `EnemySpawner.OnWaveCleared`, `PlayerSkillHandler.OnSkillCast`). `ObjectivesPanel`/`ObjectiveCard` no HUD.
+
+---
+
+#### E4 — Eventos
+
+**Ideia central:** eventos que **mudam a gameplay por um tempo**, não só dão loot. São a principal fonte de variedade dentro de uma região.
+
+**Decidido (28/09):**
+- Eventos aprovados: **Elite marcado**, **Comboio**, **Altar da maldição** e **Chuva de ouro**. O jogo precisa de mais eventos nesse estilo.
+
+| Evento | Como funciona (proposta) |
+|---|---|
+| Elite marcado | inimigo forte com contador na tela; foge depois de X segundos; morto antes disso dá loot garantido |
+| Comboio | vagão de suprimentos percorre um trilho; o jogador protege até o destino |
+| Altar da maldição | o jogador aceita uma desvantagem (ex.: inimigos +30% de vida) em troca de uma carta lendária |
+| Chuva de ouro | moedas espalhadas num trilho por ~20s, exigindo trocas rápidas de trilho |
+
+**Proposta (não aprovada):**
+- **Modelo híbrido de surgimento:** o sistema cria o local do evento (ritmo), o jogador decide se vai (escolha). Descartados como modelo principal: só temporal (como o baú hoje, o jogador não decide nada) e só por totem fixo (vira rotina decorável).
+- Duas famílias:
+  - **Oportunidade**: aparece sozinha e expira se ignorada (Chuva de ouro, Elite marcado, Mercador ambulante).
+  - **Contrato**: surge um totem, e o jogador aceita ou não (Horda, Comboio, Altar). Nome provisório, escolhido para não colidir com "Desafio".
+- No máximo 1 evento ativo por vez, com intervalo entre eventos, e nenhum durante o guardião.
+- Aparecem no minimapa com timer.
+- Às vezes surgem **atrás de um caminho bloqueado**, e o jogador decide se paga para ir. Isso integra eventos, trilhos e moedas.
+- Cada região tem seu conjunto de eventos possíveis.
+- Outros candidatos: Horda (reativar, já escrita), Mercador ambulante, Sabotador (planta armadilhas nos trilhos, previsto na visão original).
+
+**Dúvidas abertas:**
+1. Modelo de surgimento: híbrido (proposta), temporal como o baú, ou ativado pelo jogador? **Esta foi a pergunta direta do usuário.**
+2. O que dispara o surgimento: tempo, gatilho de wave (como o `EventOrchestrator` hoje), ou os dois?
+3. Quantos eventos podem existir ao mesmo tempo?
+4. O Baú continua como hoje ou vira um tipo de Oportunidade?
+5. Nome da família "Contrato".
+6. Regras e recompensas de cada evento aprovado.
+
+**Onde toca no código:** `EventOrchestrator` (hoje sorteia por `EventTiming` de wave), `HordeSpawner`/`HordeTotemInteractable` (precedente de evento aceito em totem), `ChestSpawner` (precedente de marcador aleatório), minimapa.
+
+---
+
+#### E5 — Destinos por região
+
+**Ideia central:** hoje desbloquear um caminho é só "abrir passagem". Se cada destino tiver uma função, escolher qual caminho comprar vira estratégia.
+
+**Decidido (28/09):**
+- Os destinos são **diferentes entre regiões**.
+- Dentro de uma região, o jogador desbloqueia vários caminhos (E1).
+
+**Proposta (não aprovada):**
+
+| Destino | Função |
+|---|---|
+| Mina | renda de moedas enquanto o vagão estiver na área |
+| Torre de vigia | revela minimapa e eventos |
+| Ninho | destruído, reduz o spawn da região; é zona perigosa |
+| Santuário | uma carta grátis por ato |
+| Loja / Venda / Ferreiro | deixam de estar sempre à mão; o jogador escolhe qual caminho comprar |
+
+**Dúvidas abertas:**
+1. Quantos destinos por região, e quantos o jogador consegue pagar numa run normal?
+2. Loja, venda e ferreiro existem em toda região ou só em algumas?
+3. Destino é fixo no mapa ou sorteado entre posições possíveis a cada run?
+4. Lista final de destinos e de quais regiões eles são.
+
+**Onde toca no código:** `SplineManifest` (hoje tem nome, descrição e ícone do destino, mas não uma função), `ShopZone`/`SellZone`/`BlacksmithZone` (já são destinos, só não dependem de região).
+
+---
+
+#### E6 — Meta-progressão
+
+**Ideia central:** dar motivo para jogar a próxima run, no modelo do Megabonk.
+
+**Decidido (28/09):**
+- Dois passos: **o Desafio desbloqueia** um conteúdo (skill, perk, item, personagem) e **a moeda de meta compra** o que já foi desbloqueado.
+- A moeda de meta é ganha durante a run.
+
+**Proposta (não aprovada):**
+- Fontes da moeda de meta: objetivos, guardiões, eventos, e uma parte proporcional ao desempenho **mesmo quando o jogador morre**, para run ruim não parecer tempo perdido.
+- Tipos de Desafio: acumulativo ("mate 1000"), façanha numa run ("vença uma região sem tomar dano") e descoberta ("complete um Comboio", que ensina o jogo).
+- Conteúdo desbloqueado mas não comprado não aparece nos sorteios da run.
+
+**Dúvidas abertas:**
+1. Só desbloqueio de conteúdo, ou também upgrades permanentes de status (+vida, +sorte)?
+2. Nome da moeda de meta.
+3. Com o que o jogador começa (conteúdo inicial liberado)?
+4. Onde se gasta a moeda: menu principal, hub entre runs?
+5. Exige save/load (lacuna da seção 6) e uma cena de menu.
+
+**Onde toca no código:** sistema de save novo, `ChallengeDefinition` (SO) + progresso persistente, filtros de pool em `PerkDrawer`, `ShopManager`, `ChestLootRoller` e no catálogo do ferreiro.
+
+---
+
+#### E7 — Sinergias de build (anotado, sem refinar agora)
+
+**Decidido (28/09):** levar em conta quando o usuário criar novas armas e perks. Não refinar antes disso.
+
+**Ideias registradas:**
+- **Evoluções**: arma do vagão no nível máximo + perk específico = versão evoluída (estilo Vampire Survivors).
+- **Perks ligados aos trilhos**: "ao trocar de trilho, solta uma onda de fogo", "parado numa bifurcação, recarga 2x mais rápida".
+- **Tags** (Fogo, Flecha, Trilho) com bônus ao juntar 3 iguais.
