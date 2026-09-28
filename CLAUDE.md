@@ -25,6 +25,8 @@ O mapa conta com locais especiais que oferecem vantagens: baús de itens, lojas,
 Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão** (obtida por quests/progresso geral) para desbloquear **novos personagens** (cada um com mecânica/upgrade exclusivo inicial) e **upgrades permanentes** entre partidas.
 
 > **Nota:** a seção 6 ("Lacunas conhecidas") marca quais partes dessa visão já existem no código e quais ainda são só design.
+>
+> **Revisão em andamento (28/09):** a ideia de "até três mapas" foi substituída por **regiões**. Cada run passa por 3 regiões, e o jogo cresce adicionando regiões ao pool. Ver 7.1.
 
 ## 2. Stack técnica
 
@@ -1214,7 +1216,7 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 
 - **Sem `GameManager` central** — nenhuma classe orquestra estado global, transições de cena ou game over. **Pendência concreta ligada a isso (25/08):** `PlayerPerkHandler.ResetForNewRun()`, `PlayerCarWeaponHandler.ResetForNewRun()` e `PlayerItemHandler.ResetForNewRun()` existem e funcionam, mas **ninguém os chama**. Hoje isso não causa bug porque o progresso vive em runtime e morre com o GameObject (ver 4.12); passa a causar no momento em que existir uma segunda run sem recarregar a cena (morrer → recomeçar). Quem criar o `GameManager` deve chamar os três, mais `RunTracker.ResetForNewRun()` (tempo e kills do HUD, 4.17) e `PlayerSkillHandler.ResetForNewRun()` (níveis, slots e recargas das Skills, 4.19).
-- **Escolha do loadout antes da run (22/09, revisto 25/09)** — o design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Só existem **Bola de Fogo** e **Chuva de Brasas**, e as duas usam o mesmo código de skill.
+- **Escolha do loadout antes da run (22/09, revisto 25/09)** — a tela pré-run também vai escolher região inicial e personagem (7.1, E1). O design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Só existem **Bola de Fogo** e **Chuva de Brasas**, e as duas usam o mesmo código de skill.
 - **Objetivos do HUD (25/09)** — o `ObjectivesPanel` (com o prefab `ObjectiveCard`) do `CanvasHUD` existe só como visual (4.17). Não há sistema de objetivos que instancie os cartões. O minimapa foi implementado em 28/09 (4.20).
 - **Sem save/load** — nenhum `PlayerPrefs`, `JsonUtility`, arquivo em disco, `SceneManager` ou `DontDestroyOnLoad` encontrado.
 - **Sem meta-progressão persistente** — nenhuma segunda moeda entre runs; `Coins` é só por run e reseta (`PlayerItemHandler.ResetForNewRun()`). Desenho em refinamento na 7.1 (E6).
@@ -1268,10 +1270,14 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 | **Ato** | o trecho da run passado numa região |
 | **Caminho** | trilho bloqueado **dentro** de uma região, pago com moedas (o `SplineUnlockZone` de hoje) |
 | **Wave com modificador** | wave normal com uma regra extra sorteada. Conta como wave comum |
-| **Objetivo** | meta **da região atual**, mostrada no HUD. Faz a run avançar |
+| **Objetivo** | meta **da região atual**, mostrada no HUD. O papel dele na progressão foi revisto em E1 (ver E3) |
 | **Evento** | algo que acontece no mapa (Elite, Comboio, Altar...). Pode ser alvo de um objetivo |
 | **Desafio** | meta **entre runs** (conquista). Desbloqueia conteúdo da meta-progressão |
-| **Guardião** | chefe que fecha a região (proposta, ver E3) |
+| **Guardião** | chefe que surge após N waves na região (padrão 10). Derrotá-lo abre o portal (E1) |
+| **Portal** | surge no mapa depois do guardião; é onde o jogador escolhe a próxima região (E1) |
+| **Wave final** | desafio opcional depois do guardião: inimigos extremamente fortes, recompensa lendária e passagem direta para a próxima região (E1) |
+| **Pool de regiões** | conjunto de regiões que o jogo tem. Cada run usa 3. Conteúdo novo = regiões novas no pool. V1 tem 3 |
+| **Conteúdo comum / específico** | item, perk etc. que aparece em qualquer região, ou só a partir da entrada numa região específica (E1) |
 | **Moeda de meta** | segunda moeda, ganha na run e gasta fora dela (nome em aberto, ver E6) |
 
 #### Estado atual que o redesenho aproveita
@@ -1286,9 +1292,9 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 
 | # | Elemento | Status | Depende de |
 |---|---|---|---|
-| E1 | Regiões e atos | **▶ PRÓXIMO** | — |
+| E1 | Regiões e atos | **▶ PRÓXIMO** (em refinamento; o usuário ainda não considera fechado) | — |
 | E2 | Waves com modificador | parcialmente decidido | E1 |
-| E3 | Objetivos da região e guardião | em aberto | E1, E4 |
+| E3 | Objetivos da região e guardião | em aberto (revisar pelo impacto de E1) | E1, E4 |
 | E4 | Eventos | parcialmente decidido | E1 |
 | E5 | Destinos por região | em aberto | E1 |
 | E6 | Meta-progressão | parcialmente decidido | E3, E4 |
@@ -1298,30 +1304,98 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 
 #### E1 — Regiões e atos
 
-**Ideia central:** a run é dividida em atos, e cada ato acontece numa região diferente do mapa. Passar de região é o marco de progresso da run.
+**Ideia central:** a run é dividida em 3 atos, e cada ato acontece numa região diferente. Passar de região é o marco de progresso da run. **O jogo não tem "mapas" (28/09):** o conteúdo cresce adicionando **regiões novas ao pool**. Um "mapa novo" seria só um punhado de regiões novas. Isso substitui a ideia da seção 1 de "até três mapas diferentes".
+
+**Fluxo de uma região (decidido em 28/09):**
+
+0. **Antes da run**, o jogador escolhe a região inicial entre as 3 do pool.
+1. O jogador entra na região. Parte dos trilhos já está aberta e o resto são caminhos pagos com moedas.
+2. Joga as waves normais (carta pós-wave, eventos, loja...).
+3. Depois de **N waves** (configurável por região, padrão **10**), surge o **guardião**.
+4. Guardião derrotado → **as waves param** (trégua) e um **portal** aparece em algum ponto do mapa.
+5. O jogador pode se preparar (loja, ferreiro, caminhos) pelo tempo que quiser e então, **no portal**, escolhe:
+   - **A)** ir para a próxima região (a tela mostra nome, descrição, imagem e eventos possíveis de cada opção); **ou**
+   - **B)** encarar a **wave final**: inimigos bem mais fortes. Se morrer, **a run acaba**. Se sobreviver, ganha um item **sorteado de um conjunto próprio** e vai para a próxima região na hora.
+6. Na região 3 (ato 3), derrotar o guardião **encerra a run com vitória**.
 
 **Decidido:**
-- (28/09) A run tem **3 atos**, e cada ato é uma **região**. Região é área, não caminho.
-- (28/09) Dentro de uma região o jogador **desbloqueia vários caminhos** diferentes. A região não se abre inteira de uma vez (ver a dúvida sobre isso abaixo, o usuário ainda pondera).
+- (28/09) **3 regiões por run no total.** A região inicial é o ato 1. Quatro ou mais aumentariam demais o escopo, já que cada região deve trazer itens, inimigos etc. próprios.
+- (28/09) **Pool de 3 regiões na primeira versão.** O jogador escolhe a região inicial entre as 3; no portal 1 escolhe entre as 2 restantes; a última é a que sobrou. Ou seja, **na v1 a escolha é a ordem**. Com mais regiões no pool, o portal passa a sortear as opções (ver abaixo).
+- (28/09) **Qualquer região pode cair em qualquer ato.** A dificuldade escala **pelo ato**: inimigos e guardião recebem o multiplicador do ato em que a região caiu, sem precisar de três versões da mesma região.
+- (28/09) **Desbloqueio por caminho dentro da região.** Entrou numa região nova, o jogador compra os caminhos dela com moedas.
+- (28/09) **A próxima região se abre derrotando o guardião**, não com moedas.
+- (28/09) **O guardião aparece por número de waves, não por tempo**, e esse número é **configurável por região**. **A run não tem limite de tempo**, porque isso frustra o jogador.
+- (28/09) **Padrão de 10 waves até o guardião** (era 15). Motivo: a escolha de perk continua **depois de toda wave**, e com 15 waves seriam ~45 escolhas por run, tela demais e o jogador maximizando tudo cedo. Com 10 são ~30 por run, e muitas das perks ainda chegam em raridade baixa. O usuário ajusta se o jogador ficar forte demais.
+- (28/09) **Confirmado que o guardião existe entre a última wave e o portal:** N waves → guardião → trégua + portal.
+- (28/09) **Depois do guardião as waves param** (trégua), para o jogador não farmar indefinidamente antes do portal.
+- (28/09) **O portal surge em algum ponto do mapa** depois do guardião, para o jogador escolher a região com calma e se preparar antes de ir.
+- (28/09) **O portal oferece sempre 2 opções**, sorteadas entre as regiões ainda não visitadas quando o pool tiver mais de 3. Sem raridade de chave. Na v1, o portal 2 só tem a região que sobrou.
+- (28/09) **Wave final opcional** (inspirada no Megabonk): quem quiser ficar aceita uma wave com inimigos extremamente fortes; sobrevivendo, ganha um item lendário e vai direto para a próxima região. **Morrer nela encerra a run** (é o risco). Enquanto o item lendário próprio não existe, usar um lendário atual.
+- (28/09) **Guardião da região 3 derrotado = vitória** e fim da run.
+- (28/09) **Região inicial escolhida numa tela pré-run** (ainda não criada), a mesma que vai reunir as outras escolhas de antes da run: região, Skills, personagem etc.
+- (28/09) **Wave final na região 3:** sobreviver dá vitória e um **bônus de moedas** no lugar do lendário. Como a run acaba, o bônus é pago na moeda de meta (E6).
+- (28/09) **Sem item de chave:** derrotar o guardião ativa o portal direto.
+- (28/09) **Sem volta** a uma região anterior.
+- (28/09) **Tudo passa entre regiões:** moedas, itens, perks, armas e Skills.
+- (28/09) **Regra do pool de conteúdo:** conteúdo **comum** pode aparecer em qualquer região. Conteúdo **específico de uma região** só aparece a partir do momento em que o jogador entra nela, e continua podendo aparecer nas regiões seguintes. O conteúdo específico das regiões que o jogador **não visitou** não aparece na run.
+
+  > **Exemplo que o usuário validou (28/09).** Específicos inventados: Floresta (Arco de Espinhos, perk Seiva), Minas (Picareta, perk Dinamite), Deserto (Lâmina de Areia, perk Miragem). Numa run Floresta → Minas → Deserto, os sorteios (cartas, loja, baú) usam: região 1 = comum + Floresta; região 2 = comum + Floresta + Minas; região 3 = comum + as três. **Na v1 (pool de 3) o jogador visita todas, então o que muda entre runs é a ordem:** quem começa na Floresta pode montar a build em volta do Arco desde a primeira wave; quem começa no Deserto só o vê na metade da run. **Com mais regiões no pool**, as que ficam fora do percurso nunca têm o conteúdo sorteado naquela run. Isso é separado de "tudo passa entre regiões", que trata do que o jogador **já tem**.
+- (28/09) **Uma cena por região**, por desempenho: o jogo só processa a região atual. A forma de evitar retrabalho está na proposta abaixo.
+- (28/09) **Anel base:** toda região tem um caminho pré-definido já liberado ao entrar. O resto são caminhos pagos. O usuário constrói os trilhos à mão, então isso é level design, não sistema.
+- (28/09) **Multiplicador do ato aumenta vida, dano e quantidade de inimigos**, os três juntos e de forma equilibrada ("um pouco mais de cada"). Valores definidos no balanceamento. Ponto de partida sugerido, a validar em jogo: ato 2 = vida ×1,3, dano ×1,2, quantidade ×1,25; ato 3 = vida ×1,7, dano ×1,45, quantidade ×1,5. Os valores ficam em dado (configuráveis), não no código.
+- (28/09) **Morrer para o guardião encerra a run.**
+- (28/09) **A trégua não tem limite de tempo.**
+- (28/09) **A escolha entre seguir e fazer a wave final acontece no próprio portal:** ao interagir, o portal oferece ir para outra região ou encarar a wave final. Isso substitui a proposta de um totem separado ao lado do portal.
+- (28/09) **Wave final:** inimigos bem mais fortes que os das waves normais. O item ganho é **sorteado entre um conjunto de itens** próprio da wave final (uma loot table dedicada), não escolhido pelo jogador.
+- (28/09) **Tela do portal mostra, para cada região:** nome, descrição, imagem da região e os eventos possíveis nela.
+**Descartado:**
+- (28/09) Raridade na chave definindo quantas regiões o portal oferece: o portal tem sempre 2 opções.
+- (28/09) Região inicial fixa: o jogador escolhe a inicial.
+- (28/09) Waves continuando depois do guardião.
+- (28/09) Totem separado para a wave final: a escolha fica no próprio portal.
+- (28/09) Teto fixo de conteúdo por região (1–2 inimigos, 2–3 destinos, 3–5 itens...): o usuário decide caso a caso quando uma região está pronta. Inimigos de região ainda podem ser variantes de inimigos comuns, se ele quiser economizar.
+- (28/09) Guardiões como variações de um único script montadas só com ataques genéricos: o usuário quer chefes realmente diferentes (substituído pela "casca comum, comportamento próprio").
+- (28/09) 15 waves até o guardião como padrão: virou 10.
 
 **Proposta (não aprovada):**
-- **Dois tipos de desbloqueio, com recursos diferentes.** Caminho dentro da região = moedas (como hoje). Nova região = progresso da região atual (E3), não moedas. Motivo: se a região custasse moedas, as duas coisas disputariam o mesmo saldo e o jogador passaria a guardar dinheiro.
-- **Anel base:** ao entrar numa região, um circuito de trilhos já vem aberto, suficiente para jogar. Os destinos (E5) ficam atrás de caminhos pagos.
-- **Mais regiões que atos:** o mapa tem região inicial + 4 regiões, e em cada portão o jogador escolhe entre 2 próximas (estilo Slay the Spire). Cada run tem um percurso diferente, reforçando que o jogador não vê o mapa inteiro numa run.
-- **Identidade por região:** cada região define seus destinos, eventos, modificadores de wave e inimigos. Exemplo ilustrativo: Floresta (Serraria, Santuário, Neblina), Minas (Mina de ouro, Forja, Desmoronamento), Deserto (Oásis, Mercado, Tempestade de areia).
-- **Sem volta:** região encerrada fica fechada.
-- **Custo:** cada região pede ~4 a 6 caminhos de level design. Validar com **uma região completa** antes de fazer as outras.
 
-**Dúvidas abertas:**
-1. "3 atos" = região inicial + 3 novas, ou 3 no total (a inicial é o ato 1)? O usuário falou em "liberar apenas 3 novas áreas".
-2. Região por caminhos (proposta) ou região inteira de uma vez? O usuário está em dúvida entre os dois.
-3. Portão com escolha entre 2 regiões, ou ordem fixa?
-4. Dá para voltar a uma região anterior?
-5. O que abre o portão: guardião derrotado (E3), tempo, ou decisão do jogador?
-6. Quanto tempo dura uma run? (Referência discutida: 15 a 20 minutos.)
-7. Moedas e itens passam de uma região para a outra? (Presumido que sim.)
+*Cenas: "Core" + cena de região carregada de forma aditiva.* Resolve a preocupação de ter que repetir a mesma alteração em todas as regiões:
+- **Cena `Core`**, sempre carregada: Player/vagão, câmera, todas as UIs (HUD, loja, ferreiro, baú, inventário...), `RunSystems` e os managers da run (`RunTracker`, futuro `RunDirector`), `EventSystem`. Tudo o que é igual em toda região fica **só aqui**, então mexer numa tela é mexer uma vez.
+- **Cena de região** (`Region_Forest`, `Region_Mines`...): só terreno, splines, spawners, pontos de evento, destinos e NavMesh. Carregada com `SceneManager.LoadSceneAsync(..., LoadSceneMode.Additive)`; a anterior é descarregada.
+- **O que se repete entre regiões é prefab**: totem de caminho, loja, venda, ferreiro, portal, marcador de spawn. Alterar o prefab atualiza todas as regiões. Hoje o ferreiro já funciona assim (a UI mora na cena e o prefab só tem o objeto do mundo, 4.19); loja e venda seguiriam o mesmo padrão.
+- **Os dados da região ficam num `RegionDefinition`** (SO, só dado): nome, cena, waves até o guardião, prefab do guardião, inimigos, destinos, eventos, modificadores e o conteúdo que a região acrescenta ao pool.
+- **Cuidados:** um campo serializado **não referencia objeto de outra cena**. A ligação Core ↔ região é feita pelos singletons `Instance` e registros estáticos que o projeto já usa (`TotemRegistry`, `BlacksmithUI.Instance`...), e `FindFirstObjectByType` enxerga todas as cenas carregadas. Iluminação e NavMesh são bakeados por cena de região. O player é reposicionado num ponto de entrada da região ao chegar. A troca de região precisa de uma transição (fade/animação do portal) cobrindo o carregamento.
+- **Migração:** a `SampleScene` de hoje vira `Core` + a primeira cena de região.
 
-**Onde toca no código:** um `GameManager`/`RunDirector` novo (lacuna da seção 6), dados de região (SO com a lista de splines, destinos, eventos, modificadores, inimigos), `SplineRuntimeState`, `EnemySpawner` (spawners por região), câmera e minimapa.
+
+*Pós-guardião:*
+- A wave final reaproveita o código da Horda (`HordeSpawner`, 4.6), com o multiplicador próprio dela.
+- Sobreviver à wave final abre a tela de escolha de região na hora.
+- **O portal fica num trilho já aberto**, para o jogador nunca precisar pagar para sair da região.
+
+*Guardiões: "casca comum, comportamento próprio" (aprovado em 28/09).* O usuário quer **chefes realmente diferentes entre si**, então a base comum cuida só do que é igual em todo chefe, e cada guardião tem o próprio comportamento:
+- **Casca comum** (`GuardianBase`): vida, barra de vida no HUD, multiplicador do ato, troca de fase por % de vida, entrada em cena, morte e aviso ao `RunDirector` (que abre o portal). Nenhum guardião reescreve isso.
+- **Comportamento próprio por guardião**: cada chefe é uma subclasse (`GuardianTreant`, `GuardianGolem`...) com a própria lógica de movimento, ataques e fases. Um chefe pode, por exemplo, ficar parado e fazer os trilhos desmoronarem; outro pode perseguir o vagão sobre os trilhos.
+- **Ataques reaproveitáveis são opcionais**: se dois chefes precisarem de algo parecido (uma rajada de projéteis, invocar inimigos), a peça é escrita uma vez e usada pelos dois. Ninguém é obrigado a usá-las.
+- **Os números ficam em dado** (`GuardianDefinition`, SO): vida, dano, % de cada fase, intervalos. Balancear não exige mexer no código.
+- Referência: é o modelo de Hades, em que todo chefe compartilha barra de vida, fases e morte, mas cada um luta de um jeito.
+*Referências entre Core e região (resposta à preocupação do usuário, 28/09).* Um script do `Core` não consegue ter no Inspector um campo apontando para um objeto da cena de região (ex.: a lista de totens). A regra proposta: **o Core nunca referencia a região pelo Inspector. A região se apresenta ao Core.**
+- **`RegionContext`**, um componente por cena de região, no objeto raiz dela. **É nele que ficam os campos de Inspector** que apontam para objetos da região: ponto de entrada do vagão, totens, spawners, ponto do portal, pontos de evento, destinos, `SplineContainer`, `SplineManifest`, bounds do minimapa. Como ele e esses objetos estão na mesma cena, arrastar e soltar funciona normalmente.
+- No `OnEnable`, o `RegionContext` se registra como `RegionContext.Current` e dispara um evento (`OnRegionReady`). No `OnDisable`, sai. Os scripts do Core leem `RegionContext.Current.Totems` etc., ou escutam o evento para se configurar quando a região termina de carregar.
+- **O sentido inverso já funciona hoje:** objetos da região que precisam do Core (player, UI, stats) usam os `Instance` que o projeto já tem (`BlacksmithUI.Instance`, `PlayerSkillHandler.Instance`...).
+- **Registros estáticos para listas dinâmicas:** o padrão do `TotemRegistry` (4.13) já é exatamente isso. Os totens se registram sozinhos, e o Core consulta o registro. O mesmo vale para spawners, pontos de evento etc.
+- **Fluxo de trabalho no Editor:** abrir `Core` + a região juntas (edição multi-cena da Unity) para testar. Para dar Play direto numa cena de região, o `RegionContext` pode carregar o `Core` sozinho quando ele não estiver carregado.
+
+> **Aprovado em 28/09:** a arquitetura `Core` + cena de região aditiva, com `RegionContext` e registros estáticos, descrita acima.
+
+**Adiado (decidido que existe, detalhar no futuro):**
+- Recompensa do guardião além de abrir o portal.
+- Animação/pausa ao entrar numa região nova.
+- (28/09) **Tela de resultado** ao morrer ou vencer: vai existir (resumo da run e moeda de meta ganha), construída no futuro. Detalhar junto com E6.
+
+**Dúvidas abertas:** nenhuma registrada (28/09). Aguardando o usuário dizer se considera a E1 fechada.
+
+**Onde toca no código:** `RunDirector` novo (ou o `GameManager` da lacuna da seção 6) controlando ato atual, contagem de waves, guardião, portal e troca de cena; `RegionDefinition` (SO); separação da `SampleScene` em `Core` + região; `EnemySpawner` (parar após N waves, multiplicador do ato); `SplineRuntimeState`/`TotemRegistry` (limpar ao trocar de região); pools de sorteio (`PerkDrawer`, `ShopManager`, `ChestLootRoller`) filtrando pelo conteúdo liberado na run; câmera e minimapa por região.
 
 ---
 
@@ -1358,7 +1432,9 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - Objetivos ficam **acoplados aos eventos e à progressão da run**, não são uma lista solta.
 - Metas do tipo "mate 40 inimigos sem sair do trilho X" parecem conquista e ficam com os **Desafios** (E6), não com os Objetivos.
 
-**Proposta (não aprovada):**
+> **Impacto de E1 (28/09):** o guardião agora surge **após N waves** (padrão 10), então a proposta abaixo, em que os objetivos enchiam uma barra que invocava o guardião, deixou de valer como está. Ao refinar E3, redefinir o papel dos objetivos. Opções: recompensa opcional pura; reduzir as waves que faltam para o guardião; ou preparar o jogador para o guardião/wave final (enfraquecê-lo, liberar a Chave com raridade melhor).
+
+**Proposta (não aprovada, anterior ao impacto de E1):**
 - Cada região tem uma **barra de progresso** (nome provisório "Carga do Portal"). Completar objetivos enche a barra. Waves limpas enchem um pouco, para o jogador nunca travar.
 - Barra cheia → surge o **guardião da região**. Guardião derrotado → portão para a próxima região (E1). O guardião do ato 3 é o boss final do mapa.
 - Os objetivos são **gerados do que existe na região**: 1 ou 2 vindos dos eventos ativos ("Escolte o comboio"), 1 da região ("Alcance a Mina", que obriga a comprar um caminho).
@@ -1380,6 +1456,8 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 #### E4 — Eventos
 
 **Ideia central:** eventos que **mudam a gameplay por um tempo**, não só dão loot. São a principal fonte de variedade dentro de uma região.
+
+> **Impacto de E1 (28/09):** cada região tem N waves até o guardião e depois uma trégua sem waves. Falta decidir se eventos acontecem durante o guardião e a trégua. Eventos seguem a regra comum/específico do pool de conteúdo (um evento pode existir em todas as regiões ou só numa). A wave final é, na prática, uma Horda obrigatória e mais forte, então as duas devem compartilhar o mesmo código (`HordeSpawner`).
 
 **Decidido (28/09):**
 - Eventos aprovados: **Elite marcado**, **Comboio**, **Altar da maldição** e **Chuva de ouro**. O jogo precisa de mais eventos nesse estilo.
