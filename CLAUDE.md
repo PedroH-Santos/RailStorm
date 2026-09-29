@@ -10,7 +10,7 @@
 
 ### 1.1 High Concept
 
-O jogo é um **action roguelike sobre trilhos**, no qual o jogador controla um vagão armado que percorre caminhos pré-definidos construídos estrategicamente ao longo de cada run. Em vez de liberdade total de movimento, o desafio está em **escolher quais rotas desbloquear**, **quando mudar a direção do vagão** e **como enfrentar ondas de inimigos** enquanto evolui seu personagem por meio de upgrades temporários e progressão permanente. Cada decisão influencia diretamente a sobrevivência, o acesso a áreas estratégicas do mapa e o ritmo da jogabilidade, culminando em batalhas contra chefes que encerram cada mapa.
+O jogo é um **action roguelike sobre trilhos**, no qual o jogador controla um vagão armado que percorre caminhos pré-definidos construídos estrategicamente ao longo de cada run. Em vez de liberdade total de movimento, o desafio está em **escolher quais rotas desbloquear**, **quando mudar a direção do vagão** e **como enfrentar ondas de inimigos** enquanto evolui seu personagem por meio de upgrades temporários e progressão permanente. Cada decisão influencia diretamente a sobrevivência, o acesso a áreas estratégicas do mapa e o ritmo da jogabilidade. Cada run atravessa três regiões, e cada região culmina numa batalha contra o seu guardião.
 
 ### 1.2 Game Overview
 
@@ -20,13 +20,13 @@ Durante o gameplay, o jogador muda a direção do vagão em tempo real, atira e 
 
 Ao derrotar inimigos, o jogador recebe moedas, usadas para comprar itens ou novos caminhos **durante a run**. Após eliminar todos os inimigos de uma wave, o jogador escolhe entre 3 novas habilidades (armas novas ou melhorias no personagem).
 
-O mapa conta com locais especiais que oferecem vantagens: baús de itens, lojas, aprimoramento de armas e bônus especiais (ex.: mais moedas por um período). Após um tempo de gameplay, um **boss simples** surge para encerrar o mapa; ao derrotá-lo, o jogador desbloqueia novos mapas com dificuldade mais alta (até três mapas diferentes).
+Cada região conta com locais especiais que oferecem vantagens: baús de itens, lojas, aprimoramento de armas e bônus especiais (ex.: mais moedas por um período). A run é uma viagem por **três regiões**, escolhidas de um pool: depois de um número de waves, o **guardião** da região aparece; derrotá-lo abre um portal para a próxima região, e derrotar o guardião da terceira vence a run. A dificuldade sobe a cada ato, e o jogo cresce adicionando regiões novas ao pool, não mapas separados (detalhes em 7.1, E1).
 
 Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão** (obtida por quests/progresso geral) para desbloquear **novos personagens** (cada um com mecânica/upgrade exclusivo inicial) e **upgrades permanentes** entre partidas.
 
 > **Nota:** a seção 6 ("Lacunas conhecidas") marca quais partes dessa visão já existem no código e quais ainda são só design.
 >
-> **Revisão em andamento (28/09):** a ideia de "até três mapas" foi substituída por **regiões**. Cada run passa por 3 regiões, e o jogo cresce adicionando regiões ao pool. Ver 7.1.
+> **Revisão de 28–29/09:** a ideia original de "boss simples que encerra o mapa" e "até três mapas diferentes" foi substituída pela progressão por **regiões** descrita acima. É design fechado (7.1, E1), ainda não implementado.
 
 ## 2. Stack técnica
 
@@ -1224,7 +1224,7 @@ Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 - **Sem upgrades permanentes** entre partidas.
 - **Sem boss** implementado. O redesenho da progressão (7.1) propõe um guardião por região.
 - **Sem múltiplos mapas** com dificuldade progressiva.
-- **Evento de Horda desativado de propósito (10/08)** — `Resources/Events/HordeEventConfig.asset` e `HordeEventDefinition.asset` foram removidos a pedido do usuário para reformular o evento mais tarde; os scripts (`Assets/Scripts/Events/Horde/*`) continuam no repo intactos, só sem dado de config apontando pra eles. Hoje só o evento de Baú roda de fato.
+- **Evento de Horda desativado de propósito (10/08)** — `Resources/Events/HordeEventConfig.asset` e `HordeEventDefinition.asset` foram removidos a pedido do usuário para reformular o evento mais tarde; os scripts (`Assets/Scripts/Events/Horde/*`) continuam no repo intactos, só sem dado de config apontando pra eles. Hoje só o evento de Baú roda de fato. **Decidido em 29/09 (7.1, E4):** a Horda não volta como evento; o `HordeSpawner` será reaproveitado pela wave final e o resto do evento removido.
 - **Arma `Magic`** só como dado (`ECarWeaponType.Magic`, `MagicLevelData`) — sem `MagicWeaponController`.
 - **`EStatTarget`** já reserva alvos não consumidos por nenhum script: `EnemyDamage`, `EnemySpeed`, `EnemyHP`, `SpawnRate`, `WaveSize`, `CoinDropRate`, `XpMultiplier`.
 - **`Items/Abilities/ItemExemplo.cs`, `ItemExemplo2.cs`, `ItemExemplo3.cs`** — stubs vazios/placeholder (templates de exemplo, sem lógica real).
@@ -1292,13 +1292,15 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 
 | # | Elemento | Status | Depende de |
 |---|---|---|---|
-| E1 | Regiões e atos | **▶ PRÓXIMO** (em refinamento; o usuário ainda não considera fechado) | — |
+| E1 | Regiões e atos | **fechado em 29/09** | — |
 | E2 | Waves com modificador | parcialmente decidido | E1 |
-| E3 | Objetivos da região e guardião | em aberto (revisar pelo impacto de E1) | E1, E4 |
-| E4 | Eventos | parcialmente decidido | E1 |
+| E3 | Objetivos da região e guardião | **em refinamento (29/09)** | E1, E4 |
+| E4 | Eventos | **fechado em 29/09** | E1 |
 | E5 | Destinos por região | em aberto | E1 |
 | E6 | Meta-progressão | parcialmente decidido | E3, E4 |
 | E7 | Sinergias de build | anotado, refinar quando criar armas/perks novos | — |
+
+**▶ PRÓXIMO:** E3 — Objetivos da região e guardião (escolhido pelo usuário em 29/09).
 
 ---
 
@@ -1306,12 +1308,37 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 
 **Ideia central:** a run é dividida em 3 atos, e cada ato acontece numa região diferente. Passar de região é o marco de progresso da run. **O jogo não tem "mapas" (28/09):** o conteúdo cresce adicionando **regiões novas ao pool**. Um "mapa novo" seria só um punhado de regiões novas. Isso substitui a ideia da seção 1 de "até três mapas diferentes".
 
+**Como a progressão funciona, em texto corrido (aprovado pelo usuário em 29/09):**
+
+> Uma run de RailStorm é uma viagem por **três regiões**, e cada região é um ato da run. O jogo não é dividido em mapas: ele tem um conjunto de regiões, e cada run monta o próprio percurso com três delas. Quando o jogo crescer, ganha regiões novas, e cada uma que entra muda as combinações possíveis de viagem.
+>
+> **A escolha começa antes de jogar.** Na tela pré-run, o jogador escolhe em qual das regiões quer começar, junto com as outras escolhas de preparação, como personagem e Skills. Qualquer região pode ser a primeira, a segunda ou a última. Uma região não é fácil ou difícil por natureza: ela fica mais perigosa conforme o ato em que o jogador a enfrenta, com inimigos que têm mais vida, causam mais dano e aparecem em maior número. A mesma floresta, visitada por último, é muito mais perigosa do que se tivesse sido a primeira.
+>
+> **Dentro de uma região, o jogador constrói o próprio caminho.** Um trecho de trilhos já vem aberto. O resto está bloqueado, e com as moedas ganhas no combate o jogador desbloqueia os caminhos que levam aos pontos que mais lhe interessam. Não dá para abrir tudo, então cada região vira uma sequência de escolhas sobre para onde ir e no que gastar.
+>
+> **Cada região tem um guardião.** Depois de um certo número de waves (10 por padrão, variando conforme a região), surge o guardião. Cada guardião luta de um jeito próprio. Morrer para ele encerra a run. Derrotá-lo é o objetivo da região: as waves param, o jogador ganha um momento de calma e **um portal aparece** em algum ponto do mapa.
+>
+> **A trégua é o momento de se preparar.** Sem inimigos e sem limite de tempo, o jogador pode comprar na loja, melhorar as Skills no ferreiro e organizar a build antes de seguir. Quando estiver pronto, vai até o portal, que oferece duas opções:
+>
+> - **Seguir para a próxima região**, escolhendo entre as regiões oferecidas. O portal mostra, de cada uma, o nome, uma descrição, uma imagem e os eventos que podem acontecer nela.
+> - **Encarar a wave final**, um desafio opcional com inimigos bem mais fortes. Quem sobrevive ganha um **item sorteado de um conjunto especial** e segue direto para a próxima região. Quem morre perde a run inteira. A decisão é arriscar tudo por uma recompensa rara ou seguir em segurança.
+>
+> **Nada do que o jogador conquistou se perde na viagem.** Moedas, itens, perks, armas e Skills acompanham o jogador de região em região.
+>
+> **E o que pode aparecer para ele aumenta a cada região.** Existem recompensas **comuns**, que podem surgir em qualquer lugar, e recompensas **específicas de uma região**, que só começam a aparecer quando o jogador entra nela e continuam disponíveis dali em diante. Numa run Floresta → Minas → Deserto, na Floresta aparecem as comuns e as da Floresta; nas Minas, entram também as das Minas; no Deserto, todas. Por isso a ordem importa: quem começa pela Floresta pode montar a build em volta do Arco de Espinhos desde a primeira wave, enquanto quem começa pelo Deserto só o vê na metade da run. Quando o jogo tiver mais regiões do que as três visitadas, o conteúdo das que ficaram fora do percurso nem chega a aparecer naquela run.
+>
+> **Não há volta.** Uma região concluída fica para trás, e a única direção é para a frente.
+>
+> **A run termina de duas formas.** Se o jogador morrer, seja numa wave, no guardião ou na wave final, a run acaba. Se derrotar o guardião da terceira região, vence. Nessa última região, a wave final continua disponível para quem quiser arriscar, mas a recompensa é um bônus de moedas para a progressão entre runs, já que não há próxima região para usar um item. Em qualquer dos casos, uma tela de resultado resume a run.
+>
+> **Não existe relógio.** A run não tem limite de tempo. O ritmo vem das waves e das escolhas do jogador, e ele pode passar o tempo que quiser se preparando antes de cada passo.
+
 **Fluxo de uma região (decidido em 28/09):**
 
 0. **Antes da run**, o jogador escolhe a região inicial entre as 3 do pool.
 1. O jogador entra na região. Parte dos trilhos já está aberta e o resto são caminhos pagos com moedas.
 2. Joga as waves normais (carta pós-wave, eventos, loja...).
-3. Depois de **N waves** (configurável por região, padrão **10**), surge o **guardião**.
+3. O jogador cumpre os **objetivos da região** e com isso ativa o **guardião** (revisto em 29/09, ver E3; antes era "depois de N waves").
 4. Guardião derrotado → **as waves param** (trégua) e um **portal** aparece em algum ponto do mapa.
 5. O jogador pode se preparar (loja, ferreiro, caminhos) pelo tempo que quiser e então, **no portal**, escolhe:
    - **A)** ir para a próxima região (a tela mostra nome, descrição, imagem e eventos possíveis de cada opção); **ou**
@@ -1324,13 +1351,13 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - (28/09) **Qualquer região pode cair em qualquer ato.** A dificuldade escala **pelo ato**: inimigos e guardião recebem o multiplicador do ato em que a região caiu, sem precisar de três versões da mesma região.
 - (28/09) **Desbloqueio por caminho dentro da região.** Entrou numa região nova, o jogador compra os caminhos dela com moedas.
 - (28/09) **A próxima região se abre derrotando o guardião**, não com moedas.
-- (28/09) **O guardião aparece por número de waves, não por tempo**, e esse número é **configurável por região**. **A run não tem limite de tempo**, porque isso frustra o jogador.
-- (28/09) **Padrão de 10 waves até o guardião** (era 15). Motivo: a escolha de perk continua **depois de toda wave**, e com 15 waves seriam ~45 escolhas por run, tela demais e o jogador maximizando tudo cedo. Com 10 são ~30 por run, e muitas das perks ainda chegam em raridade baixa. O usuário ajusta se o jogador ficar forte demais.
+- (28/09, **revisto em 29/09**: o guardião passa a ser ativado por objetivos, estilo Megabonk, ver E3) **O guardião aparece por número de waves, não por tempo**, e esse número é **configurável por região**. **A run não tem limite de tempo**, porque isso frustra o jogador.
+- (28/09, **em revisão desde 29/09**, ver E3) **Padrão de 10 waves até o guardião** (era 15). Motivo: a escolha de perk continua **depois de toda wave**, e com 15 waves seriam ~45 escolhas por run, tela demais e o jogador maximizando tudo cedo. Com 10 são ~30 por run, e muitas das perks ainda chegam em raridade baixa. O usuário ajusta se o jogador ficar forte demais.
 - (28/09) **Confirmado que o guardião existe entre a última wave e o portal:** N waves → guardião → trégua + portal.
 - (28/09) **Depois do guardião as waves param** (trégua), para o jogador não farmar indefinidamente antes do portal.
 - (28/09) **O portal surge em algum ponto do mapa** depois do guardião, para o jogador escolher a região com calma e se preparar antes de ir.
 - (28/09) **O portal oferece sempre 2 opções**, sorteadas entre as regiões ainda não visitadas quando o pool tiver mais de 3. Sem raridade de chave. Na v1, o portal 2 só tem a região que sobrou.
-- (28/09) **Wave final opcional** (inspirada no Megabonk): quem quiser ficar aceita uma wave com inimigos extremamente fortes; sobrevivendo, ganha um item lendário e vai direto para a próxima região. **Morrer nela encerra a run** (é o risco). Enquanto o item lendário próprio não existe, usar um lendário atual.
+- (28/09) **Wave final opcional** (inspirada no Megabonk): quem quiser ficar aceita uma wave com inimigos extremamente fortes; sobrevivendo, ganha um item (sorteado de um conjunto próprio, ver abaixo) e vai direto para a próxima região. **Morrer nela encerra a run** (é o risco). Enquanto os itens próprios não existem, o conjunto pode usar os lendários atuais.
 - (28/09) **Guardião da região 3 derrotado = vitória** e fim da run.
 - (28/09) **Região inicial escolhida numa tela pré-run** (ainda não criada), a mesma que vai reunir as outras escolhas de antes da run: região, Skills, personagem etc.
 - (28/09) **Wave final na região 3:** sobreviver dá vitória e um **bônus de moedas** no lugar do lendário. Como a run acaba, o bônus é pago na moeda de meta (E6).
@@ -1393,7 +1420,7 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - Animação/pausa ao entrar numa região nova.
 - (28/09) **Tela de resultado** ao morrer ou vencer: vai existir (resumo da run e moeda de meta ganha), construída no futuro. Detalhar junto com E6.
 
-**Dúvidas abertas:** nenhuma registrada (28/09). Aguardando o usuário dizer se considera a E1 fechada.
+**Dúvidas abertas:** nenhuma. **E1 fechado pelo usuário em 29/09.**
 
 **Onde toca no código:** `RunDirector` novo (ou o `GameManager` da lacuna da seção 6) controlando ato atual, contagem de waves, guardião, portal e troca de cena; `RegionDefinition` (SO); separação da `SampleScene` em `Core` + região; `EnemySpawner` (parar após N waves, multiplicador do ato); `SplineRuntimeState`/`TotemRegistry` (limpar ao trocar de região); pools de sorteio (`PerkDrawer`, `ShopManager`, `ChestLootRoller`) filtrando pelo conteúdo liberado na run; câmera e minimapa por região.
 
@@ -1432,7 +1459,7 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - Objetivos ficam **acoplados aos eventos e à progressão da run**, não são uma lista solta.
 - Metas do tipo "mate 40 inimigos sem sair do trilho X" parecem conquista e ficam com os **Desafios** (E6), não com os Objetivos.
 
-> **Impacto de E1 (28/09):** o guardião agora surge **após N waves** (padrão 10), então a proposta abaixo, em que os objetivos enchiam uma barra que invocava o guardião, deixou de valer como está. Ao refinar E3, redefinir o papel dos objetivos. Opções: recompensa opcional pura; reduzir as waves que faltam para o guardião; ou preparar o jogador para o guardião/wave final (enfraquecê-lo, liberar a Chave com raridade melhor).
+> **Revisão de 29/09:** o usuário mudou o E1. O guardião **deixa de surgir após N waves** e passa a ser **ativado por objetivos**, no estilo do Megabonk (o jogador cumpre objetivos para liberar o chefe). Os objetivos dos eventos também aparecem no painel, como **secundários**.
 
 **Proposta (não aprovada, anterior ao impacto de E1):**
 - Cada região tem uma **barra de progresso** (nome provisório "Carga do Portal"). Completar objetivos enche a barra. Waves limpas enchem um pouco, para o jogador nunca travar.
@@ -1457,36 +1484,94 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 
 **Ideia central:** eventos que **mudam a gameplay por um tempo**, não só dão loot. São a principal fonte de variedade dentro de uma região.
 
-> **Impacto de E1 (28/09):** cada região tem N waves até o guardião e depois uma trégua sem waves. Falta decidir se eventos acontecem durante o guardião e a trégua. Eventos seguem a regra comum/específico do pool de conteúdo (um evento pode existir em todas as regiões ou só numa). A wave final é, na prática, uma Horda obrigatória e mais forte, então as duas devem compartilhar o mesmo código (`HordeSpawner`).
+> **Impacto de E1 (28/09):** cada região tem N waves até o guardião e depois uma trégua sem waves. Eventos seguem a regra comum/específico do pool de conteúdo (um evento pode existir em todas as regiões ou só numa). A wave final é, na prática, uma Horda obrigatória e mais forte, então as duas devem compartilhar o mesmo código (`HordeSpawner`).
 
-**Decidido (28/09):**
-- Eventos aprovados: **Elite marcado**, **Comboio**, **Altar da maldição** e **Chuva de ouro**. O jogo precisa de mais eventos nesse estilo.
+**Decidido:**
+- (28/09) Eventos aprovados: **Elite marcado**, **Comboio**, **Altar da maldição** e **Chuva de ouro**. O jogo precisa de mais eventos nesse estilo.
+- (29/09) **Dois modos de surgimento, que substituem as famílias "Oportunidade" e "Contrato":**
 
-| Evento | Como funciona (proposta) |
-|---|---|
-| Elite marcado | inimigo forte com contador na tela; foge depois de X segundos; morto antes disso dá loot garantido |
-| Comboio | vagão de suprimentos percorre um trilho; o jogador protege até o destino |
-| Altar da maldição | o jogador aceita uma desvantagem (ex.: inimigos +30% de vida) em troca de uma carta lendária |
-| Chuva de ouro | moedas espalhadas num trilho por ~20s, exigindo trocas rápidas de trilho |
+  | Modo | Como funciona | Eventos |
+  |---|---|---|
+  | **Temporal** | começa sozinho, dura um tempo e acaba. O jogador não aceita nada: aproveita ou deixa passar | Chuva de ouro, Elite marcado, Baú (como hoje) |
+  | **Híbrido** | surge um totem e o evento só começa se o jogador aceitar | Comboio, Altar da maldição |
+
+- (29/09) **O gatilho é a wave, com uma chance de acontecer.** Nem toda wave tem evento.
+- (29/09) **Chance acumulada entre waves, parametrizada:** cada wave sem evento soma um incremento à chance, que volta à base quando um evento acontece. Base, incremento e teto são configuráveis (em dado, não no código). Ponto de partida sugerido: base 35%, +15% por wave sem evento, nenhuma chance na 1ª wave da região.
+- (29/09) **Um evento ativo por vez.**
+- (29/09) **Nenhum evento durante o guardião nem durante a trégua.**
+- (29/09) **Momento por modo:** evento **temporal** acontece **durante a wave** (a pressão dos inimigos faz parte dele); o totem **híbrido** surge **quando a wave termina**, e o evento aceito roda antes da próxima wave, sem somar inimigos.
+- (29/09) **Totem híbrido ignorado some quando a próxima wave começa**, ou seja, quando o jogador escolhe a carta do orbe.
+- (29/09) **Eventos podem surgir atrás de um caminho bloqueado**, com chance configurável. O objetivo é deixar o jogador curioso sobre o que acontece naquele trilho e fazê-lo decidir se paga para ir.
+- (29/09) **Sem intervalo mínimo entre eventos.** O acaso é parte da graça. Como a chance volta à base depois de cada evento, dois seguidos são possíveis, mas raros.
+- (29/09) **Chuva de ouro:** moedas espalhadas num trilho por ~20s, coletadas pelo vagão ao passar; as que sobram somem no fim. Valor total **~30 × multiplicador do ato**, parametrizado (o usuário pode mudar depois). **Atrás de um caminho bloqueado, rende o custo do caminho + um bônus**, para a compra valer a pena. Essa regra deve ficar explícita no código por nomes claros (sem comentários, regra do projeto).
+- (29/09) **Elite marcado dá um baú com raridade mínima Rara**, reaproveitando o Baú que já existe.
+- (29/09) **Baú com níveis como recompensa dos eventos**, mas **o item continua sorteado** e qualquer nível pode, com sorte, dar um item muito bom. O nível sobe só o piso de raridade; o teto é sempre a raridade mais alta. Proposta de níveis: Madeira (Comum → Lendária), Ferro (Rara → Lendária), Ouro (Épica → Lendária). Usa `RarityRoller.Roll(minRi, maxRi, luck)`, que já sorteia num intervalo.
+- (29/09) **Cada evento dá sempre o mesmo nível de baú.** Nada de "execução melhor = baú melhor": o jogador não saberia o que conta como execução melhor.
+- (29/09) **Elite marcado foge do jogador, mas só pelos trilhos liberados.** Nunca entra em caminho bloqueado, então nunca aparece atrás de um.
+- (29/09) **Elite marcado anda num carrinho sobre os trilhos**, fugindo do jogador pela mesma rede de splines e respeitando o `SplineRuntimeState` (só spline liberada). Vira uma perseguição: o jogador escolhe nas bifurcações o caminho para alcançá-lo. O movimento do vagão do jogador pode ser reaproveitado.
+- (29/09) **O baú aleatório deixa de ser evento.** Baú passa a ser só recompensa de evento.
+- (29/09) **Três fontes de item na run:** eventos (grátis, baú com nível), loja (paga, o jogador escolhe) e uma estrutura nova paga e aleatória, o **caça-níquel** (ver abaixo). O motivo: só com eventos o jogador teria poucos itens (3 a 4 por região).
+- (29/09) **Comboio segue o vagão do jogador, como um reboque**, e o jogador escolhe o caminho. Uma rota fixa foi descartada porque o trilho só vai e volta, e o jogador teria que atravessar o comboio. **Os inimigos passam a focar o comboio.**
+- (29/09) **Altar da maldição não dá baú:** a recompensa já é o bônus nas habilidades (carta lendária). A **duração da maldição é configurável por maldição** (algumas podem durar mais que 2 waves).
+- (29/09) **Horda deixa de ser evento.** Esse tipo de desafio só existe na **wave final** (escolhida no portal, E1). Ao implementar a wave final, reaproveitar `HordeSpawner` para ela e **remover do código o que for só do evento de Horda** (totem de aceite, `HordeEventConfig`, entrada no `EventOrchestrator`).
+- (29/09) **Comboio — vitória por entrega:** aparece uma **estação** marcada no minimapa, e o jogador leva o comboio até ela pelo caminho que quiser (a estação pode ficar atrás de um caminho pago). **Comboio acoplado como trem:** na ré o vagão empurra o comboio, que passa a ir na frente (posição = distância fixa sobre o caminho percorrido pelo vagão). **Sem penalidade de movimento.** Recompensa: **baú de Ferro**.
+- (29/09) **Altar da maldição — 3 opções de peso:** ao aceitar, o jogador escolhe entre um debuff **leve** (ganha um perk **Comum**), **médio** (perk **Raro**) ou **pesado** (perk **Épico**). Cada peso tem o **próprio conjunto de debuffs**, e o debuff de cada opção é sorteado desse conjunto. Duração configurável por debuff.
+- (29/09) **Altar — perk sorteado:** cada opção mostra só a raridade do perk ("perk Raro"); qual perk é, o jogador descobre depois. O sorteio usa os filtros do `PerkDrawer` (perk só sobe para raridade maior que a atual).
+- (29/09) **Altar — debuffs iniciais** (duração configurável por debuff):
+
+  | Peso | Recompensa | Debuffs possíveis | Duração sugerida |
+  |---|---|---|---|
+  | Leve | perk Comum | inimigos +15% de vida · −25% de moedas por wave · inimigos +10% de velocidade | 1–2 waves |
+  | Médio | perk Raro | inimigos +30% de vida · inimigos +20% de dano · recarga das Skills +30% | 2 waves |
+  | Pesado | perk Épico | inimigos +50% de vida e +25% de dano · carta pós-wave com só 2 opções · vida máxima −20% | 3 waves |
+
+  > **Ao implementar, criar mais debuffs** para cada peso. Esta lista é só o ponto de partida.
+- (29/09) **Altar — interface:** o totem mostra as 3 opções lado a lado, cada uma num card com debuff, duração e raridade do perk. A maldição ativa aparece no HUD com contador de waves restantes.
+- (29/09) **Elite marcado — números:** contador de **40s**; vida de **×3 um inimigo comum**, multiplicada pelo ato; **solta projéteis para trás** enquanto foge, para a perseguição ter risco. Valores parametrizados.
+- (29/09) **Os 4 eventos atuais são comuns** (aparecem em qualquer região). **Eventos específicos de região serão criados depois**, quando cada região ganhar identidade (ex.: "Desabamento" nas Minas).
+- (29/09) **Recompensas variadas:** o jogador não pode achar que todo evento dá só um baú. Eventos novos devem trazer recompensas de outros tipos; o usuário quer mais ideias depois (lista em "Recompensas dos eventos").
+- (29/09) **Mais eventos serão discutidos depois** (candidatos: Mercador ambulante, Sabotador).
+
+| Evento | Modo | Resumo (detalhes nas decisões acima) | Recompensa |
+|---|---|---|---|
+| Elite marcado | temporal | inimigo forte num carrinho, foge pelos trilhos liberados; contador na tela | baú de Ferro |
+| Chuva de ouro | temporal | moedas num trilho por ~20s | ~30 × ato em moedas (mais atrás de caminho bloqueado) |
+| Comboio | híbrido | reboque acoplado ao vagão, levado até uma estação; inimigos focam nele | baú de Ferro |
+| Altar da maldição | híbrido | escolha entre debuff leve/médio/pesado | perk Comum/Raro/Épico sorteado |
+
+**Descartado:**
+- (29/09) Nomes de família "Oportunidade" e "Contrato": viraram os modos temporal e híbrido.
+- (29/09) Intervalo mínimo entre eventos.
+- (29/09) Recompensa melhor conforme a execução do evento: confunde o jogador.
+- (29/09) Elite perseguindo o vagão ou indo para caminhos bloqueados.
+- (29/09) Comboio com rota fixa: o jogador teria que atravessá-lo no trilho.
+- (29/09) Horda como evento durante a região: fica só como wave final.
 
 **Proposta (não aprovada):**
-- **Modelo híbrido de surgimento:** o sistema cria o local do evento (ritmo), o jogador decide se vai (escolha). Descartados como modelo principal: só temporal (como o baú hoje, o jogador não decide nada) e só por totem fixo (vira rotina decorável).
-- Duas famílias:
-  - **Oportunidade**: aparece sozinha e expira se ignorada (Chuva de ouro, Elite marcado, Mercador ambulante).
-  - **Contrato**: surge um totem, e o jogador aceita ou não (Horda, Comboio, Altar). Nome provisório, escolhido para não colidir com "Desafio".
-- No máximo 1 evento ativo por vez, com intervalo entre eventos, e nenhum durante o guardião.
 - Aparecem no minimapa com timer.
-- Às vezes surgem **atrás de um caminho bloqueado**, e o jogador decide se paga para ir. Isso integra eventos, trilhos e moedas.
 - Cada região tem seu conjunto de eventos possíveis.
-- Outros candidatos: Horda (reativar, já escrita), Mercador ambulante, Sabotador (planta armadilhas nos trilhos, previsto na visão original).
+- Outros candidatos: Mercador ambulante, Sabotador (planta armadilhas nos trilhos, previsto na visão original).
 
 **Dúvidas abertas:**
-1. Modelo de surgimento: híbrido (proposta), temporal como o baú, ou ativado pelo jogador? **Esta foi a pergunta direta do usuário.**
-2. O que dispara o surgimento: tempo, gatilho de wave (como o `EventOrchestrator` hoje), ou os dois?
-3. Quantos eventos podem existir ao mesmo tempo?
-4. O Baú continua como hoje ou vira um tipo de Oportunidade?
-5. Nome da família "Contrato".
-6. Regras e recompensas de cada evento aprovado.
+nenhuma. **E4 fechado pelo usuário em 29/09.**
+
+**Recompensas dos eventos (adiado, 29/09 — retomar com eventos novos ou no E6):** o usuário quer que eventos deem **recompensas boas** e gostou do baú com raridade garantida. Ideias registradas para decidir depois:
+- Carta de perk extra, ou carta com raridade mínima maior.
+- Reroll/exílio extra na próxima seleção de perk.
+- Melhoria grátis de uma Skill no ferreiro.
+- **Slot de Skill extra** (`PlayerSkillHandler.UnlockSlot` existe e não tem nenhuma fonte hoje).
+- Subir a raridade de um perk que o jogador já tem.
+- Cura, desconto temporário na loja, moeda de meta (E6).
+
+**Caça-níquel (decidido em 29/09):** estrutura fixa no mapa, com cara de baú de outra cor e alavanca. O jogador paga moedas e roda uma roleta que sorteia um item. Não é evento: fica sempre lá. Pode migrar para o E5 (destinos).
+- **3 por região**, com pelo menos uma no anel base (já liberado). As outras podem ficar atrás de caminhos pagos.
+- **Preço único por puxada**, sorteando de **Comum a Lendária**. Sem níveis de aposta.
+- **Preço sobe a cada uso da mesma máquina** (por máquina, não global), e **a máquina quebra depois de 3 usos**. Valores parametrizados; ponto de partida sugerido 25 → 40 → 60.
+- Depois de pagar, só **Pegar** ou **Exilar**. Sem "pular" nem "vender na hora": para vender, o jogador procura a loja de venda.
+- Reaproveita a tela de revelação do baú (4.15), que já é uma roleta. Ícone próprio no minimapa.
+- Precisa ser mais barato que a loja na média, já que o jogador não escolhe o item.
+- **Dois tipos de baú no jogo:** o de evento (com níveis de piso de raridade) e o do caça-níquel (preço único, faixa completa). **Os dois usam a sorte do jogador** (`LuckPercent`), com a mesma fórmula de `RarityHelper.GetWeight` usada na loja e nas cartas.
+- Extra adiado: jackpot (chance pequena de 2 itens).
 
 **Onde toca no código:** `EventOrchestrator` (hoje sorteia por `EventTiming` de wave), `HordeSpawner`/`HordeTotemInteractable` (precedente de evento aceito em totem), `ChestSpawner` (precedente de marcador aleatório), minimapa.
 
