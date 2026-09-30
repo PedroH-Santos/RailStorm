@@ -1269,16 +1269,18 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 | **Região** | área grande do mapa. **Não é um caminho.** Cada região é um ato da run |
 | **Ato** | o trecho da run passado numa região |
 | **Caminho** | trilho bloqueado **dentro** de uma região, pago com moedas (o `SplineUnlockZone` de hoje) |
-| **Wave com modificador** | wave normal com uma regra extra sorteada. Conta como wave comum |
-| **Objetivo** | meta **da região atual**, mostrada no HUD. O papel dele na progressão foi revisto em E1 (ver E3) |
-| **Evento** | algo que acontece no mapa (Elite, Comboio, Altar...). Pode ser alvo de um objetivo |
+| **Wave com modificador** | ideia retirada por enquanto (30/09, ver E2) |
+| **Objetivo** | indicação no HUD do que o jogador deve fazer agora. **Não libera nada** (30/09, ver E3) |
+| **Evento** | algo que acontece no mapa (Elite, Comboio, Altar...). Cria objetivos secundários no HUD |
+| **Mini-chefe** | inimigo especial tratado como evento; pode haver mini-chefes secretos (E8, a refinar) |
 | **Desafio** | meta **entre runs** (conquista). Desbloqueia conteúdo da meta-progressão |
 | **Guardião** | chefe que surge após N waves na região (padrão 10). Derrotá-lo abre o portal (E1) |
 | **Portal** | surge no mapa depois do guardião; é onde o jogador escolhe a próxima região (E1) |
-| **Wave final** | desafio opcional depois do guardião: inimigos extremamente fortes, recompensa lendária e passagem direta para a próxima região (E1) |
+| **Wave final** | desafio opcional depois do guardião: infinita, inimigos cada vez mais fortes, moeda de meta com multiplicador por kill (E1, revisto em 30/09) |
 | **Pool de regiões** | conjunto de regiões que o jogo tem. Cada run usa 3. Conteúdo novo = regiões novas no pool. V1 tem 3 |
 | **Conteúdo comum / específico** | item, perk etc. que aparece em qualquer região, ou só a partir da entrada numa região específica (E1) |
-| **Moeda de meta** | segunda moeda, ganha na run e gasta fora dela (nome em aberto, ver E6) |
+| **Geara** | moeda da run (a `Coins` de hoje), gasta em loja, caminhos, ferreiro e caça-níquel (30/09) |
+| **Bolts** | moeda permanente (de meta), ganha na run e gasta fora dela para desbloquear conteúdo (30/09, E6) |
 
 #### Estado atual que o redesenho aproveita
 
@@ -1293,14 +1295,15 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 | # | Elemento | Status | Depende de |
 |---|---|---|---|
 | E1 | Regiões e atos | **fechado em 29/09** | — |
-| E2 | Waves com modificador | parcialmente decidido | E1 |
-| E3 | Objetivos da região e guardião | **em refinamento (29/09)** | E1, E4 |
+| E2 | Waves com modificador | **retirado por enquanto (30/09)** | E1 |
+| E3 | Objetivos da região e guardião | **fechado em 30/09** | E1, E4 |
 | E4 | Eventos | **fechado em 29/09** | E1 |
-| E5 | Destinos por região | em aberto | E1 |
-| E6 | Meta-progressão | parcialmente decidido | E3, E4 |
+| E5 | Destinos por região | **fechado em 30/09** | E1 |
+| E6 | Meta-progressão | **em refinamento (30/09)** | E3, E4 |
 | E7 | Sinergias de build | anotado, refinar quando criar armas/perks novos | — |
+| E8 | Mini-chefes (como eventos, incluindo secretos) | a refinar (criado em 30/09) | E4 |
 
-**▶ PRÓXIMO:** E3 — Objetivos da região e guardião (escolhido pelo usuário em 29/09).
+**▶ PRÓXIMO:** E6 — Meta-progressão (30/09; o usuário pediu para seguir para o próximo).
 
 ---
 
@@ -1338,11 +1341,11 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 0. **Antes da run**, o jogador escolhe a região inicial entre as 3 do pool.
 1. O jogador entra na região. Parte dos trilhos já está aberta e o resto são caminhos pagos com moedas.
 2. Joga as waves normais (carta pós-wave, eventos, loja...).
-3. O jogador cumpre os **objetivos da região** e com isso ativa o **guardião** (revisto em 29/09, ver E3; antes era "depois de N waves").
+3. Depois de **N waves** (configurável por região, padrão **10**), surge o **guardião** (confirmado em 30/09, depois de uma discussão sobre ativá-lo por objetivos, ver E3).
 4. Guardião derrotado → **as waves param** (trégua) e um **portal** aparece em algum ponto do mapa.
 5. O jogador pode se preparar (loja, ferreiro, caminhos) pelo tempo que quiser e então, **no portal**, escolhe:
    - **A)** ir para a próxima região (a tela mostra nome, descrição, imagem e eventos possíveis de cada opção); **ou**
-   - **B)** encarar a **wave final**: inimigos bem mais fortes. Se morrer, **a run acaba**. Se sobreviver, ganha um item **sorteado de um conjunto próprio** e vai para a próxima região na hora.
+   - **B)** encarar a **wave final**: **infinita**, com inimigos que ficam mais fortes a cada segundo, e cada inimigo morto dá **moeda de meta** com um multiplicador grande (revisto em 30/09, ver abaixo).
 6. Na região 3 (ato 3), derrotar o guardião **encerra a run com vitória**.
 
 **Decidido:**
@@ -1351,8 +1354,8 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - (28/09) **Qualquer região pode cair em qualquer ato.** A dificuldade escala **pelo ato**: inimigos e guardião recebem o multiplicador do ato em que a região caiu, sem precisar de três versões da mesma região.
 - (28/09) **Desbloqueio por caminho dentro da região.** Entrou numa região nova, o jogador compra os caminhos dela com moedas.
 - (28/09) **A próxima região se abre derrotando o guardião**, não com moedas.
-- (28/09, **revisto em 29/09**: o guardião passa a ser ativado por objetivos, estilo Megabonk, ver E3) **O guardião aparece por número de waves, não por tempo**, e esse número é **configurável por região**. **A run não tem limite de tempo**, porque isso frustra o jogador.
-- (28/09, **em revisão desde 29/09**, ver E3) **Padrão de 10 waves até o guardião** (era 15). Motivo: a escolha de perk continua **depois de toda wave**, e com 15 waves seriam ~45 escolhas por run, tela demais e o jogador maximizando tudo cedo. Com 10 são ~30 por run, e muitas das perks ainda chegam em raridade baixa. O usuário ajusta se o jogador ficar forte demais.
+- (28/09, **confirmado em 30/09** depois de considerar objetivos, ver E3) **O guardião aparece por número de waves, não por tempo**, e esse número é **configurável por região**. **A run não tem limite de tempo**, porque isso frustra o jogador.
+- (28/09, confirmado em 30/09) **Padrão de 10 waves até o guardião** (era 15). Motivo: a escolha de perk continua **depois de toda wave**, e com 15 waves seriam ~45 escolhas por run, tela demais e o jogador maximizando tudo cedo. Com 10 são ~30 por run, e muitas das perks ainda chegam em raridade baixa. O usuário ajusta se o jogador ficar forte demais.
 - (28/09) **Confirmado que o guardião existe entre a última wave e o portal:** N waves → guardião → trégua + portal.
 - (28/09) **Depois do guardião as waves param** (trégua), para o jogador não farmar indefinidamente antes do portal.
 - (28/09) **O portal surge em algum ponto do mapa** depois do guardião, para o jogador escolher a região com calma e se preparar antes de ir.
@@ -1374,6 +1377,8 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - (28/09) **A trégua não tem limite de tempo.**
 - (28/09) **A escolha entre seguir e fazer a wave final acontece no próprio portal:** ao interagir, o portal oferece ir para outra região ou encarar a wave final. Isso substitui a proposta de um totem separado ao lado do portal.
 - (28/09) **Wave final:** inimigos bem mais fortes que os das waves normais. O item ganho é **sorteado entre um conjunto de itens** próprio da wave final (uma loot table dedicada), não escolhido pelo jogador.
+- (30/09) **Wave final — saída e morte:** começa por escolha no portal, que **continua aberto** durante ela; o jogador pode sair a qualquer momento para a próxima região levando as Bolts. Morrer nela encerra a run, mas as Bolts acumuladas ficam com o jogador. Não dá item.
+- (30/09) **Wave final revista:** passa a ser **infinita**, e os inimigos ficam **mais fortes a cada segundo** (para impedir farm infinito). Cada inimigo morto dá **moeda de meta** (a moeda que desbloqueia conteúdo fora da run, E6) com um **multiplicador grande**. É o equivalente ao "Enxame Final" do Megabonk, só que depois do guardião e por escolha do jogador. Substitui as versões anteriores (sobreviver para ganhar um item sorteado / bônus de moedas na região 3).
 - (28/09) **Tela do portal mostra, para cada região:** nome, descrição, imagem da região e os eventos possíveis nela.
 **Descartado:**
 - (28/09) Raridade na chave definindo quantas regiões o portal oferece: o portal tem sempre 2 opções.
@@ -1383,6 +1388,7 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - (28/09) Teto fixo de conteúdo por região (1–2 inimigos, 2–3 destinos, 3–5 itens...): o usuário decide caso a caso quando uma região está pronta. Inimigos de região ainda podem ser variantes de inimigos comuns, se ele quiser economizar.
 - (28/09) Guardiões como variações de um único script montadas só com ataques genéricos: o usuário quer chefes realmente diferentes (substituído pela "casca comum, comportamento próprio").
 - (28/09) 15 waves até o guardião como padrão: virou 10.
+- (30/09) Guardião ativado por objetivos ou por altar invocável (estilo Megabonk): preso aos trilhos e aos caminhos pagos, o jogador não teria como "encontrar" o altar como no Megabonk. Ver E3.
 
 **Proposta (não aprovada):**
 
@@ -1426,28 +1432,11 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 
 ---
 
-#### E2 — Waves com modificador
+#### E2 — Waves com modificador (retirado por enquanto, 30/09)
 
-**Ideia central:** quebrar a repetição das waves sem criar uma fase separada. Uma wave comum às vezes vem com uma regra a mais.
+**Decisão (30/09):** o usuário retirou a ideia por enquanto, por não saber se agregaria ao jogo. A variedade dentro da região fica com os eventos (E4) e os mini-chefes (E8).
 
-**Decidido (28/09):**
-- Uma wave com modificador **conta como wave normal**. Não é evento à parte.
-- O modificador é **aleatório**. O jogador não pode decorar "na wave 4 sempre tem modificador".
-
-**Proposta (não aprovada):**
-- Chance por wave que cresce com o ato (ex.: 15% → 25% → 35%).
-- Nunca na primeira wave de uma região, e nunca duas seguidas.
-- Anunciado no início da wave com um banner ("WAVE BLINDADA").
-- Recompensa extra: mais moedas ou carta pós-wave com raridade mínima maior. Assim ele é risco com recompensa, não só punição.
-- Conjunto de modificadores por região (E1). Exemplos: Blindada (inimigos com mais vida), Veloz, Elites, Neblina, Enxame (mais inimigos e mais fracos).
-
-**Dúvidas abertas:**
-1. Anunciar antes ou surpresa?
-2. Modificador dá recompensa extra? Qual?
-3. Pode acumular dois modificadores em atos avançados?
-4. Quais modificadores existem, e quais são de cada região?
-
-**Onde toca no código:** `EnemySpawner`/`WaveDefinition`, um `WaveModifierDefinition` (SO, só dado), `Enemy` (multiplicadores; `HordeDamageMultiplier` é o precedente), banner no HUD.
+**Histórico, caso a ideia volte:** a wave com modificador contaria como wave normal e seria aleatória (28/09). Proposta de 30/09, não avaliada: anunciar com banner, dar bônus de Geara, e diferenciar da maldição do Altar mudando a **forma** da wave em vez dos números (Enxame, Emboscada, Trilhos quebrados, Neblina, Atiradores, Wave dourada).
 
 ---
 
@@ -1461,7 +1450,21 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 
 > **Revisão de 29/09:** o usuário mudou o E1. O guardião **deixa de surgir após N waves** e passa a ser **ativado por objetivos**, no estilo do Megabonk (o jogador cumpre objetivos para liberar o chefe). Os objetivos dos eventos também aparecem no painel, como **secundários**.
 
-**Proposta (não aprovada, anterior ao impacto de E1):**
+**Decidido (30/09) — encerra a discussão sobre o surgimento do guardião:**
+- **O guardião continua surgindo após N waves** (padrão 10, configurável por região), como no E1. Objetivos **não** são necessários para ele aparecer.
+- **Os objetivos são só orientação:** dizem ao jogador o que fazer agora e **não liberam nada**. Assim nunca travam a run.
+- **Objetivo principal da região:** ao entrar, "Sobreviva para chegar ao guardião" (com o progresso das waves). Depois, "Derrote o guardião" e, por fim, a escolha no portal.
+- **Eventos registram objetivos secundários** no painel enquanto estiverem ativos (os cards de evento propostos em 29/09: "Destrua o Elite" + timer, "Colete as moedas", convite e tarefa do Comboio, maldição ativa do Altar).
+- **A "Fúria" antes do guardião foi descartada.** A pressão contra farm fica na wave final, depois do guardião (ver E1, revisão de 30/09).
+- **Mini-chefes viram eventos**, com a possibilidade de **mini-chefes secretos** para a comunidade descobrir. Ainda precisam de refinamento próprio (E8).
+
+**Descartado (30/09):**
+- Altar do guardião disponível desde o início (modelo D): preso aos trilhos e aos caminhos pagos, o jogador não "encontraria" o altar como no Megabonk.
+- Opção C (barra de carga alimentada por waves e objetivos).
+- Objetivos que enfraquecem o guardião, adiam a Fúria ou aumentam o espólio do guardião: objetivos ficam só como orientação.
+- Fúria antes do guardião, com a carta de perk parando.
+
+**Proposta antiga (substituída pelas decisões de 30/09, mantida como histórico):**
 - Cada região tem uma **barra de progresso** (nome provisório "Carga do Portal"). Completar objetivos enche a barra. Waves limpas enchem um pouco, para o jogador nunca travar.
 - Barra cheia → surge o **guardião da região**. Guardião derrotado → portão para a próxima região (E1). O guardião do ato 3 é o boss final do mapa.
 - Os objetivos são **gerados do que existe na região**: 1 ou 2 vindos dos eventos ativos ("Escolte o comboio"), 1 da região ("Alcance a Mina", que obriga a comprar um caminho).
@@ -1469,12 +1472,13 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 - O jogador controla o ritmo: quem faz os objetivos avança rápido, quem prefere se fortalecer fica mais tempo.
 - Separação de UI: Objetivos no painel do HUD; Desafios só no menu e num aviso ao completar.
 
-**Dúvidas abertas:**
-1. Barra de progresso ou lista fechada ("complete os 3 objetivos")?
-2. Objetivos são obrigatórios, opcionais ou os dois (1 principal + secundários)?
-3. Sorteados, fixos por região, ou o jogador escolhe 1 entre 3?
-4. O guardião substitui o "mini-boss" da ideia inicial?
-5. Existe pressão de tempo para quem fica farmando (ex.: waves ficam mais fortes com o tempo na região)?
+**Decidido (30/09) — wave final e moedas:**
+- **O jogador escolhe começar a wave final no portal**, e **o portal continua aberto** durante ela: a qualquer momento ele pode voltar ao portal e seguir para a próxima região, levando o que acumulou.
+- **Morrer na wave final encerra a run**, mas o jogador **fica com as Bolts** acumuladas.
+- **A wave final não dá item.** Só moeda permanente.
+- **Nomes das moedas:** **Geara** é a moeda da run (a `Coins` de hoje: loja, caminhos, ferreiro). **Bolts** é a moeda permanente, usada para desbloquear conteúdo de forma global entre runs (E6).
+
+**Dúvidas abertas:** nenhuma. **E3 fechado pelo usuário em 30/09.**
 
 **Onde toca no código:** `ObjectiveDefinition` (SO, só dado) + `ObjectiveTracker` em runtime (regra da 4.12), escutando eventos que já existem (`LifeSystem.OnAnyDeath`, `SplineRuntimeState.OnSplineUnblocked`, `ChestInteractable.OnChestOpened`, `EnemySpawner.OnWaveCleared`, `PlayerSkillHandler.OnSkillCast`). `ObjectivesPanel`/`ObjectiveCard` no HUD.
 
@@ -1581,11 +1585,40 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 
 **Ideia central:** hoje desbloquear um caminho é só "abrir passagem". Se cada destino tiver uma função, escolher qual caminho comprar vira estratégia.
 
-**Decidido (28/09):**
-- Os destinos são **diferentes entre regiões**.
-- Dentro de uma região, o jogador desbloqueia vários caminhos (E1).
+**Decidido:**
+- (28/09) Os destinos são **diferentes entre regiões**.
+- (28/09) Dentro de uma região, o jogador desbloqueia vários caminhos (E1).
+- (30/09) **Todo destino precisa ser algo que o jogador realmente queira.** Nenhum caminho pode ser desbloqueado e não levar a nada. Referência: os personagens do Hades, em que cada encontro oferece uma escolha de benefício diferente.
+- (30/09) **Sem escopo gigante:** não criar um sistema de benefício novo para cada caminho.
+- (30/09) **Destinos fixos** na cena da região (sem sorteio de posição), para reduzir o escopo.
+- (30/09) **6 caminhos pagos por região**, com o jogador conseguindo chegar a **~2 benefícios** numa run. Alguns caminhos são só **conexões**: abrem outra parte do mapa rumo a um benefício, sem dar o benefício sozinhos. Por isso **os caminhos não podem ser muito longos**.
+- (30/09) **O que existe atrás de um caminho fechado:** um **evento** (E4) ou uma **construção**: loja, venda, ferreiro, caça-níquel, **Cofre** ou **Oficina**. A variedade vem de poucos tipos, montados por dado.
+- (30/09) **Destinos de benefício: só Cofre e Oficina.** Patrono, Mestre de armas e Treinador foram descartados por se parecerem demais com estruturas que já existem (ferreiro, cartas pós-wave).
+- (30/09) **Cofre com senha:** a senha fica **no caminho que leva ao Cofre** (dividir em dois caminhos seria caro demais para o jogador). **Sem senha não abre**: não há arrombamento. **Conteúdo: uma grande quantidade de Geara** (valor parametrizado).
+- (30/09) **Oficina:** o jogador escolhe entre **slot de Skill extra** ou **slot de arma do vagão extra**. **Armas do vagão passam a ter máximo de 4, com 2 liberadas no começo** (hoje são 3, todas liberadas, 4.2). Skills seguem 3 no máximo, com 1 liberado. **Com os dois slots no máximo, a Oficina oferece uma melhoria grátis de Skill.**
+- (30/09) **Toda região tem 1 Cofre e 1 Oficina.** Além deles, cada região tem **1 local próprio**, e o usuário quer que ele seja **criativo**, com mecânica própria (já que é só um por região), não uma variação de sistema existente (30/09).
+- (30/09) **A primeira região será a Floresta.** Seu local próprio é o **Lago encantado** (inspirado na lenda do machado de ouro): o jogador joga um item no lago e o espírito devolve **um item diferente, de raridade igual ou maior** (sorteado; itens têm raridade fixa, então nunca é "o mesmo item melhorado"). **Nunca piora**: o pior caso é trocar por outro item da mesma raridade. Uso único na run. A sorte (`LuckPercent`) aumenta a chance de melhorar. Chances parametrizadas.
+- (30/09) **Cofre e Oficina têm uso único na run.** Depois de usados, se apagam. (Serviços como loja e caça-níquel seguem as próprias regras.)
+- (30/09) **Loja, venda, ferreiro e caça-níquel existem em todas as regiões.** No anel base fica **só 1 caça-níquel**: loja, venda e ferreiro ficam atrás de caminhos pagos, e o jogador precisa procurá-los.
+- (30/09) **Conexões nunca ficam vazias:** recebem um caça-níquel ou um ponto de evento.
+- (30/09) **Construções podem ser agrupadas no mesmo destino** (ex.: Entreposto com loja + venda; ferreiro ao lado da Oficina), e os caça-níqueis extras ficam nas conexões. O número de caminhos (6) pode mudar depois. Exemplo de distribuição:
 
-**Proposta (não aprovada):**
+  | Caminho | O que tem |
+  |---|---|
+  | 1 (conexão) | caça-níquel |
+  | 2 | Entreposto (loja + venda) |
+  | 3 (conexão) | ponto de evento + senha do Cofre |
+  | 4 | Cofre |
+  | 5 | Ferreiro + Oficina |
+  | 6 | Lago encantado (+ caça-níquel) |
+
+**Proposta de 30/09 (aprovada em parte, ver decisões acima): poucos tipos de destino, variedade por dado.**
+- Cada destino é um de **~5 tipos genéricos**, e cada tipo reaproveita um sistema que já existe. A variedade vem de dado (`DestinationDefinition`: tipo, nome, ícone, tema/pool), não de código novo. É o modelo dos deuses do Hades: a mesma tela de escolha, com pools diferentes.
+- Tipos: **Patrono** (escolha 1 entre 3 perks de um tema; usa `PerkDrawer`/`PerkSelectionUI` filtrados por tag), **Mestre de armas** (arma do vagão nova ou melhoria grátis), **Treinador** (Skill nova ou melhoria grátis, `PlayerSkillHandler`), **Cofre** (baú de Ouro), **Oficina** (slot de Skill extra, `UnlockSlot`). Serviços (loja, venda, ferreiro, caça-níquel) também contam como destino.
+- Caminhos de conexão não ficam vazios: recebem pontos de evento ou um caça-níquel.
+- O selo do totem mostra o destino ao qual o caminho leva, mesmo quando o caminho é só uma conexão.
+
+**Proposta antiga (28/09):**
 
 | Destino | Função |
 |---|---|
@@ -1595,11 +1628,7 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 | Santuário | uma carta grátis por ato |
 | Loja / Venda / Ferreiro | deixam de estar sempre à mão; o jogador escolhe qual caminho comprar |
 
-**Dúvidas abertas:**
-1. Quantos destinos por região, e quantos o jogador consegue pagar numa run normal?
-2. Loja, venda e ferreiro existem em toda região ou só em algumas?
-3. Destino é fixo no mapa ou sorteado entre posições possíveis a cada run?
-4. Lista final de destinos e de quais regiões eles são.
+**Dúvidas abertas:** nenhuma. **E5 fechado pelo usuário em 30/09.**
 
 **Onde toca no código:** `SplineManifest` (hoje tem nome, descrição e ícone do destino, mas não uma função), `ShopZone`/`SellZone`/`BlacksmithZone` (já são destinos, só não dependem de região).
 
@@ -1612,6 +1641,7 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 **Decidido (28/09):**
 - Dois passos: **o Desafio desbloqueia** um conteúdo (skill, perk, item, personagem) e **a moeda de meta compra** o que já foi desbloqueado.
 - A moeda de meta é ganha durante a run.
+- (30/09) **A moeda de meta se chama Bolts**, e a moeda da run se chama **Geara**. A wave final é uma fonte de Bolts (E1).
 
 **Proposta (não aprovada):**
 - Fontes da moeda de meta: objetivos, guardiões, eventos, e uma parte proporcional ao desempenho **mesmo quando o jogador morre**, para run ruim não parecer tempo perdido.
@@ -1620,10 +1650,9 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 
 **Dúvidas abertas:**
 1. Só desbloqueio de conteúdo, ou também upgrades permanentes de status (+vida, +sorte)?
-2. Nome da moeda de meta.
-3. Com o que o jogador começa (conteúdo inicial liberado)?
-4. Onde se gasta a moeda: menu principal, hub entre runs?
-5. Exige save/load (lacuna da seção 6) e uma cena de menu.
+2. Com o que o jogador começa (conteúdo inicial liberado)?
+3. Onde se gasta a moeda: menu principal, hub entre runs?
+4. Exige save/load (lacuna da seção 6) e uma cena de menu.
 
 **Onde toca no código:** sistema de save novo, `ChallengeDefinition` (SO) + progresso persistente, filtros de pool em `PerkDrawer`, `ShopManager`, `ChestLootRoller` e no catálogo do ferreiro.
 
