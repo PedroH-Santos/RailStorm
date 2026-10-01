@@ -1299,11 +1299,38 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 | E3 | Objetivos da região e guardião | **fechado em 30/09** | E1, E4 |
 | E4 | Eventos | **fechado em 29/09** | E1 |
 | E5 | Destinos por região | **fechado em 30/09** | E1 |
-| E6 | Meta-progressão | **em refinamento (30/09)** | E3, E4 |
+| E6 | Meta-progressão | **fechado em 01/10** | E3, E4 |
 | E7 | Sinergias de build | anotado, refinar quando criar armas/perks novos | — |
-| E8 | Mini-chefes (como eventos, incluindo secretos) | a refinar (criado em 30/09) | E4 |
+| E8 | Mini-chefes (como eventos, incluindo secretos) | **em refinamento (01/10)** | E4 |
 
-**▶ PRÓXIMO:** E6 — Meta-progressão (30/09; o usuário pediu para seguir para o próximo).
+**▶ PRÓXIMO:** E8 — Mini-chefes (01/10; último elemento em aberto).
+
+#### Tarefas de implementação (01/10)
+
+Lista curta para lembrar o que construir, na ordem sugerida (cada tarefa depende das anteriores). Os detalhes de cada uma estão no elemento indicado. Marcar aqui quando uma tarefa for concluída e mover o sistema para a seção 4.
+
+| # | Tarefa | Elemento | Feito |
+|---|---|---|---|
+| T1 | **Fundação da run:** `RunDirector` (ato atual, contagem de waves, morte/vitória, chamar os `ResetForNewRun`); renomear a moeda da run para Geara nas telas | E1 | ☐ |
+| T2 | **Cenas:** separar a `SampleScene` em `Core` + cena da Floresta carregada de forma aditiva; `RegionContext` e `RegionDefinition`; UIs de loja e venda fora dos prefabs | E1 | ☐ |
+| T3 | **Guardião:** waves param depois de N (10); multiplicador do ato; casca comum `GuardianBase` e o guardião da Floresta | E1 | ☐ |
+| T4 | **Trégua e portal:** portal depois do guardião; tela de escolha de região (nome, descrição, imagem, eventos); troca de região com transição | E1 | ☐ |
+| T5 | **Wave final:** infinita, inimigos mais fortes a cada segundo, Bolts por kill com multiplicador, portal aberto para sair; reaproveitar `HordeSpawner` e remover o resto do evento de Horda | E1, E4 | ☐ |
+| T6 | **Objetivos no HUD:** objetivo principal ("Sobreviva para chegar ao guardião", "Derrote o guardião") e objetivos secundários criados pelos eventos | E3 | ☐ |
+| T7 | **Base dos eventos:** chance acumulada por wave, modos temporal e híbrido, um evento por vez, eventos atrás de caminho bloqueado; baú com níveis (Madeira/Ferro/Ouro); remover o baú aleatório | E4 | ☐ |
+| T8 | **Evento: Chuva de ouro** (temporal) — moedas num trilho por ~20s, ~30 × ato, bônus atrás de caminho bloqueado | E4 | ☐ |
+| T9 | **Evento: Elite marcado** (temporal) — carrinho inimigo que foge pelos trilhos liberados, 40s, vida ×3, projéteis para trás, baú de Ferro | E4 | ☐ |
+| T9b | **Evento: Comboio** (híbrido) — reboque acoplado ao vagão, estação de entrega, inimigos focam nele, baú de Ferro | E4 | ☐ |
+| T9c | **Evento: Altar da maldição** (híbrido) — 3 pesos de debuff, perk Comum/Raro/Épico sorteado, maldição no HUD; criar mais debuffs | E4 | ☐ |
+| T10 | **Caça-níquel:** preço crescente por máquina, quebra depois de 3 usos, Pegar ou Exilar | E4, E5 | ☐ |
+| T11 | **Destino: Cofre** — senha no caminho que leva a ele, não abre sem senha, muita Geara, uso único | E5 | ☐ |
+| T11b | **Destino: Oficina** — escolha entre slot de Skill ou slot de arma do vagão (armas: máx. 4 com 2 liberadas; Skills: máx. 3 com 1); melhoria grátis de Skill quando os dois estiverem no máximo | E5 | ☐ |
+| T11c | **Destino: Lago encantado** (local próprio da Floresta) — troca um item por outro de raridade igual ou maior, uso único | E5 | ☐ |
+| T11d | **Montar a Floresta:** anel base com 1 caça-níquel, 6 caminhos, construções agrupadas (Entreposto, Ferreiro + Oficina), conexões com caça-níquel ou ponto de evento | E5 | ☐ |
+| T12 | **Evento: Mini-chefe da Floresta** — obrigatório até a wave 7, wave só termina com ele morto, recompensa em Bolts + baú de Ferro | E8 | ☐ |
+| T13 | **Meta-progressão:** save/load, Bolts, tela de resultado, menu principal com a loja de Bolts, conteúdo comprado entrando nos sorteios; tela pré-run (região inicial, personagem, Skills) | E6, E1 | ☐ |
+| T13b | **Eventos futuros (ainda sem desenho):** Mercador ambulante, Sabotador (armadilhas nos trilhos), eventos específicos de região (ex.: Desabamento nas Minas), mini-chefes secretos | E4, E8 | ☐ |
+| T14 | **Conteúdo e pendências adiadas:** regiões 2 e 3 (com guardião, mini-chefe e local próprio), conteúdo comum/específico por região, conteúdo inicial liberado, Desafios, mini-chefes secretos, recompensas variadas de evento, sinergias de build (E7). Waves com modificador (E2) estão retiradas | E1, E4, E6, E7, E8 | ☐ |
 
 ---
 
@@ -1642,17 +1669,20 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 - Dois passos: **o Desafio desbloqueia** um conteúdo (skill, perk, item, personagem) e **a moeda de meta compra** o que já foi desbloqueado.
 - A moeda de meta é ganha durante a run.
 - (30/09) **A moeda de meta se chama Bolts**, e a moeda da run se chama **Geara**. A wave final é uma fonte de Bolts (E1).
+- (01/10) **Bolts compram só conteúdo.** Sem upgrades permanentes de status (+vida, +sorte...): o jogador fica mais variado a cada run, não mais forte.
+- (01/10) **Fontes de Bolts:** (1) cada **guardião** e cada **mini-chefe** derrotado (E8); (2) **inimigos mortos na wave final × multiplicador** (E1); (3) **sempre que uma run termina** (vitória ou morte), uma quantia proporcional aos **eventos realizados**, às **waves sobrevividas** e aos **desafios concluídos** na run.
+- (01/10) **Economia justa e contida:** a ideia não é dar muitas Bolts. Se o jogador ganhar demais, compra tudo rápido e a meta-progressão acaba. Todos os valores ficam em dado, para balancear.
+- (01/10) **As Bolts são gastas num menu na tela principal** (sem hub entre runs na v1).
+- (01/10) **O que se compra com Bolts:** Skills, armas do vagão, perks, itens e personagens.
+- (01/10) **Conteúdo desbloqueado por Desafio mas ainda não comprado não entra nas runs** (fica fora dos sorteios até a compra).
 
-**Proposta (não aprovada):**
-- Fontes da moeda de meta: objetivos, guardiões, eventos, e uma parte proporcional ao desempenho **mesmo quando o jogador morre**, para run ruim não parecer tempo perdido.
-- Tipos de Desafio: acumulativo ("mate 1000"), façanha numa run ("vença uma região sem tomar dano") e descoberta ("complete um Comboio", que ensina o jogo).
-- Conteúdo desbloqueado mas não comprado não aparece nos sorteios da run.
+**Adiado (01/10) — decidir quando o conteúdo existir:**
+- **Conteúdo inicial liberado:** o usuário quer criar primeiro os perks, armas e Skills para então ver o que começa liberado.
+- **Desafios** (tipos e lista): refinar quando regiões, inimigos e o resto estiverem prontos, para serem mais certeiros. Tipos sugeridos, não avaliados: acumulativo, façanha numa run e descoberta.
 
-**Dúvidas abertas:**
-1. Só desbloqueio de conteúdo, ou também upgrades permanentes de status (+vida, +sorte)?
-2. Com o que o jogador começa (conteúdo inicial liberado)?
-3. Onde se gasta a moeda: menu principal, hub entre runs?
-4. Exige save/load (lacuna da seção 6) e uma cena de menu.
+**Dúvidas abertas:** nenhuma. **E6 fechado pelo usuário em 01/10.**
+
+**Pré-requisitos de implementação:** sistema de save/load e cena de menu (lacunas da seção 6).
 
 **Onde toca no código:** sistema de save novo, `ChallengeDefinition` (SO) + progresso persistente, filtros de pool em `PerkDrawer`, `ShopManager`, `ChestLootRoller` e no catálogo do ferreiro.
 
@@ -1666,3 +1696,29 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 - **Evoluções**: arma do vagão no nível máximo + perk específico = versão evoluída (estilo Vampire Survivors).
 - **Perks ligados aos trilhos**: "ao trocar de trilho, solta uma onda de fogo", "parado numa bifurcação, recarga 2x mais rápida".
 - **Tags** (Fogo, Flecha, Trilho) com bônus ao juntar 3 iguais.
+
+---
+
+#### E8 — Mini-chefes
+
+**Ideia central:** inimigos especiais, mais fortes que os comuns e mais simples que o guardião, que aparecem no meio da região para quebrar a repetição das waves. Fazem parte do sistema de eventos (E4). Alguns podem ser **secretos**, para a comunidade descobrir.
+
+**Decidido (30/09):**
+- Mini-chefes existem e são tratados como **eventos**.
+- Pode haver **mini-chefes secretos**.
+
+**Decidido (01/10):**
+- **Dois tipos de mini-chefe:** o **obrigatório**, que faz parte dos eventos da região, e o **secreto**, ativado pelo jogador.
+- **Mini-chefe obrigatório:** entra no sorteio de eventos, com **garantia**: toda região tem o seu, e ele surge **no máximo até a wave 7** (limite configurável). Se o sorteio não o trouxe antes, ele é forçado nessa wave.
+- **A wave só termina com o mini-chefe morto.** É uma luta obrigatória, ao contrário do Elite marcado, que foge e some.
+- **Recompensa:** uma quantia de **Bolts** e um **baú com raridade mínima Rara** (baú de Ferro, E4). Valores parametrizados, respeitando a economia contida de Bolts (E6).
+- **Cada região tem o próprio mini-chefe obrigatório**, ligado ao tema dela.
+- **Mini-chefes secretos:** ficam em partes diferentes do mapa. O jogador precisa **ir até o local e interagir com algo ou cumprir uma condição** para o mini-chefe surgir. Nada na tela avisa. Serão criados no futuro.
+
+**Adiado (01/10):** a forma de ativação e a recompensa de cada mini-chefe secreto serão refinadas quando cada um for criado. Ideias registradas: jogar um item Lendário no Lago encantado, quebrar os 3 caça-níqueis da região, desbloquear todos os caminhos da região, ficar parado num ponto específico do trilho.
+
+**Proposta técnica:** reaproveitar a casca comum dos guardiões (`GuardianBase`, E1): vida, barra no HUD, multiplicador do ato, morte.
+
+**Dúvidas abertas:** nenhuma no momento. Aguardando o usuário confirmar se o E8 está fechado.
+
+**Onde toca no código:** `EventOrchestrator`, `GuardianBase` (casca comum), `ObjectiveTracker` (objetivo secundário "Derrote o mini-chefe"), minimapa.
