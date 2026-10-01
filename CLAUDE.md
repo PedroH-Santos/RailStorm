@@ -1272,7 +1272,7 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 | **Wave com modificador** | ideia retirada por enquanto (30/09, ver E2) |
 | **Objetivo** | indicação no HUD do que o jogador deve fazer agora. **Não libera nada** (30/09, ver E3) |
 | **Evento** | algo que acontece no mapa (Elite, Comboio, Altar...). Cria objetivos secundários no HUD |
-| **Mini-chefe** | inimigo especial tratado como evento; pode haver mini-chefes secretos (E8, a refinar) |
+| **Mini-chefe** | inimigo especial tratado como evento; pode haver mini-chefes secretos (E8) |
 | **Desafio** | meta **entre runs** (conquista). Desbloqueia conteúdo da meta-progressão |
 | **Guardião** | chefe que surge após N waves na região (padrão 10). Derrotá-lo abre o portal (E1) |
 | **Portal** | surge no mapa depois do guardião; é onde o jogador escolhe a próxima região (E1) |
@@ -1301,9 +1301,9 @@ Os termos abaixo valem para a doc, o código e as conversas. Três deles são f�
 | E5 | Destinos por região | **fechado em 30/09** | E1 |
 | E6 | Meta-progressão | **fechado em 01/10** | E3, E4 |
 | E7 | Sinergias de build | anotado, refinar quando criar armas/perks novos | — |
-| E8 | Mini-chefes (como eventos, incluindo secretos) | **em refinamento (01/10)** | E4 |
+| E8 | Mini-chefes (como eventos, incluindo secretos) | **fechado em 01/10** | E4 |
 
-**▶ PRÓXIMO:** E8 — Mini-chefes (01/10; último elemento em aberto).
+**▶ PRÓXIMO:** nenhum. Todos os elementos estão fechados (01/10), fora o E2 (retirado) e o E7 (anotado para quando houver armas e perks novos). O passo seguinte é a implementação, pela lista de tarefas abaixo.
 
 #### Tarefas de implementação (01/10)
 
@@ -1327,7 +1327,7 @@ Lista curta para lembrar o que construir, na ordem sugerida (cada tarefa depende
 | T11b | **Destino: Oficina** — escolha entre slot de Skill ou slot de arma do vagão (armas: máx. 4 com 2 liberadas; Skills: máx. 3 com 1); melhoria grátis de Skill quando os dois estiverem no máximo | E5 | ☐ |
 | T11c | **Destino: Lago encantado** (local próprio da Floresta) — troca um item por outro de raridade igual ou maior, uso único | E5 | ☐ |
 | T11d | **Montar a Floresta:** anel base com 1 caça-níquel, 6 caminhos, construções agrupadas (Entreposto, Ferreiro + Oficina), conexões com caça-níquel ou ponto de evento | E5 | ☐ |
-| T12 | **Evento: Mini-chefe da Floresta** — obrigatório até a wave 7, wave só termina com ele morto, recompensa em Bolts + baú de Ferro | E8 | ☐ |
+| T12 | **Evento: Mini-chefe da Floresta** — obrigatório até a wave 7, wave só termina com ele morto, recompensa em Bolts + baú de Ferro + 1 Runa (7.2) | E8 | ☐ |
 | T13 | **Meta-progressão:** save/load, Bolts, tela de resultado, menu principal com a loja de Bolts, conteúdo comprado entrando nos sorteios; tela pré-run (região inicial, personagem, Skills) | E6, E1 | ☐ |
 | T13b | **Eventos futuros (ainda sem desenho):** Mercador ambulante, Sabotador (armadilhas nos trilhos), eventos específicos de região (ex.: Desabamento nas Minas), mini-chefes secretos | E4, E8 | ☐ |
 | T14 | **Conteúdo e pendências adiadas:** regiões 2 e 3 (com guardião, mini-chefe e local próprio), conteúdo comum/específico por região, conteúdo inicial liberado, Desafios, mini-chefes secretos, recompensas variadas de evento, sinergias de build (E7). Waves com modificador (E2) estão retiradas | E1, E4, E6, E7, E8 | ☐ |
@@ -1711,7 +1711,7 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 - **Dois tipos de mini-chefe:** o **obrigatório**, que faz parte dos eventos da região, e o **secreto**, ativado pelo jogador.
 - **Mini-chefe obrigatório:** entra no sorteio de eventos, com **garantia**: toda região tem o seu, e ele surge **no máximo até a wave 7** (limite configurável). Se o sorteio não o trouxe antes, ele é forçado nessa wave.
 - **A wave só termina com o mini-chefe morto.** É uma luta obrigatória, ao contrário do Elite marcado, que foge e some.
-- **Recompensa:** uma quantia de **Bolts** e um **baú com raridade mínima Rara** (baú de Ferro, E4). Valores parametrizados, respeitando a economia contida de Bolts (E6).
+- **Recompensa:** uma quantia de **Bolts**, um **baú com raridade mínima Rara** (baú de Ferro, E4) e **1 Runa** (moeda que ativa a variante de uma Skill no ferreiro, 7.2). Valores parametrizados, respeitando a economia contida de Bolts (E6). Mini-chefes secretos também dão Runa.
 - **Cada região tem o próprio mini-chefe obrigatório**, ligado ao tema dela.
 - **Mini-chefes secretos:** ficam em partes diferentes do mapa. O jogador precisa **ir até o local e interagir com algo ou cumprir uma condição** para o mini-chefe surgir. Nada na tela avisa. Serão criados no futuro.
 
@@ -1719,6 +1719,291 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 
 **Proposta técnica:** reaproveitar a casca comum dos guardiões (`GuardianBase`, E1): vida, barra no HUD, multiplicador do ato, morte.
 
-**Dúvidas abertas:** nenhuma no momento. Aguardando o usuário confirmar se o E8 está fechado.
+**Dúvidas abertas:** nenhuma. **E8 fechado pelo usuário em 01/10.**
 
 **Onde toca no código:** `EventOrchestrator`, `GuardianBase` (casca comum), `ObjectiveTracker` (objetivo secundário "Derrote o mini-chefe"), minimapa.
+
+### 7.2 Skills do Wander (design fechado em 01/10, não implementado)
+
+**O que é / ideia central:** Wander é o mago que já existe no jogo, com o Cajado de Fogo (`FireStaff`, 4.19). Hoje ele tem duas Skills que usam o mesmo código (projéteis em leque), então não há escolha real de estilo. O refinamento define a identidade dele (fogo e Queimadura) e um conjunto pequeno de Skills com papéis diferentes. **Nada daqui está implementado.** Segue o mesmo processo da 7.1: decisão do usuário entra em **Decidido** com a data, proposta rejeitada vai para **Descartado**.
+
+**Decidido (01/10):**
+- **Wander é o personagem do fogo.** Todas as Skills dele são de fogo; outros elementos ficam para personagens futuros.
+- **Característica do personagem: Queimadura.** As Skills do Wander aplicam um efeito de Queimadura nos inimigos (dano ao longo do tempo). É a "mecânica exclusiva" do personagem prevista na visão do jogo (seção 1).
+- **O jogador pode equipar qualquer combinação de Skills** nos slots. Os papéis (ataque principal, área, utilidade/trilho) servem só para orientar o design, não restringem slot.
+- **Primeira versão com 4 Skills:** refazer as duas que existem (Bola de Fogo e Chuva de Brasas) e criar duas novas. Motivo: escopo.
+
+**Decidido (01/10, segunda rodada):**
+- **Queimadura com acúmulo.** Os golpes das Skills aplicam acúmulos, e o inimigo **só começa a queimar depois de um número de acúmulos** (exemplo do usuário: 3). Motivo: se todo golpe queimasse na hora, o dano do personagem ficaria alto demais.
+- **Combos:** algumas Skills causam mais dano (ou têm outro efeito) só por o inimigo estar com o status de Queimadura.
+- **Skills aprovadas:** Bola de Fogo, Chuva de Brasas e Nova de Fogo.
+- **Chuva de Brasas deixa de ser leque** e passa a ser uma área no ponto mirado.
+- **Quarta Skill, direção preferida:** o jogador fica mais rápido / avança no trilho e deixa um rastro de fogo atrás (junta Impulso em Brasa e Rastro Ardente). O usuário ainda está avaliando outras ideias antes de fechar as 4.
+- **Ordem do refinamento:** primeiro a definição geral das mecânicas (Queimadura e quais são as 4 Skills), depois cada Skill em detalhe.
+
+**Decidido (01/10, terceira rodada):**
+- **A primeira versão passa a ter 5 Skills** (eram 4):
+
+  | Skill | Ideia geral (detalhes a refinar) |
+  |---|---|
+  | Bola de Fogo (refeita) | ataque principal, um projétil |
+  | Chuva de Brasas (refeita) | brasas caindo numa área no ponto mirado |
+  | Nova de Fogo (nova) | explosão em volta do vagão que empurra os inimigos |
+  | Avanço com rastro de fogo (nova, nome a definir) | o vagão avança rápido no trilho e deixa fogo no caminho |
+  | Vórtice de Cinzas (nova) | puxa os inimigos para um ponto mirado |
+
+- **Toda Skill gera Queimadura**, cada uma do seu jeito: algumas de forma constante, outras por contato etc.
+- **Toda Skill causa algum dano.** Algumas causam **mais** dano quando o inimigo está queimando.
+- **Qual Skill faz o quê** (como gera Queimadura, qual tem bônus contra quem queima) será decidido no refinamento de cada Skill.
+- **Agora só se decide a mecânica principal do personagem e a lista de Skills.**
+
+**Descartado (01/10):**
+- Queimadura aplicada por qualquer golpe, sem acúmulo.
+- Runa Explosiva (armadilha plantada no trilho): o usuário não gostou.
+
+**Decidido (01/10, quarta rodada) — regra da Queimadura:**
+- **Acúmulos para queimar:** 3 em inimigos comuns, 5 em guardiões e mini-chefes.
+- **O acúmulo some em 4s** se o inimigo não for atingido de novo.
+- **A Queimadura dura 3s e não é renovada por novos golpes.** Enquanto o inimigo queima, os golpes não somam acúmulos. Quando a Queimadura acaba, o acúmulo recomeça do zero.
+- **O dano da Queimadura é um valor fixo por segundo, definido pelo personagem** (não por Skill).
+- **Indicador visual:** chama em cima do inimigo.
+- **Quem aplica:** por enquanto só as Skills do Wander. A mecânica deve ser construída de forma reaproveitável (outros personagens, inimigos ou itens podem usá-la no futuro).
+- Todos os valores (acúmulos, durações, dano) ficam em dado, para balancear.
+
+**Mecânica geral e lista das 5 Skills fechadas pelo usuário em 01/10.** Falta refinar cada Skill (como gera acúmulos, se tem bônus contra quem queima, stats por nível, recarga, preço), uma por vez.
+
+| Skill | Status |
+|---|---|
+| Bola de Fogo | **fechada em 01/10** |
+| Chuva de Brasas | **fechada em 01/10** |
+| Nova de Fogo | **fechada em 01/10** |
+| Arrancada Ígnea (avanço com rastro de fogo) | **fechada em 01/10** |
+| Vórtice de Cinzas | **fechada em 01/10** |
+
+**As 5 Skills do Wander estão fechadas (01/10).** Resumo:
+
+| Skill | Papel | Gera Queimadura | Bônus contra quem queima | Variante (1 Runa) |
+|---|---|---|---|---|
+| Bola de Fogo | ataque principal | 1 acúmulo por acerto | não | Tripla: 3 projéteis com o dano dividido |
+| Chuva de Brasas | área | 1 acúmulo por pulso | não | Dupla: duas cargas com metade da duração |
+| Nova de Fogo | defesa | 1 acúmulo por inimigo atingido | +20% | Reativa: fica armada e explode ao levar dano, bônus de 0% a +30% |
+| Arrancada Ígnea | mobilidade no trilho | 1 acúmulo por pulso do rastro | não (só no Pavio, +20%) | Pavio: o rastro detona inteiro no fim do impulso |
+| Vórtice de Cinzas | controle | 1 acúmulo ao puxar | não | Olho da Tempestade: o vórtice fica no vagão |
+
+**Dano da Queimadura (decidido em 01/10):** 5 por segundo como ponto de partida (15 no total nos 3s), valor em dado.
+
+**Pendente:** os ajustes finos marcados como proposta em cada Skill, que se calibram em jogo.
+
+#### Bola de Fogo
+
+**Ideia central:** o ataque principal do Wander e a Skill inicial. É a forma mais simples de causar dano e de acumular Queimadura num alvo, e serve de régua para as outras quatro.
+
+**Decidido (01/10):**
+- **Variante (ativada por Runa, ver abaixo): Tripla** — 3 projéteis em leque. Variantes Explosiva e Perfurante foram mostradas e não escolhidas; ficam como ideias para variantes futuras.
+
+- **Tripla pode iniciar a Queimadura num disparo só:** cada projétil dá 1 acúmulo, então os três no mesmo alvo queimam um inimigo comum.
+- **A Tripla segue os status base da Skill** (regra geral das variantes, ver Runas): dano, recarga, alcance e velocidade são os do nível, sem tabela nem penalidade própria.
+
+- **Forma base:** segurar a tecla dispara **um projétil só**, em linha reta na direção da mira, que para no primeiro inimigo atingido. **1 acúmulo por acerto.** Sem bônus de dano contra quem está queimando: ela é a Skill que prepara o alvo, não a que cobra.
+- **Níveis:** só dano, recarga, alcance e velocidade, com os números e preços de hoje. Sai a coluna Projéteis. `purchaseCost` 40.
+
+  | Nível | Dano | Recarga | Alcance | Velocidade | Custo p/ próximo |
+  |---|---|---|---|---|---|
+  | 1 | 15 | 0,3s | 15 | 25 | 20 |
+  | 2 | 20 | 0,28s | 16 | 26 | 35 |
+  | 3 | 25 | 0,26s | 17 | 27 | 55 |
+  | 4 | 32 | 0,23s | 18 | 28 | 80 |
+  | 5 | 40 | 0,2s | 20 | 30 | — |
+
+- **Dano da Tripla: dividido.** O dano do nível é repartido entre os três projéteis (um terço cada), então o total de um disparo é igual ao da forma base. O ganho da variante é espalhar o dano e acumular Queimadura mais rápido.
+
+**Proposta (não aprovada):** abertura da Tripla em 18° (a mesma do nível 5 de hoje), ajustável em dado.
+
+**Dúvidas abertas:** nenhuma. **Bola de Fogo fechada pelo usuário em 01/10.**
+
+#### Chuva de Brasas
+
+**Ideia central:** a Skill de área do Wander. Brasas caem por alguns segundos num ponto mirado, causando dano e acumulando Queimadura em todos os inimigos que estiverem ali. Serve para preparar um grupo inteiro, enquanto a Bola de Fogo prepara um alvo só.
+
+**Decidido (01/10):**
+- Deixa de ser um leque de projéteis e passa a ser uma área no ponto mirado.
+- **Dano em pulsos**, um a cada 0,5s enquanto durar. Cada pulso causa dano em todos os inimigos dentro da área e dá **1 acúmulo**. Quem fica 1,5s na área começa a queimar.
+- **O jogador controla a distância durante a gameplay**, na forma base: pode soltar a chuva perto ou longe, até um alcance máximo.
+- **Os números da tabela abaixo valem como ponto de partida.**
+- **A distância é medida segurando a tecla:** ao segurar, um marcador avança do vagão até o alcance máximo, na direção da mira; ao soltar, a chuva cai onde o marcador está. Motivo: funciona igual no mouse e no gamepad.
+- **Variante: Dupla** — a chuva cai em dois pontos, um depois do outro. As outras opções mostradas (Acompanhante, Errante, Cortina, Anel, Marcada, Dividida, Teleguiada) ficam como ideias para variantes futuras.
+
+> **Regra geral de design (01/10):** toda decisão de gameplay precisa ser pensada para o mouse **e** para o controle. Uma mecânica que só funciona bem num dos dois não serve.
+
+- **Marcador:** enquanto a tecla está segurada, o marcador avança. Soltar antes faz a chuva cair antes (mais perto). Se o jogador não soltar, o marcador vai até o alcance máximo e **para lá, sem voltar**; a chuva só cai quando ele solta.
+- **Sem bônus contra quem está queimando**, como a Bola de Fogo.
+- **Dupla com duas cargas:** o jogador lança duas chuvas, cada uma medida com a tecla, e cada uma dura metade do tempo. O total de pulsos é o mesmo da forma base.
+
+**Proposta (não aprovada), ajuste fino em dado:**
+- O marcador leva ~0,8s do vagão ao alcance máximo, e a direção acompanha a mira enquanto a tecla está segurada.
+- A recarga começa ao soltar; na Dupla, depois da segunda carga.
+- **Níveis** (`purchaseCost` 60, preços de hoje):
+
+  | Nível | Dano por pulso | Recarga | Raio | Duração | Alcance | Custo p/ próximo |
+  |---|---|---|---|---|---|---|
+  | 1 | 6 | 6s | 3 | 3s | 12 | 30 |
+  | 2 | 8 | 5,7s | 3,2 | 3s | 13 | 45 |
+  | 3 | 10 | 5,4s | 3,5 | 3,5s | 13 | 65 |
+  | 4 | 13 | 5,1s | 3,7 | 3,5s | 14 | 90 |
+  | 5 | 16 | 4,8s | 4 | 4s | 15 | — |
+
+**Dúvidas abertas:** nenhuma. **Chuva de Brasas fechada pelo usuário em 01/10.**
+
+#### Nova de Fogo
+
+**Ideia central:** a Skill de defesa do Wander e a que cobra a Queimadura. Uma explosão em volta do vagão empurra os inimigos para longe, resolvendo o momento em que o jogador está cercado e não pode sair do trilho, e causa mais dano em quem já está queimando.
+
+**Decidido (01/10):**
+- Explosão em volta do vagão que empurra os inimigos.
+- **Uso:** um toque na tecla, sem mirar nem medir. A explosão é instantânea e centrada no vagão.
+- **Efeito:** dano em todos os inimigos dentro do raio e empurrão para fora. Guardiões e mini-chefes levam o dano, mas não são empurrados.
+- **Queimadura:** 1 acúmulo em cada inimigo atingido que não esteja queimando.
+- **Bônus: cerca de +20% de dano contra inimigo que está queimando** (valor em dado). Não consome a Queimadura. A proposta de dano em dobro foi recusada por ser alta demais.
+- **Os números da tabela valem como ponto de partida.**
+- **Níveis** (`purchaseCost` 70):
+
+  | Nível | Dano | Recarga | Raio | Empurrão | Custo p/ próximo |
+  |---|---|---|---|---|---|
+  | 1 | 30 | 10s | 4 | 3 | 35 |
+  | 2 | 38 | 9,5s | 4,2 | 3 | 50 |
+  | 3 | 46 | 9s | 4,5 | 3,5 | 70 |
+  | 4 | 56 | 8,5s | 4,7 | 3,5 | 95 |
+  | 5 | 68 | 8s | 5 | 4 | — |
+
+**Proposta (não aprovada) — opções de variante:** Direcional (explosão em cone na direção da mira, mais comprida e com a mesma área), Onda Dupla (dois pulsos seguidos, cada um com metade do dano e do empurrão), Anel (onda que se expande devagar até o raio), Atordoante (deixa os inimigos parados por um instante no lugar de empurrar), Remota (explode num ponto medido com a tecla, como a Chuva de Brasas), Chão em Brasa (no lugar do empurrão, o chão em volta do vagão fica em chamas por alguns segundos e dá acúmulo por contato), Barreira (no lugar do empurrão, o vagão não leva dano por um instante), Implosão (puxa os inimigos para perto em vez de empurrar).
+
+**Descartado (01/10):** Contágio como variante (inimigos queimando atingidos passam 1 acúmulo aos vizinhos). Só acrescenta um benefício, sem trocar nada da forma base, então é ideia de perk (E7), não de variante.
+
+**Em dúvida (01/10) — Giro de Chamas, ideia do usuário:** no lugar de uma onda única, o fogo faz um movimento circular em volta do vagão, três vezes, empurrando e causando dano em quem estiver perto, com alcance menor e uso mais defensivo. Depois de ver os números (raio 60%, metade do dano por volta, 1 acúmulo por volta), o usuário achou que **fugiu muito do que a Skill é**. Não está aprovada.
+
+> **Critério que saiu disso:** a variante precisa continuar sendo reconhecível como a mesma Skill. Nas duas fechadas, o gesto da forma base foi mantido e só dividido (um projétil em três, uma chuva em duas).
+
+**Descartado (01/10):** Onda Tripla, Onda Dupla e Duas cargas (dividir a explosão em várias menores). O usuário não quer repetir a ideia das outras Skills: "parece que toda skill só tem a mesma variante".
+
+> **Segundo critério (01/10):** as variantes das 5 Skills não podem ser todas do mesmo tipo. "Dividir em várias" já foi usado na Bola de Fogo (Tripla) e na Chuva de Brasas (Dupla); as outras três precisam mudar outra coisa (o gatilho, o tempo, o que acontece com o inimigo, o que fica no chão).
+
+**Decidido (01/10) — variante: Reativa.**
+- Na forma base, o jogador aperta o botão e a onda sai na hora, empurrando os inimigos e causando dano extra em quem está queimando.
+- Na Reativa, a Nova **fica armada por alguns segundos e explode sozinha quando o vagão leva dano**.
+- **Quanto mais tempo ela fica segurada, maior o dano extra contra quem está queimando.**
+- Outras opções mostradas e não escolhidas (ideias para variantes futuras): Maré (a onda vai e volta), Arremesso (lança os inimigos para o alto), Carregada (segurar a tecla aumenta a explosão), Anel de Brasas (a onda vira um anel de fogo no chão).
+
+- **"Segurar" é o tempo que a Nova fica armada:** um toque arma, e ela fica armada sozinha. O jogador não mantém a tecla pressionada nem escolhe o momento da explosão.
+- **Armada por até 4s** (ponto de partida).
+- **O bônus contra quem queima cresce de 0% a +30%** conforme o tempo armada. Levar um golpe logo depois de armar dá uma explosão sem bônus; a forma base tem +20% fixo.
+- **Se ninguém acertar o vagão, ela explode no fim do tempo, com o bônus máximo de +30%.**
+
+**Proposta (não aprovada), ajuste fino em dado:**
+- O bônus cresce de forma linear e passa dos +20% da forma base depois de ~2,7s armada.
+- O golpe que dispara a explosão ainda causa dano ao vagão: a Reativa não é um escudo.
+- A recarga começa quando a Nova explode.
+- Dano, raio e empurrão são os do nível.
+
+**Dúvidas abertas:** nenhuma. **Nova de Fogo fechada pelo usuário em 01/10.**
+
+#### Arrancada Ígnea (antes "Avanço com rastro de fogo")
+
+**Ideia central:** a Skill de mobilidade do Wander, e a única que usa o trilho. O vagão ganha velocidade para escapar ou se reposicionar e deixa fogo no caminho, que queima os inimigos que vêm atrás dele.
+
+**Decidido (01/10):**
+- O vagão avança rápido no trilho e deixa fogo no caminho.
+- **Nome: Arrancada Ígnea.**
+- **Impulso por tempo:** um toque na tecla, e por alguns segundos o vagão anda mais rápido. O jogador continua controlando a direção e as bifurcações normalmente. A arrancada curta de distância fixa foi recusada.
+- **Rastro:** o trecho de trilho percorrido durante o impulso fica em chamas por alguns segundos. O rastro causa dano em pulsos, um a cada 0,5s, e cada pulso dá **1 acúmulo** a quem estiver em cima dele.
+- **Os números da tabela valem como ponto de partida.**
+- **Variante: Pavio** — o rastro não queima enquanto é deixado; acende inteiro de uma vez quando o impulso termina, com o dano dos pulsos somado numa explosão só.
+- **O Pavio tem bônus de dano contra quem está queimando.**
+- Opções mostradas e não escolhidas (ideias para variantes futuras): Aríete (o fogo fica no vagão e atinge quem ele atropela), Cometa (o fogo sai para os lados do vagão), Muralha (o rastro vira parede que os inimigos não atravessam), Passo de Brasa (o vagão some e reaparece à frente), Chama Viva (sem velocidade, rastro pelo dobro do tempo).
+
+- **Forma base sem bônus contra quem está queimando:** ela aplica a Queimadura, e o Pavio é quem cobra.
+- **Pavio detona sozinho no fim do impulso**, em todo o trecho percorrido.
+- **Pavio dá 1 acúmulo só.** A ideia é ele depender de outra Skill para queimar os inimigos antes.
+- **Bônus do Pavio: +20% contra quem está queimando**, igual ao da Nova de Fogo.
+
+**Proposta (não aprovada), ajuste fino em dado:**
+- Velocidade ×2 durante o impulso.
+- Dano do Pavio = soma dos pulsos que o rastro daria (duração do rastro ÷ 0,5s × dano por pulso; 30 no nível 1).
+- **Níveis** (`purchaseCost` 70):
+
+  | Nível | Dano por pulso | Recarga | Duração do impulso | Duração do rastro | Custo p/ próximo |
+  |---|---|---|---|---|---|
+  | 1 | 5 | 12s | 2s | 3s | 35 |
+  | 2 | 6 | 11,5s | 2s | 3,5s | 50 |
+  | 3 | 8 | 11s | 2,5s | 3,5s | 70 |
+  | 4 | 10 | 10,5s | 2,5s | 4s | 95 |
+  | 5 | 12 | 10s | 3s | 4s | — |
+
+**Dúvidas abertas:** nenhuma. **Arrancada Ígnea fechada pelo usuário em 01/10.**
+
+#### Vórtice de Cinzas
+
+**Ideia central:** a Skill de controle do Wander. Um redemoinho de cinzas puxa os inimigos para um ponto, juntando o grupo para as Skills de área (Chuva de Brasas, Nova de Fogo, Pavio) acertarem todos de uma vez.
+
+**Decidido (01/10):**
+- Puxa os inimigos para um ponto mirado.
+- **Uso:** segurar a tecla para medir a distância e soltar para lançar, o mesmo gesto da Chuva de Brasas.
+- **Queimadura:** 1 acúmulo só, quando o vórtice pega o inimigo e o puxa para o centro. Não dá acúmulo por pulso.
+- **Os números da tabela valem como ponto de partida.**
+- **Variante: Olho da Tempestade** — sai a mira e a distância; o vórtice fica no vagão e puxa os inimigos para ele. Opções não escolhidas (ideias para variantes futuras): Errante, Marcado, Correnteza, Prisão de Cinzas.
+
+- **Efeito:** o vórtice fica no ponto por alguns segundos e puxa para o centro os inimigos dentro do raio. **Guardiões e mini-chefes não são puxados.**
+- **Dano baixo e único**, causado só no momento em que o inimigo é puxado para o centro. Não há dano em pulsos.
+- **Sem bônus contra quem está queimando.**
+- **Olho da Tempestade:** um toque na tecla, sem medir. O vórtice fica no vagão, mas **os inimigos são trazidos para mais perto do jogador, não para cima dele**, para a variante não ser ruim para quem usa.
+
+**Proposta (não aprovada), ajuste fino em dado:**
+- Com o dano único, os valores da coluna Dano sobem em relação aos pulsos propostos antes (eram 3 / 4 / 5 / 6 / 8 por pulso).
+- Guardiões e mini-chefes dentro do raio levam o dano e o acúmulo uma vez, sem serem puxados.
+- No Olho da Tempestade, os inimigos param a ~2,5 de distância do vagão, dentro do raio da Nova de Fogo (4). O vórtice acompanha o vagão pela duração do nível.
+- **Níveis** (`purchaseCost` 80):
+
+  | Nível | Dano (único, ao puxar) | Recarga | Raio | Duração | Alcance | Custo p/ próximo |
+  |---|---|---|---|---|---|---|
+  | 1 | 10 | 14s | 5 | 2s | 12 | 40 |
+  | 2 | 13 | 13,5s | 5,3 | 2s | 13 | 55 |
+  | 3 | 16 | 13s | 5,6 | 2,5s | 13 | 75 |
+  | 4 | 20 | 12,5s | 6 | 2,5s | 14 | 100 |
+  | 5 | 25 | 12s | 6,5 | 3s | 15 | — |
+
+**Dúvidas abertas:** nenhuma. **Vórtice de Cinzas fechado pelo usuário em 01/10.**
+
+#### Runas — modificação de Skill (fechado em 01/10)
+
+**Ideia central:** o usuário não quer que subir o nível mude o comportamento de uma Skill (ex.: ganhar projéteis): fica forte demais, e o jogador pode não querer a mudança. A Runa separa as duas coisas: o nível no ferreiro dá números, e a Runa dá a mudança de comportamento, escolhida pelo jogador. A referência é o combo de armas e tomos do Megabonk.
+
+**Decidido (01/10):**
+- **A mudança de comportamento de uma Skill vem de uma Runa encaixada nela**, não do nível.
+- **O encaixe é feito no ferreiro**, numa UI nova dentro da tela dele.
+- **1 encaixe por Skill, por enquanto.** O usuário quer algo escalável e se preocupa com ter mais de uma variante por Skill no futuro.
+- **A Runa é um tipo de moeda, sem tipo próprio, consumida ao ser usada.**
+- **Fonte: só derrotando um mini-chefe** (E8). A Runa entra **junto** com as recompensas já definidas (Bolts + baú de Ferro).
+- **Variantes são próprias de cada Skill, criadas pelo usuário.** O jogador gasta 1 Runa numa Skill e escolhe entre as variantes que aquela Skill tem.
+- **Na primeira versão cada Skill tem uma variante só**, então não há escolha: gastar a Runa ativa a variante. **O sistema precisa suportar várias variantes por Skill** desde o início (lista em dado, e a UI mostra a escolha quando houver mais de uma).
+- **Trocar de variante gasta outra Runa.**
+- **Variantes seguem os status base da Skill.** Elas só mudam um pouco a gameplay (a forma do ataque); não têm tabela de stats própria nem penalidades. Os números continuam vindo do nível.
+- **Variante é troca de mecânica, não benefício a mais.** Uma parte da forma base sai e outra mecânica entra no lugar (um projétil vira três com o dano dividido; uma chuva vira duas com metade da duração). Um efeito que só acrescenta vantagem à Skill é coisa de perk, não de variante.
+
+**Descartado (01/10):**
+- Variantes com troca embutida (ex.: mais projéteis com menos dano cada, explosão com recarga maior).
+- Modificações genéricas compartilhadas entre Skills e personagens (Multiplicação, Explosão, Perfuração, Combustão): o usuário quer variantes desenhadas para cada Skill.
+- Mudança de comportamento por nível (ex.: ganhar projéteis no nível 3).
+
+**Proposta (não aprovada):**
+- Cada `SkillDefinition` tem uma lista de variantes em dado (nome, descrição, ícone e o comportamento). Variante nova é uma entrada nova na lista da Skill.
+- UI: terceira aba no ferreiro, RUNAS, ao lado de LOJA e EQUIPAR. Lista de Skills, e no card as variantes daquela Skill com o botão de gastar a Runa.
+- O saldo de Runas aparece no ferreiro e no painel de Status, no grupo RECURSOS.
+
+**Decidido (01/10, segunda rodada):**
+- **Voltar à forma base é possível e de graça.** Reativar uma variante já paga também não custa Runa.
+- **Mini-chefes secretos também dão Runa.**
+
+**Dúvidas abertas:** nenhuma no sistema. A variante de cada Skill é decidida no refinamento da própria Skill.
+
+**Ideias registradas (para a quarta Skill ou versões futuras):** Faísca Saltitante (pula entre inimigos), Raio Incinerante (feixe contínuo), Meteoro, Muralha de Chamas, Escudo de Brasas, Marca Inflamável (marcados recebem mais dano das armas do vagão), Combustão (detona quem está queimando), Sopro de Dragão (cone curto contínuo), Fênix (ave que vai e volta em linha), Sóis Orbitais (orbes girando em volta do vagão), Vórtice de Cinzas (puxa inimigos para um ponto), Lança Solar (tiro carregado que perfura), Fornalha (reforço temporário das outras Skills), Sentinela de Brasa (torreta ao lado do trilho).
+
+**Onde toca no código:** `SkillDefinition` (uma subclasse por Skill nova), `ESkillStatTarget`/`SkillStatFormatting`/`StatLabels` (stats novos como Área e Duração), um componente de Queimadura no inimigo (`LifeSystem`), `Resources/Skills/` e `PlayerWeaponDefinition.availableSkills`.
