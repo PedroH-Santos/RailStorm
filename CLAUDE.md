@@ -1183,12 +1183,16 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - Os acúmulos somem **4s** depois do último golpe.
 - A Queimadura dura **3s** e **não é renovada**: enquanto queima, golpes não somam acúmulos. Quando acaba, o acúmulo recomeça do zero.
 - Dano de **5 por segundo** (um tick de 5 a cada 1s, 15 no total), definido pela arma do personagem (`PlayerWeaponDefinition.burn`), não pela Skill. Arma sem `burn` não queima.
-- Indicador: uma chama sobre o inimigo enquanto ele queima (`flamePrefab`, a `flameOffset` do chão, em unidades do mundo).
+- **Indicador de acúmulos (03/10):** um foguinho ao lado do inimigo que **enche de baixo para cima** a cada acúmulo (1/3, 2/3) e fica cheio, laranja-avermelhado e pulsando enquanto ele queima. Some quando os acúmulos zeram. Fica a `indicatorHeight` do chão e `indicatorSide` para a direita da tela, sempre de frente para a câmera.
+- **Sem números (pedido do usuário, 03/10):** nem o dano de cada tick nem a contagem de acúmulos aparecem como número. Só o fogo comunica a Queimadura. Um número de dano por tick chegou a ser feito e foi removido; não reintroduzir sem pedido.
+- **Enquanto queima:** o corpo do inimigo fica **avermelhado e pulsando** (a cor do corpo é multiplicada por `burnBodyTint` e recebe o brilho `burnTint`, no ritmo de `tintPulseSpeed`), e uma chama fica sobre a cabeça (`flamePrefab`, a `flameOffset` do chão, em unidades do mundo).
 - Inimigo morto não recebe acúmulo.
 
 **Código:**
-- **`BurnDefinition`** (SO, só dado): limiares, tempos, dano, `flamePrefab`/`flameOffset`.
-- **`BurnReceiver`** (estado só em runtime, no inimigo): `static ApplyStack(alvo, burn, acúmulos)` adiciona o componente sozinho se o inimigo não tiver, então nenhum prefab de inimigo precisa de setup. Expõe `IsBurning`, `Stacks`, `IsTargetBurning(alvo)` (para os bônus das próximas Skills) e os eventos `OnIgnited`/`OnExtinguished`. O dano passa por `LifeSystem.Damage`.
+- **`BurnDefinition`** (SO, só dado): limiares, tempos, dano, `flamePrefab`/`flameOffset`, `indicatorPrefab`/`indicatorHeight`/`indicatorSide`, `burnTint`/`burnBodyTint`/`tintPulseSpeed`.
+- **`BurnReceiver`** (estado só em runtime, no inimigo): `static ApplyStack(alvo, burn, acúmulos)` adiciona o componente sozinho se o inimigo não tiver, então nenhum prefab de inimigo precisa de setup. Expõe `IsBurning`, `Stacks`, `StacksToIgnite`, `FillNormalized`, `IsTargetBurning(alvo)` (para os bônus das próximas Skills) e os eventos `OnStacksChanged`/`OnIgnited`/`OnExtinguished`. Instancia o indicador no primeiro acúmulo e liga/desliga o avermelhado pelo `HitFlash` do inimigo (se ele tiver). O dano passa por `LifeSystem.Damage`.
+- **`BurnIndicator`** (`Assets/Prefabs/UI/BurnIndicator.prefab`, Canvas world-space duplicado do `BadgeCanvas` do totem): duas `Image` do glifo `fire` do Skymon, `Back` em Navy Recess com `Outline` e `Fill` em `Image.Type.Filled` vertical. Não é filho do inimigo (o Orc tem escala `0.18`): segue o alvo no `LateUpdate` e se destrói quando ele some. Cores e animações são campos do prefab.
+- **O avermelhado mora no `HitFlash`** (`SetSustainedGlow(brilho, corDoCorpo, ritmo)` / `ClearSustainedGlow()`), porque ele já é o dono do `MaterialPropertyBlock` do inimigo. O flash do golpe soma por cima do brilho sustentado, e o bloco só é limpo quando os dois são zero. Inimigo sem `HitFlash` queima normalmente, só não fica vermelho.
 - Quem aplica hoje: só o `FireballProjectile`. A mecânica não conhece Skill nenhuma, então outro personagem, item ou inimigo pode chamar `ApplyStack`.
 
 > **Partícula filha de inimigo com escala pequena (02/10).** O `Orc` tem escala `0.18`. Compensar com a escala inversa no filho não basta: com `scalingMode = Local` o ParticleSystem usa só a escala local (5,5) e a chama saiu gigante e deslocada. O `BurnFlame.prefab` usa `scalingMode = Hierarchy`, e o `BurnReceiver` aplica a escala inversa do pai, o que dá escala 1 no mundo.
@@ -1202,14 +1206,17 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - Paleta oficial: núcleo Cream `#FCF8E6`, chama Legendary `#FFB020` → Copper `#BC621B` → Brown Deep `#663300`.
 - Poucas partículas: a cadência é de 0,2–0,3s, então cada projétil mantém ~15 vivas e cada impacto usa 10.
 - **Disparo:** `FireballMuzzle.prefab` (clarão em estrela de ~0,11s + 4 faíscas em cone), uma vez por disparo, mesmo na Tripla.
-- **Voo:** `Fireball.prefab` = `Shell` (disco dourado) + `Core` (disco creme na frente) + `Flames` (labaredas em world space que ficam para trás, cada uma segurando um frame aleatório do sheet) + `Trail` (rastro curto dourado → cobre). Collider de raio `0.35`.
+- **Voo (refeito em 03/10): a bola é um modelo 3D, não sprite.** A primeira versão (discos e labaredas em sprite) foi reprovada: "parece apenas um PNG que o player está soltando". `Fireball.prefab` = `Model` (instância de `Assets/Meshes/Fireball/FireballModel.fbx`, escala `0.7`, girando no eixo do tiro por `ConstantSpin`) + `FlameShards` e `EmberShards` (cacos em malha `FireOcta` ficando para trás em world space, encolhendo e subindo). Collider de raio `0.35`.
+- **O modelo** foi feito no Blender (fonte em `Assets/Meshes/Fireball/Source~/FireballModel.blend`; a pasta com `~` é ignorada pelo Unity): três malhas low poly de sombreamento chapado, uma dentro da outra e deslocadas para a frente, `FlameCore` (amarelo, `Fire3DCore.mat`), `FlameInner` (laranja, `Fire3DFlame.mat`) e `FlameOuter` (vermelho, `Fire3DEmber.mat`, com as línguas de fogo da cauda). Materiais URP Lit com emissão abaixo de 1.0. A frente do modelo é `+Z`.
+- **Descartado nessa escolha (não reintroduzir sem pedido):** cinco versões em sprite (cometa, bola de labaredas, chama viva, orbe com anéis, octaedro) e três malhas geradas por código (estrela, cometa com cone, bola com línguas retas). O usuário pediu a modelagem no Blender.
 - **Impacto:** `FireballImpact.prefab` (estrela que estoura com overshoot, núcleo creme, anel cobre que cresce e some, 7 faíscas esticadas), ao acertar **e** ao chegar no fim do alcance. Autodestrói (`stopAction = Destroy`). As `Flames` são soltas do projétil ao sumir (`detachOnDestroy`) para terminarem de desaparecer sozinhas.
 - **Inimigo atingido:** pisca e dá um pulo de escala, por qualquer fonte de dano.
 
 **Peças:**
-- Arte em `Assets/VFX/Fire/` (PNGs brancos com o desenho no alpha, tintados no ParticleSystem; editar direto): `FlamePuff` (sheet 2×2 de labaredas), `FireCore` (disco), `FireRing` (anel), `ImpactBurst` (estrela), `Spark` (losango). Materiais `Fire*.mat` copiados do `TrailSparkMaterial` (`Particles/Unlit` transparente).
+- Arte em `Assets/VFX/Fire/`, usada pelo impacto, pelo disparo e pela chama da Queimadura, que continuam em sprite (PNGs brancos com o desenho no alpha, tintados no ParticleSystem; editar direto): `FlamePuff` (sheet 2×2 de labaredas), `FireCore` (disco), `FireRing` (anel), `ImpactBurst` (estrela), `Spark` (losango). `FireOcta.asset` é a malha dos cacos.
+- **`Combat/ConstantSpin`**: gira o objeto em graus por segundo no espaço local. Materiais `Fire*.mat` copiados do `TrailSparkMaterial` (`Particles/Unlit` transparente).
 - `BurnFlame.prefab` (4.21) usa o mesmo `FlamePuff`, para a Queimadura ler como o mesmo fogo.
-- **`LifeSystem.OnDamaged`** (evento novo, dispara antes de aplicar o dano) e **`Combat/HitFlash`** (no `Orc.prefab`): escreve `_EmissionColor` por `MaterialPropertyBlock` e o limpa ao terminar (para não tirar o renderer do SRP Batcher), mais um `DOPunchScale`. Inimigo novo precisa do componente no prefab para piscar.
+- **`LifeSystem.OnDamaged`** (evento novo, dispara antes de aplicar o dano) e **`Combat/HitFlash`** (no `Orc.prefab`): escreve `_EmissionColor` e `_BaseColor` por `MaterialPropertyBlock` e o limpa ao terminar (para não tirar o renderer do SRP Batcher), mais um `DOPunchScale`. Inimigo novo precisa do componente no prefab para piscar.
 
 ### 4.20 Minimapa — `Assets/Scripts/UI/Minimap/`, `CanvasHUD/MinimapFrame` (28/09)
 

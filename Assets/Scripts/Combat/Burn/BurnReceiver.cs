@@ -8,7 +8,9 @@ public class BurnReceiver : MonoBehaviour
 
     BurnDefinition _burn;
     LifeSystem _life;
+    HitFlash _flash;
     GameObject _flame;
+    BurnIndicator _indicator;
     int _stacks;
     float _decayTimer;
     float _burnTimer;
@@ -16,7 +18,11 @@ public class BurnReceiver : MonoBehaviour
 
     public bool IsBurning => _burnTimer > 0f;
     public int Stacks => _stacks;
+    public int StacksToIgnite => _burn != null ? _burn.StacksToIgnite(isBoss) : 1;
+    public float FillNormalized => IsBurning ? 1f : Mathf.Clamp01(_stacks / (float)StacksToIgnite);
+    public BurnDefinition Burn => _burn;
 
+    public event Action<BurnReceiver> OnStacksChanged;
     public event Action<BurnReceiver> OnIgnited;
     public event Action<BurnReceiver> OnExtinguished;
 
@@ -36,6 +42,12 @@ public class BurnReceiver : MonoBehaviour
     void Awake()
     {
         _life = GetComponent<LifeSystem>();
+        _flash = GetComponent<HitFlash>();
+    }
+
+    void OnDestroy()
+    {
+        if (_indicator != null) Destroy(_indicator.gameObject);
     }
 
     void AddStacks(BurnDefinition burn, int stacks)
@@ -46,8 +58,15 @@ public class BurnReceiver : MonoBehaviour
         _burn = burn;
         _stacks += stacks;
         _decayTimer = burn.stackDecaySeconds;
+        EnsureIndicator();
 
-        if (_stacks >= burn.StacksToIgnite(isBoss)) Ignite();
+        if (_stacks >= burn.StacksToIgnite(isBoss))
+        {
+            Ignite();
+            return;
+        }
+
+        OnStacksChanged?.Invoke(this);
     }
 
     void Ignite()
@@ -56,7 +75,9 @@ public class BurnReceiver : MonoBehaviour
         _burnTimer = _burn.burnDuration;
         _tickTimer = _burn.tickInterval;
         SetFlameVisible(true);
+        if (_flash != null) _flash.SetSustainedGlow(_burn.burnTint, _burn.burnBodyTint, _burn.tintPulseSpeed);
         OnIgnited?.Invoke(this);
+        OnStacksChanged?.Invoke(this);
     }
 
     void Update()
@@ -70,7 +91,10 @@ public class BurnReceiver : MonoBehaviour
         if (_stacks <= 0) return;
 
         _decayTimer -= Time.deltaTime;
-        if (_decayTimer <= 0f) _stacks = 0;
+        if (_decayTimer > 0f) return;
+
+        _stacks = 0;
+        OnStacksChanged?.Invoke(this);
     }
 
     void UpdateBurn()
@@ -89,7 +113,17 @@ public class BurnReceiver : MonoBehaviour
         _burnTimer = 0f;
         _stacks = 0;
         SetFlameVisible(false);
+        if (_flash != null) _flash.ClearSustainedGlow();
         OnExtinguished?.Invoke(this);
+        OnStacksChanged?.Invoke(this);
+    }
+
+    void EnsureIndicator()
+    {
+        if (_indicator != null || _burn.indicatorPrefab == null) return;
+
+        _indicator = Instantiate(_burn.indicatorPrefab);
+        _indicator.Bind(this);
     }
 
     void SetFlameVisible(bool visible)
