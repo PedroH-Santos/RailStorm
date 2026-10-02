@@ -268,6 +268,7 @@ Não há `CurrencyManager` dedicado — `Coins` é um campo em `PlayerStatsAggre
 
 - **Ganha**: +10 por wave limpa (`EnemySpawner`); +`coinsPerKill` (padrão 2) por kill de horda + `coinsOnComplete` (padrão 50) ao concluir horda com o player vivo (`HordeSpawner`); itens/skills `StatChange` com alvo `Coins` (soma ou multiplicador do saldo atual); venda de itens já possuídos, um por vez (`SellManager.TrySell`, ver 4.5) — sempre por um valor menor do que o item custaria comprado.
 - **Gasta**: compra na loja, um item por vez (`ShopManager.TryBuy` → `PlayerStatsAggregator.SpendCoins`); desbloqueio de spline (`SplineUnlockZone`); melhoria de Skill no ferreiro (`PlayerSkillHandler.TryUpgrade`, custo por nível no asset da skill, 4.19); compra de Skill nova no ferreiro (`PlayerSkillHandler.TryBuy`, `purchaseCost` do asset).
+- **Runas (02/10)** são um segundo recurso da run, separado das moedas: `PlayerStatsAggregator.Runes` (nunca negativo, `SpendRunes`). Só servem para liberar variantes de Skill no ferreiro (4.19). A fonte prevista é o mini-chefe (7.1, E8), que ainda não existe; por enquanto o saldo vem do campo `_runes` do Inspector (2 na cena, para teste).
 - **Exibição**: o saldo é o stat em destaque do painel de Status de todas as telas que o têm (ver "Moedas em destaque" na 4.9), e a loja mostra também a caixa Custo/Carteira (4.16).
 - `EStatTarget.CoinDropRate` existe no enum mas **nenhum script o consome** ainda.
 
@@ -320,12 +321,13 @@ Não há `CurrencyManager` dedicado — `Coins` é um campo em `PlayerStatsAggre
 |---|---|---|
 | `VitalContainer` | VITAL | Vida |
 | `AttributesContainer` | ATRIBUTOS | Velocidade, Sorte |
-| `ResourcesContainer` | RECURSOS | Moedas |
+| `ResourcesContainer` | RECURSOS | Moedas, Runas (as duas em destaque) |
 
 **Moedas em destaque (17/09).** **O que é:** o usuário mal percebia as moedas no Status porque eram só mais uma linha de atributo. **Regras:**
 - O grupo `GroupResources` (RECURSOS) é o **primeiro** do `EntitiesContainer` nas cinco telas com Status (`CanvasSkillSelector`, `CanvasEventChestItem`, `CanvasItemShop`, `CanvasItemSell`, `CanvasInventory`).
 - Stat com `StatDescriptor.Highlight = true` (hoje só `Coins`, marcado em `PlayerStatsAggregator.RegisterDisplayStats`) usa `StatsUI.highlightRowPrefab` = **`Assets/Prefabs/UI/StatsCoins.prefab`**: placa Copper, 70px de altura, ícone `coin2` creme com `Outline`, rótulo Fredoka cartoon e valor **Lilita One 40 cartoon**. Stats normais continuam no `Stats.prefab`.
 - O prefab tem `StatRowUI.keepSceneTextStyle = true`, então `Setup` **não** aplica `ApplyStatLabel/Value` — senão a fonte volta para Nunito e o material cartoon se perde.
+- **Runas também têm destaque (02/10):** `Assets/Prefabs/UI/StatsRunes.prefab`, Prefab Variant do `StatsCoins` (placa Epic `#A94BEB`, glifo `diamond`). Como cada stat em destaque pode ter a própria linha, `StatsUI.highlightRowsByStat` (lista `EStatKey` → prefab) tem prioridade sobre o `highlightRowPrefab`; os seis `StatsUI` da cena têm a entrada de `Runes`. Stat novo em destaque = `Highlight = true` + uma entrada nessa lista em cada `StatsUI`.
 - **O Status atualiza ao vivo:** `StatsUI` guarda as linhas do último `Bind` e, em `LateUpdate`, chama `StatRowUI.SetValue`, que só reescreve quando o texto mudou e dá um `DOPunchScale` no valor. É o que faz as moedas caírem na hora ao comprar na loja. Antes o painel só refletia o estado do momento do `Bind`.
 
 O `EntitiesContainer` fica dentro de um **`StatsScrollView`** (`ScrollRect` vertical, `horizontal = false`, `movementType = Clamped`) com `Viewport` mascarado por `RectMask2D` e uma barra vertical fina (8px) encostada na direita em `AutoHide` — assim novos grupos/stats não estouram o painel. O `EntitiesContainer` virou o *content*: âncora no topo, `pivot (0.5, 1)` e `ContentSizeFitter` vertical em `PreferredSize`. `StatsUI` não mudou por causa disso, porque já localizava os containers de grupo por busca recursiva.
@@ -1086,30 +1088,22 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - **Equipar (25/09):** na aba EQUIPAR, cada fileira tem um botão por tecla (J/K/L) e o jogador clica direto na tecla onde quer a Skill. Se a Skill já estava em outro slot, as duas **trocam de lugar**. Antes era preciso escolher um "slot alvo" clicando nos slots do Inventário e depois apertar EQUIPAR no card, e o usuário achou pouco intuitivo. Clicar num slot bloqueado do Inventário só treme o slot.
 - **Ferreiro:** abre com **E** no alcance (`interactRadius = 3`), pausa o jogo e trava o vagão; fecha só pelo VOLTAR/Esc/B (regra "Sair de menu", seção 3) ou saindo do trigger.
 - **Compra:** Skill nova custa `SkillDefinition.purchaseCost` (definido no asset), entra no nível 1 e, se houver slot liberado vazio, é equipada nele na hora. Senão fica só possuída, para o jogador equipar na aba EQUIPAR. Só entram na loja as Skills do catálogo da arma (`PlayerWeaponDefinition.availableSkills`; lista vazia = todas as de `Resources/Skills`).
-- **Bola de Fogo** (`Resources/Skills/Fireball.asset`, skill inicial, `purchaseCost` 40): o nível 1 tem exatamente os stats do ataque antigo (15 de dano, recarga 0,3s, alcance 15, velocidade 25, 1 projétil).
+- **Bola de Fogo** (`Resources/Skills/Fireball.asset`, skill inicial, `purchaseCost` 40, refeita em 02/10 conforme a 7.2): **um projétil só em todos os níveis**, que para no primeiro inimigo e dá **1 acúmulo de Queimadura** por acerto (4.21). O nível só muda números; a mudança de comportamento vem da variante (ver "Variantes e Runas").
 
-  | Nível | Dano | Recarga | Projéteis (abertura) | Alcance | Velocidade | Custo p/ próximo |
-  |---|---|---|---|---|---|---|
-  | 1 | 15 | 0,3s | 1 | 15 | 25 | 20 |
-  | 2 | 20 | 0,28s | 1 | 16 | 26 | 35 |
-  | 3 | 25 | 0,26s | 2 (12°) | 17 | 27 | 55 |
-  | 4 | 32 | 0,23s | 2 (12°) | 18 | 28 | 80 |
-  | 5 | 40 | 0,2s | 3 (18°) | 20 | 30 | — |
+  | Nível | Dano | Recarga | Alcance | Velocidade | Custo p/ próximo |
+  |---|---|---|---|---|---|
+  | 1 | 15 | 0,3s | 15 | 25 | 20 |
+  | 2 | 20 | 0,28s | 16 | 26 | 35 |
+  | 3 | 25 | 0,26s | 17 | 27 | 55 |
+  | 4 | 32 | 0,23s | 18 | 28 | 80 |
+  | 5 | 40 | 0,2s | 20 | 30 | — |
 
-- **Chuva de Brasas** (`Resources/Skills/EmberRain.asset`, 25/09): segundo asset de `FireballSkillDefinition` (mesmo projétil e ícone), criado para dar o que comprar e trocar. Leque largo com recarga longa. `purchaseCost` 60.
-
-  | Nível | Dano | Recarga | Projéteis (abertura) | Alcance | Velocidade | Custo p/ próximo |
-  |---|---|---|---|---|---|---|
-  | 1 | 8 | 1,2s | 5 (40°) | 12 | 20 | 30 |
-  | 2 | 10 | 1,1s | 5 (40°) | 13 | 21 | 45 |
-  | 3 | 12 | 1,0s | 7 (50°) | 13 | 22 | 65 |
-  | 4 | 15 | 0,9s | 7 (50°) | 14 | 23 | 90 |
-  | 5 | 18 | 0,8s | 9 (60°) | 15 | 24 | — |
+- **Chuva de Brasas foi removida (02/10)** até ser refeita como área no ponto mirado (7.2). O asset `EmberRain` e a entrada dela no `FireStaff` saíram; hoje a **Bola de Fogo é a única Skill**, então a LOJA do ferreiro não tem nada para comprar.
 
 **Dados (SO imutáveis, `Scripts/PlayerWeapons/`):**
 - **`PlayerWeaponDefinition`** — a arma do personagem (`Resources/PlayerWeapons/FireStaff.asset`, "Cajado de Fogo"): nome, ícone, `availableSkills`. O handler ignora Skills iniciais que a arma não suporta (lista vazia = aceita todas).
-- **`Skills/SkillDefinition`** — base abstrata `IDrawable`: `purchaseCost`, `LevelCount`, `GetUpgradeCost`, `GetCooldown`, `HasCooldown`, `DisplayStats` (lista de `ESkillStatTarget`), `GetStatValue`, `VisibleStats(nível)` (omite Recarga sem cooldown) e `Cast(SkillCastContext, nível)`. **Toda Skill nova é uma subclasse** que declara esses membros; ferreiro, tooltip e HUD leem tudo por eles, sem conhecer o tipo.
-- **`Skills/Fireball/FireballSkillDefinition`** + `FireballLevelData` — instancia `projectileCount` projéteis em leque de `spreadAngle` graus e chama `FireballProjectile.Init`.
+- **`Skills/SkillDefinition`** — base abstrata `IDrawable`: `purchaseCost`, `LevelCount`, `GetUpgradeCost`, `GetCooldown`, `HasCooldown`, `DisplayStats` (lista de `ESkillStatTarget`), `GetStatValue`, `VisibleStats(nível)` (omite Recarga sem cooldown), a lista `variants` e `Cast(SkillCastContext, nível, variante)` (`variante == null` é a forma base). O `SkillCastContext` leva também a `BurnDefinition` da arma. **Toda Skill nova é uma subclasse** que declara esses membros; ferreiro, tooltip e HUD leem tudo por eles, sem conhecer o tipo.
+- **`Skills/Fireball/FireballSkillDefinition`** + `FireballLevelData` (dano, velocidade, alcance, recarga, custo) — instancia o `muzzlePrefab` no `FirePoint` e um `FireballProjectile` (ou os da variante), passando a Queimadura e `burnStacksPerHit` no `Init`.
 - `ESkillStatTarget` + `UI/Tooltip/SkillStatFormatting` (formato e `IsImprovement`, que sabe que recarga menor é melhor) + `StatLabels.Of(ESkillStatTarget)` (Dano, Recarga, Alcance, Velocidade, Projéteis, Abertura).
 
 **Runtime (no GameObject `Player`):**
@@ -1125,6 +1119,25 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - Lista de fileiras de `Assets/Prefabs/UI/BlacksmithRow.prefab` (cópia da `ShopRow` com `BlacksmithSkillRowUI`, mesma `ActionColumn` da 4.16, mas com mais respiro a pedido do usuário em 25/09: padding **`42,42,30,30`** e altura **140**, orçamento 30 + 28 + 4 + 48 + 30): ícone, nome, `Nv. 2/5 · Tecla J`, custo com moeda acima do botão MELHORAR. Foco por hover/clique, como a loja.
 - `DetailCard` com `BlacksmithDetailUI`, no layout em blocos da 4.16: ícone, nome, `Nível n / total`, descrição na bandeja, **faixas "atual » próximo"** (valor seguinte em verde `improvementColor` quando melhora; no máximo mostra só o atual), caixa Custo/Carteira. O antigo botão `EquipButton` continua na cena, desativado e sem uso, desde que equipar passou para os botões de tecla da fileira (25/09). Feedback: punch nos números, no nível e na fileira, `-N` subindo na Carteira.
 - Fluxo em **`Blacksmith/UI/BlacksmithUI`**: `Open(stats, handler, caster, onBack)` / `Close()`, mesma animação e pausa da loja.
+
+#### Variantes e Runas (02/10)
+
+**O que é / ideia central:** subir o nível de uma Skill só melhora números. A mudança de comportamento é uma **variante**, que o jogador libera gastando uma **Runa** no ferreiro e pode ligar e desligar quando quiser. Assim o jogador escolhe se quer a mudança, em vez de recebê-la à força num nível.
+
+**Regras:**
+- Cada Skill tem uma lista de variantes em dado (`SkillDefinition.variants`). No máximo uma fica ativa por Skill.
+- Liberar uma variante custa `runesPerVariant = 1` Runa (campo do `PlayerSkillHandler`). Depois de liberada, ativar de novo é grátis, e voltar à forma base também.
+- Variante troca uma mecânica, não soma vantagem, e usa os stats do nível (sem tabela própria).
+- **Tripla** (`Resources/SkillVariants/FireballTriple.asset`, variante da Bola de Fogo): 3 projéteis em leque de 18°. O dano do nível é dividido entre eles (`max(1, round(dano / 3))` cada, então o total pode variar 1 ponto por arredondamento). Cada projétil dá 1 acúmulo, então os três no mesmo alvo iniciam a Queimadura num disparo.
+- Posse e variante ativa são estado de run: vivem no `PlayerSkillHandler` e são limpas em `ResetForNewRun`.
+- **Aba RUNAS do ferreiro:** uma fileira por par (Skill possuída, variante). Mostra o nome da variante, o estado (`Bloqueada` / `Liberada` / `Ativa`; só o estado, porque com o nome da Skill junto o texto passava por cima do botão), o custo (`1` com o ícone de runa, `Grátis` ou `Ativa`) e o botão ATIVAR / DESATIVAR. Sem Runa, o botão de uma variante bloqueada fica desativado e o custo em `actionDestructive`. O card de detalhe mostra o nome da variante, a Skill dona, a descrição e os stats da Skill no nível atual. A caixa de custo mostra **só `Custo ◆ 1`** e só enquanto a variante está bloqueada: **o saldo de Runas não aparece no card**, fica no painel de Status (pedido do usuário, 02/10).
+- O tooltip da Skill no inventário ganha a linha `Variante` quando há uma ativa.
+
+**Código e cena:**
+- `Skills/SkillVariantDefinition` (SO abstrato, `IDrawable`: nome, ícone, descrição) e `Skills/Fireball/FireballTripleVariant` (`projectileCount`, `spreadAngle`, `DamagePerProjectile`). **Variante nova = subclasse nova + um ramo no `Cast` da Skill dona.**
+- `PlayerSkillHandler`: `GetActiveVariant`, `IsVariantUnlocked`, `IsVariantActive`, `GetVariantCost`, `CanActivateVariant`, `TryActivateVariant`, `ClearVariant`, evento `OnVariantChanged`.
+- `BlacksmithTab.Runes`, `BlacksmithRowMode.Rune`, `BlacksmithSkillRowUI.SetupRune` (campo `runeIcon`), `BlacksmithDetailUI.ShowVariant` (listas `coinIcons`/`runeIcons` alternam o ícone do custo, e `walletRow` esconde a linha da carteira na aba RUNAS), `BlacksmithUI.ToggleVariantRow`.
+- Cena: `Tabs/TabRunes` (duplicada de `TabEquip`) e um `RuneIcon` ao lado do `CoinIcon` (duplicado dele, glifo `diamond` do Skymon em Epic `#A94BEB`) na `CostRow` da `WalletBox` e no `BlacksmithRow.prefab`. O `Value` da `CostRow` é alinhado à esquerda, para o número ficar colado no ícone (vale também para o custo em moedas).
 
 #### Abas do ferreiro (25/09)
 
@@ -1160,6 +1173,43 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - O pulo + flash de "pronta" só acontece em recargas **≥ `minCooldownForReadyFlash` (1s)**, para disparo contínuo como a bola de fogo (0,2–0,3s) não piscar a cada tiro. Cada disparo dá um punch leve; slot vazio fica com `emptyAlpha = 0.45`.
 
 > **Renderizar UI por RenderTexture pode destruir canvas world-space (24/09).** O truque de trocar `Canvas.renderMode` para `ScreenSpaceCamera` só para capturar uma tela **reescreve o transform do canvas**: aplicado por engano nos dois `BadgeCanvas` dos totens (4.13), eles voltaram com `localScale = 1`, `sizeDelta = 1920×1080` e posição de tela. Ao usar esse truque, filtre pelo canvas que você quer (nunca por "todos os root canvases") e, se precisar restaurar, os valores certos estão na última versão salva da cena (`m_LocalRotation`/`m_LocalScale`/`m_SizeDelta` do `RectTransform` no YAML). Para um canvas que é filho de um objeto do mundo (como o `CanvasBlacksmith`), desparente antes de capturar, senão ele renderiza como uma miniatura na cena.
+
+### 4.21 Queimadura (Burn) — `Assets/Scripts/Combat/Burn/` (02/10)
+
+**O que é / ideia central:** é a mecânica do Wander. As Skills dele não queimam o inimigo na hora: cada golpe deixa um acúmulo, e só depois de alguns acúmulos o inimigo pega fogo e leva dano por alguns segundos. Isso faz o jogador insistir num alvo (ou num grupo) e abre espaço para Skills que causam mais dano em quem já está queimando.
+
+**Regras** (valores em `Resources/Burn/WanderBurn.asset`):
+- **3 acúmulos** para queimar um inimigo comum, **5** para chefe (`BurnReceiver.isBoss`).
+- Os acúmulos somem **4s** depois do último golpe.
+- A Queimadura dura **3s** e **não é renovada**: enquanto queima, golpes não somam acúmulos. Quando acaba, o acúmulo recomeça do zero.
+- Dano de **5 por segundo** (um tick de 5 a cada 1s, 15 no total), definido pela arma do personagem (`PlayerWeaponDefinition.burn`), não pela Skill. Arma sem `burn` não queima.
+- Indicador: uma chama sobre o inimigo enquanto ele queima (`flamePrefab`, a `flameOffset` do chão, em unidades do mundo).
+- Inimigo morto não recebe acúmulo.
+
+**Código:**
+- **`BurnDefinition`** (SO, só dado): limiares, tempos, dano, `flamePrefab`/`flameOffset`.
+- **`BurnReceiver`** (estado só em runtime, no inimigo): `static ApplyStack(alvo, burn, acúmulos)` adiciona o componente sozinho se o inimigo não tiver, então nenhum prefab de inimigo precisa de setup. Expõe `IsBurning`, `Stacks`, `IsTargetBurning(alvo)` (para os bônus das próximas Skills) e os eventos `OnIgnited`/`OnExtinguished`. O dano passa por `LifeSystem.Damage`.
+- Quem aplica hoje: só o `FireballProjectile`. A mecânica não conhece Skill nenhuma, então outro personagem, item ou inimigo pode chamar `ApplyStack`.
+
+> **Partícula filha de inimigo com escala pequena (02/10).** O `Orc` tem escala `0.18`. Compensar com a escala inversa no filho não basta: com `scalingMode = Local` o ParticleSystem usa só a escala local (5,5) e a chama saiu gigante e deslocada. O `BurnFlame.prefab` usa `scalingMode = Hierarchy`, e o `BurnReceiver` aplica a escala inversa do pai, o que dá escala 1 no mundo.
+
+### 4.22 Visual da Bola de Fogo e resposta ao dano — `Assets/VFX/Fire/`, `Assets/Prefabs/VFX/`, `Assets/Scripts/Combat/HitFlash.cs` (02/10)
+
+**O que é / ideia central:** o efeito antigo (partículas aditivas brilhantes) destoava do jogo e o tiro não tinha peso. O novo segue a linguagem cartoon chapada da fumaça do trilho (4.13) e dá resposta em três momentos: no disparo, no voo e no acerto.
+
+**Regras:**
+- Formas simples, cor chapada, borda dura, **alpha blend, nunca aditivo**, nenhuma cor acima de 1.0 (o Bloom global tem `threshold 1`).
+- Paleta oficial: núcleo Cream `#FCF8E6`, chama Legendary `#FFB020` → Copper `#BC621B` → Brown Deep `#663300`.
+- Poucas partículas: a cadência é de 0,2–0,3s, então cada projétil mantém ~15 vivas e cada impacto usa 10.
+- **Disparo:** `FireballMuzzle.prefab` (clarão em estrela de ~0,11s + 4 faíscas em cone), uma vez por disparo, mesmo na Tripla.
+- **Voo:** `Fireball.prefab` = `Shell` (disco dourado) + `Core` (disco creme na frente) + `Flames` (labaredas em world space que ficam para trás, cada uma segurando um frame aleatório do sheet) + `Trail` (rastro curto dourado → cobre). Collider de raio `0.35`.
+- **Impacto:** `FireballImpact.prefab` (estrela que estoura com overshoot, núcleo creme, anel cobre que cresce e some, 7 faíscas esticadas), ao acertar **e** ao chegar no fim do alcance. Autodestrói (`stopAction = Destroy`). As `Flames` são soltas do projétil ao sumir (`detachOnDestroy`) para terminarem de desaparecer sozinhas.
+- **Inimigo atingido:** pisca e dá um pulo de escala, por qualquer fonte de dano.
+
+**Peças:**
+- Arte em `Assets/VFX/Fire/` (PNGs brancos com o desenho no alpha, tintados no ParticleSystem; editar direto): `FlamePuff` (sheet 2×2 de labaredas), `FireCore` (disco), `FireRing` (anel), `ImpactBurst` (estrela), `Spark` (losango). Materiais `Fire*.mat` copiados do `TrailSparkMaterial` (`Particles/Unlit` transparente).
+- `BurnFlame.prefab` (4.21) usa o mesmo `FlamePuff`, para a Queimadura ler como o mesmo fogo.
+- **`LifeSystem.OnDamaged`** (evento novo, dispara antes de aplicar o dano) e **`Combat/HitFlash`** (no `Orc.prefab`): escreve `_EmissionColor` por `MaterialPropertyBlock` e o limpa ao terminar (para não tirar o renderer do SRP Batcher), mais um `DOPunchScale`. Inimigo novo precisa do componente no prefab para piscar.
 
 ### 4.20 Minimapa — `Assets/Scripts/UI/Minimap/`, `CanvasHUD/MinimapFrame` (28/09)
 
@@ -1209,14 +1259,15 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 4. **Loja de compra**: `ShopZone` (E) → estoque renovado a cada 3min ou sob demanda, sorteado por raridade+sorte, compra imediata por fileira (botão COMPRAR) debitando `PlayerStatsAggregator.Coins`. **Loja de venda** (local separado no mapa): `SellZone` (E) → uma fileira por item possuído, venda imediata (botão VENDER) por `SellManager.TrySell`, recebendo `preço de compra × (1 - sellDiscountPercent)`.
 5. Ao limpar uma wave → `PerkOrb` → 3 cartas (perk/arma do vagão nova/upgrade) via `PerkDrawer`/`PerkSelectionUI` → próxima wave liberada.
 6. Moedas de waves/hordas/itens alimentam loja, desbloqueio de splines e melhorias de Skill no ferreiro.
-7. **Ferreiro**: `BlacksmithZone` (E) → `BlacksmithUI`: aba LOJA para comprar Skills novas e subir o nível das possuídas com moedas, aba EQUIPAR para escolher quais ficam nos slots J/K/L. Em gameplay, `PlayerSkillCaster` lê as teclas e `PlayerSkillHandler.TryCast` dispara a skill do slot e inicia a recarga, exibida na barra de skills do HUD.
+7. **Ferreiro**: `BlacksmithZone` (E) → `BlacksmithUI`: aba LOJA para comprar Skills novas e subir o nível das possuídas com moedas, aba EQUIPAR para escolher quais ficam nos slots J/K/L, aba RUNAS para liberar e ligar variantes. Em gameplay, `PlayerSkillCaster` lê as teclas e `PlayerSkillHandler.TryCast` dispara a skill do slot e inicia a recarga, exibida na barra de skills do HUD.
 
 ## 6. Lacunas conhecidas (design vs. implementado)
 
 Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 
 - **Sem `GameManager` central** — nenhuma classe orquestra estado global, transições de cena ou game over. **Pendência concreta ligada a isso (25/08):** `PlayerPerkHandler.ResetForNewRun()`, `PlayerCarWeaponHandler.ResetForNewRun()` e `PlayerItemHandler.ResetForNewRun()` existem e funcionam, mas **ninguém os chama**. Hoje isso não causa bug porque o progresso vive em runtime e morre com o GameObject (ver 4.12); passa a causar no momento em que existir uma segunda run sem recarregar a cena (morrer → recomeçar). Quem criar o `GameManager` deve chamar os três, mais `RunTracker.ResetForNewRun()` (tempo e kills do HUD, 4.17) e `PlayerSkillHandler.ResetForNewRun()` (níveis, slots e recargas das Skills, 4.19).
-- **Escolha do loadout antes da run (22/09, revisto 25/09)** — a tela pré-run também vai escolher região inicial e personagem (7.1, E1). O design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Só existem **Bola de Fogo** e **Chuva de Brasas**, e as duas usam o mesmo código de skill.
+- **Escolha do loadout antes da run (22/09, revisto 25/09)** — a tela pré-run também vai escolher região inicial e personagem (7.1, E1). O design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Só existe a **Bola de Fogo** (a Chuva de Brasas foi removida em 02/10 até ser refeita, 7.2).
+- **Runas sem fonte real (02/10)** — o mini-chefe que as daria não existe (7.1, E8). O saldo vem do campo `_runes` do `PlayerStatsAggregator` no Inspector (2 na cena, para teste).
 - **Objetivos do HUD (25/09)** — o `ObjectivesPanel` (com o prefab `ObjectiveCard`) do `CanvasHUD` existe só como visual (4.17). Não há sistema de objetivos que instancie os cartões. O minimapa foi implementado em 28/09 (4.20).
 - **Sem save/load** — nenhum `PlayerPrefs`, `JsonUtility`, arquivo em disco, `SceneManager` ou `DontDestroyOnLoad` encontrado.
 - **Sem meta-progressão persistente** — nenhuma segunda moeda entre runs; `Coins` é só por run e reseta (`PlayerItemHandler.ResetForNewRun()`). Desenho em refinamento na 7.1 (E6).
@@ -1723,9 +1774,9 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 
 **Onde toca no código:** `EventOrchestrator`, `GuardianBase` (casca comum), `ObjectiveTracker` (objetivo secundário "Derrote o mini-chefe"), minimapa.
 
-### 7.2 Skills do Wander (design fechado em 01/10, não implementado)
+### 7.2 Skills do Wander (design fechado em 01/10; Bola de Fogo, Queimadura e Runas implementadas em 02/10)
 
-**O que é / ideia central:** Wander é o mago que já existe no jogo, com o Cajado de Fogo (`FireStaff`, 4.19). Hoje ele tem duas Skills que usam o mesmo código (projéteis em leque), então não há escolha real de estilo. O refinamento define a identidade dele (fogo e Queimadura) e um conjunto pequeno de Skills com papéis diferentes. **Nada daqui está implementado.** Segue o mesmo processo da 7.1: decisão do usuário entra em **Decidido** com a data, proposta rejeitada vai para **Descartado**.
+**O que é / ideia central:** Wander é o mago que já existe no jogo, com o Cajado de Fogo (`FireStaff`, 4.19). Hoje ele tem duas Skills que usam o mesmo código (projéteis em leque), então não há escolha real de estilo. O refinamento define a identidade dele (fogo e Queimadura) e um conjunto pequeno de Skills com papéis diferentes. **Implementado em 02/10:** a Queimadura (4.21), a Bola de Fogo com a variante Tripla e o sistema de Runas com a aba do ferreiro (4.19), e o visual novo (4.22). **Faltam** as outras 4 Skills e a fonte real de Runas (mini-chefe). Segue o mesmo processo da 7.1: decisão do usuário entra em **Decidido** com a data, proposta rejeitada vai para **Descartado**.
 
 **Decidido (01/10):**
 - **Wander é o personagem do fogo.** Todas as Skills dele são de fogo; outros elementos ficam para personagens futuros.
@@ -1774,7 +1825,7 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 
 | Skill | Status |
 |---|---|
-| Bola de Fogo | **fechada em 01/10** |
+| Bola de Fogo | **implementada em 02/10** (4.19) |
 | Chuva de Brasas | **fechada em 01/10** |
 | Nova de Fogo | **fechada em 01/10** |
 | Arrancada Ígnea (avanço com rastro de fogo) | **fechada em 01/10** |

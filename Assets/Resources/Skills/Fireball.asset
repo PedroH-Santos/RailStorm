@@ -14,43 +14,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FireballSkillDefinition
   skillName: Bola de Fogo
   icon: {fileID: 21300000, guid: 3d470df9a9c7dba4396105716b8737ff, type: 3}
-  description: "Dispara bolas de fogo na dire\xE7\xE3o da mira. Segure a tecla para
-    atirar sem parar."
+  description: "Dispara uma bola de fogo na dire\xE7\xE3o da mira. Segure a tecla
+    para atirar sem parar. Cada acerto acumula Queimadura."
   purchaseCost: 40
+  variants:
+  - {fileID: 11400000, guid: 259f56438cff229408547e4f4028f378, type: 2}
   projectilePrefab: {fileID: 4630507691419853009, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
+  muzzlePrefab: {fileID: 4332785177467688780, guid: 198effc61fe4c2a4a889dcc61a26eee0, type: 3}
+  burnStacksPerHit: 1
   levels:
   - damage: 15
     speed: 25
     range: 15
     cooldown: 0.3
-    projectileCount: 1
-    spreadAngle: 0
     upgradeCost: 20
   - damage: 20
     speed: 26
     range: 16
     cooldown: 0.28
-    projectileCount: 1
-    spreadAngle: 0
     upgradeCost: 35
   - damage: 25
     speed: 27
     range: 17
     cooldown: 0.26
-    projectileCount: 2
-    spreadAngle: 12
     upgradeCost: 55
   - damage: 32
     speed: 28
     range: 18
     cooldown: 0.23
-    projectileCount: 2
-    spreadAngle: 12
     upgradeCost: 80
   - damage: 40
     speed: 30
     range: 20
     cooldown: 0.2
-    projectileCount: 3
-    spreadAngle: 18
     upgradeCost: 0

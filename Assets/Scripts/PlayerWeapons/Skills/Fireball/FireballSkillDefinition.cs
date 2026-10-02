@@ -8,12 +8,13 @@ public class FireballSkillDefinition : SkillDefinition
     {
         ESkillStatTarget.Damage,
         ESkillStatTarget.Cooldown,
-        ESkillStatTarget.ProjectileCount,
         ESkillStatTarget.Range,
         ESkillStatTarget.Speed,
     };
 
     public FireballProjectile projectilePrefab;
+    public GameObject muzzlePrefab;
+    [Min(0)] public int burnStacksPerHit = 1;
 
     public List<FireballLevelData> levels = new()
     {
@@ -41,27 +42,38 @@ public class FireballSkillDefinition : SkillDefinition
             case ESkillStatTarget.Cooldown: return data.cooldown;
             case ESkillStatTarget.Range: return data.range;
             case ESkillStatTarget.Speed: return data.speed;
-            case ESkillStatTarget.ProjectileCount: return data.projectileCount;
-            case ESkillStatTarget.Spread: return data.spreadAngle;
             default: return 0f;
         }
     }
 
-    public override void Cast(SkillCastContext context, int level)
+    public override void Cast(SkillCastContext context, int level, SkillVariantDefinition variant)
     {
         if (projectilePrefab == null || context.FirePoint == null) return;
 
         var data = GetLevel(level);
-        int count = Mathf.Max(1, data.projectileCount);
         Vector3 forward = context.AimDirection.sqrMagnitude > 0.0001f ? context.AimDirection.normalized : context.FirePoint.forward;
 
-        for (int i = 0; i < count; i++)
-        {
-            float angle = count > 1 ? Mathf.Lerp(-data.spreadAngle * 0.5f, data.spreadAngle * 0.5f, i / (count - 1f)) : 0f;
-            Vector3 direction = Quaternion.AngleAxis(angle, Vector3.up) * forward;
+        if (muzzlePrefab != null)
+            Instantiate(muzzlePrefab, context.FirePoint.position, Quaternion.LookRotation(forward));
 
-            var projectile = Instantiate(projectilePrefab, context.FirePoint.position, Quaternion.LookRotation(direction));
-            projectile.Init(direction, data.speed, data.range, data.damage);
+        if (variant is FireballTripleVariant triple)
+        {
+            int damage = triple.DamagePerProjectile(data.damage);
+            for (int i = 0; i < triple.projectileCount; i++)
+            {
+                float angle = Mathf.Lerp(-triple.spreadAngle * 0.5f, triple.spreadAngle * 0.5f, i / (triple.projectileCount - 1f));
+                Launch(context, data, Quaternion.AngleAxis(angle, Vector3.up) * forward, damage);
+            }
+
+            return;
         }
+
+        Launch(context, data, forward, data.damage);
+    }
+
+    void Launch(SkillCastContext context, FireballLevelData data, Vector3 direction, int damage)
+    {
+        var projectile = Instantiate(projectilePrefab, context.FirePoint.position, Quaternion.LookRotation(direction));
+        projectile.Init(direction, data.speed, data.range, damage, context.Burn, burnStacksPerHit);
     }
 }

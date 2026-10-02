@@ -22,9 +22,15 @@ public class PlayerSkillHandler : MonoBehaviour
     [Range(1, SlotLimit)]
     [SerializeField] private int startingUnlockedSlots = 1;
 
+    [Header("Variantes")]
+    [Min(0)]
+    [SerializeField] private int runesPerVariant = 1;
+
     readonly List<SkillDefinition> _catalog = new();
     readonly List<SkillDefinition> _owned = new();
     readonly Dictionary<SkillDefinition, int> _levelBySkill = new();
+    readonly HashSet<SkillVariantDefinition> _unlockedVariants = new();
+    readonly Dictionary<SkillDefinition, SkillVariantDefinition> _activeVariantBySkill = new();
     SkillDefinition[] _slots = Array.Empty<SkillDefinition>();
     float[] _cooldownRemaining = Array.Empty<float>();
     float[] _cooldownDuration = Array.Empty<float>();
@@ -35,6 +41,7 @@ public class PlayerSkillHandler : MonoBehaviour
     public event Action OnLoadoutChanged;
     public event Action<SkillDefinition> OnSkillUpgraded;
     public event Action<int> OnSkillCast;
+    public event Action<SkillDefinition> OnVariantChanged;
 
     public PlayerWeaponDefinition Weapon => weapon;
     public IReadOnlyList<SkillDefinition> Owned => _owned;
@@ -81,6 +88,8 @@ public class PlayerSkillHandler : MonoBehaviour
         BuildCatalog();
         _owned.Clear();
         _levelBySkill.Clear();
+        _unlockedVariants.Clear();
+        _activeVariantBySkill.Clear();
 
         foreach (var skill in startingSkills)
         {
@@ -177,6 +186,43 @@ public class PlayerSkillHandler : MonoBehaviour
         return true;
     }
 
+    public int RunesPerVariant => runesPerVariant;
+
+    public SkillVariantDefinition GetActiveVariant(SkillDefinition skill)
+        => skill != null && _activeVariantBySkill.TryGetValue(skill, out var variant) ? variant : null;
+
+    public bool IsVariantUnlocked(SkillVariantDefinition variant) => variant != null && _unlockedVariants.Contains(variant);
+
+    public bool IsVariantActive(SkillDefinition skill, SkillVariantDefinition variant)
+        => variant != null && GetActiveVariant(skill) == variant;
+
+    public int GetVariantCost(SkillVariantDefinition variant) => IsVariantUnlocked(variant) ? 0 : runesPerVariant;
+
+    public bool CanActivateVariant(SkillDefinition skill, SkillVariantDefinition variant, PlayerStatsAggregator stats)
+        => Owns(skill) && skill.HasVariant(variant) && !IsVariantActive(skill, variant)
+           && stats != null && stats.Runes >= GetVariantCost(variant);
+
+    public bool TryActivateVariant(SkillDefinition skill, SkillVariantDefinition variant, PlayerStatsAggregator stats)
+    {
+        if (!CanActivateVariant(skill, variant, stats)) return false;
+
+        stats.SpendRunes(GetVariantCost(variant));
+        _unlockedVariants.Add(variant);
+        _activeVariantBySkill[skill] = variant;
+
+        Debug.Log($"[Skills] {skill.skillName}: variante {variant.variantName} ativa");
+        OnVariantChanged?.Invoke(skill);
+        return true;
+    }
+
+    public bool ClearVariant(SkillDefinition skill)
+    {
+        if (skill == null || !_activeVariantBySkill.Remove(skill)) return false;
+
+        OnVariantChanged?.Invoke(skill);
+        return true;
+    }
+
     public bool IsSlotUnlocked(int slot) => slot >= 0 && slot < _unlockedSlots;
 
     public SkillDefinition GetSlot(int slot)
@@ -255,7 +301,7 @@ public class PlayerSkillHandler : MonoBehaviour
 
         var skill = _slots[slot];
         int level = GetLevel(skill);
-        skill.Cast(context, level);
+        skill.Cast(context, level, GetActiveVariant(skill));
 
         float cooldown = skill.GetCooldown(level);
         _cooldownDuration[slot] = cooldown;

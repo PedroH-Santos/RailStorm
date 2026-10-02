@@ -20,6 +20,8 @@ namespace StarterAssets
 
         [Header("Economia")]
         [SerializeField] int _coins = 50;
+        [Tooltip("Runas iniciais. A fonte real é o mini-chefe; este valor serve para testar as variantes.")]
+        [SerializeField] int _runes = 0;
 
         [Header("Sorte")]
         [Range(0f, 100f)]
@@ -73,6 +75,12 @@ namespace StarterAssets
             set => _coins = Mathf.Max(0, value);
         }
 
+        public int Runes
+        {
+            get => _runes;
+            set => _runes = Mathf.Max(0, value);
+        }
+
         public float LuckPercent
         {
             get => _luckPercent;
@@ -91,11 +99,14 @@ namespace StarterAssets
             Add(EStatKey.MoveSpeed, "Velocidade", "AttributesContainer", () => $"{MoveSpeed:F1}");
             Add(EStatKey.LuckPercent, "Sorte", "AttributesContainer", () => $"{LuckPercent:F0}%");
             Add(EStatKey.Coins, "Moedas", "ResourcesContainer", () => $"{Coins}", highlight: true);
+            Add(EStatKey.Runes, "Runas", "ResourcesContainer", () => $"{Runes}", highlight: true);
         }
 
         void Add(EStatKey key, string label, string group, Func<string> getValue, bool highlight = false) =>
             _stats.Add(new StatDescriptor { Key = key, Label = label, Group = group, GetValue = getValue, Highlight = highlight });
 
         public void SpendCoins(int amount) => Coins -= amount;
+
+        public void SpendRunes(int amount) => Runes -= amount;
     }
 }

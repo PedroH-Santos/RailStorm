@@ -12,6 +12,7 @@ public enum BlacksmithRowMode
     Upgrade,
     Buy,
     Equip,
+    Rune,
 }
 
 public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointerClickHandler
@@ -44,6 +45,15 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
     public string equipPromptText = "Equipar em";
     public GameObject selectionBrackets;
 
+    [Header("Runas (aba RUNAS)")]
+    public GameObject runeIcon;
+    public string activateText = "ATIVAR";
+    public string deactivateText = "DESATIVAR";
+    public string variantActiveText = "Ativa";
+    public string variantUnlockedText = "Liberada";
+    public string variantLockedText = "Bloqueada";
+    public string freeText = "Grátis";
+
     [Header("Teclas (aba EQUIPAR)")]
     public GameObject slotButtonsRoot;
     public List<Button> slotButtons = new();
@@ -60,6 +70,7 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
 
     public SkillDefinition Skill { get; private set; }
     public BlacksmithRowMode Mode { get; private set; }
+    public SkillVariantDefinition Variant { get; private set; }
 
     Action<BlacksmithSkillRowUI> _onFocus;
     Action<BlacksmithSkillRowUI> _onAction;
@@ -144,6 +155,39 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
         }
     }
 
+    public void SetupRune(SkillDefinition skill, int level, SkillVariantDefinition variant, bool active, bool unlocked, int cost, bool affordable,
+        Action<BlacksmithSkillRowUI> onFocus, Action<BlacksmithSkillRowUI> onAction)
+    {
+        Bind(skill, level, BlacksmithRowMode.Rune, onFocus, onAction);
+        Variant = variant;
+
+        if (nameText != null) nameText.text = variant.variantName;
+
+        if (iconImage != null && variant.icon != null)
+        {
+            iconImage.sprite = variant.icon;
+            iconImage.enabled = true;
+        }
+
+        string state = active ? variantActiveText : unlocked ? variantUnlockedText : variantLockedText;
+        if (levelText != null) levelText.text = state;
+
+        bool charges = !active && !unlocked;
+
+        CaptureCostColor();
+        if (costText != null)
+        {
+            costText.text = active ? variantActiveText : charges ? cost.ToString() : freeText;
+            var theme = UIThemeConfig.Instance;
+            costText.color = !charges || affordable || theme == null ? _costColor : theme.actionDestructive;
+        }
+
+        if (coinIcon != null) coinIcon.SetActive(false);
+        if (runeIcon != null) runeIcon.SetActive(charges);
+        if (upgradeLabel != null) upgradeLabel.text = active ? deactivateText : activateText;
+        if (upgradeButton != null) upgradeButton.interactable = active || affordable;
+    }
+
     static string LevelLabel(SkillDefinition skill, int level) => $"Nv. {level + 1}/{skill.LevelCount}";
 
     void SetLevelText(string levelLabel, string equippedKey, bool showUnequipped)
@@ -160,6 +204,7 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
     {
         Skill = skill;
         Mode = mode;
+        Variant = null;
         _onFocus = onFocus;
         _onAction = onAction;
         _onSlot = null;
@@ -167,6 +212,7 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
 
         if (upgradeButton != null) upgradeButton.gameObject.SetActive(true);
         if (slotButtonsRoot != null) slotButtonsRoot.SetActive(false);
+        if (runeIcon != null) runeIcon.SetActive(false);
 
         if (iconImage != null)
         {

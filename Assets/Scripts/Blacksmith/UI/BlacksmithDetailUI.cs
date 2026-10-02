@@ -39,6 +39,12 @@ public class BlacksmithDetailUI : MonoBehaviour
     public string maxLevelCostText = "MÁX";
     public string newSkillText = "NOVA";
 
+    [Header("Runas (aba RUNAS)")]
+    public List<GameObject> coinIcons = new();
+    public List<GameObject> runeIcons = new();
+    [Tooltip("Linha da carteira. Some na aba RUNAS: o saldo de Runas fica no painel de Status.")]
+    public GameObject walletRow;
+
     [Header("Vazio")]
     public GameObject contentRoot;
     public GameObject emptyState;
@@ -65,6 +71,7 @@ public class BlacksmithDetailUI : MonoBehaviour
         if (emptyState != null) emptyState.SetActive(!hasSkill);
 
         if (walletBox != null) walletBox.SetActive(mode != BlacksmithRowMode.Equip);
+        SetCurrency(false);
 
         if (!hasSkill)
         {
@@ -72,30 +79,80 @@ public class BlacksmithDetailUI : MonoBehaviour
             return;
         }
 
-        if (nameText != null) nameText.text = skill.skillName;
-        if (levelText != null)
+        string levelLabel = $"Nível {level + 1} / {skill.LevelCount}";
+        if (mode == BlacksmithRowMode.Buy) levelLabel = $"{newSkillText}  ·  {levelLabel}";
+        else if (isMax) levelLabel = $"{levelLabel} (máx.)";
+
+        ApplyHeader(skill.skillName, levelLabel, skill.description, skill.icon, skill.RarityForLevel(level));
+
+        BuildRows(BuildLines(skill, level, isMax || mode != BlacksmithRowMode.Upgrade));
+        SetWallet(coins, affordable, isMax && mode == BlacksmithRowMode.Upgrade, cost);
+        PlayCardPunch(animate);
+    }
+
+    public void ShowVariant(SkillDefinition skill, SkillVariantDefinition variant, int level, bool active, bool unlocked,
+        int cost, bool affordable, bool animate)
+    {
+        if (contentRoot != null) contentRoot.SetActive(true);
+        if (emptyState != null) emptyState.SetActive(false);
+        bool charges = !active && !unlocked;
+        if (walletBox != null) walletBox.SetActive(charges);
+        SetCurrency(true);
+
+        ApplyHeader(variant.variantName, skill.skillName, variant.description,
+            variant.icon != null ? variant.icon : skill.icon, skill.RarityForLevel(level));
+
+        BuildRows(BuildLines(skill, level, true));
+
+        if (costText != null)
         {
-            string levelLabel = $"Nível {level + 1} / {skill.LevelCount}";
-            if (mode == BlacksmithRowMode.Buy) levelText.text = $"{newSkillText}  ·  {levelLabel}";
-            else if (isMax) levelText.text = $"{levelLabel} (máx.)";
-            else levelText.text = levelLabel;
+            costText.text = cost.ToString();
+            var theme = UIThemeConfig.Instance;
+            costText.color = affordable || theme == null ? _costColor : theme.actionDestructive;
         }
+
+        PlayCardPunch(animate);
+    }
+
+    void SetCurrency(bool runes)
+    {
+        if (walletRow != null) walletRow.SetActive(!runes);
+
+        foreach (var icon in coinIcons)
+            if (icon != null) icon.SetActive(!runes);
+
+        foreach (var icon in runeIcons)
+            if (icon != null) icon.SetActive(runes);
+    }
+
+    void PlayCardPunch(bool animate)
+    {
+        if (!animate || card == null) return;
+
+        card.DOKill(true);
+        card.localScale = Vector3.one;
+        card.DOPunchScale(Vector3.one * 0.03f, 0.22f, 6, 0.5f).AsUI(card.gameObject);
+    }
+
+    void ApplyHeader(string title, string levelLabel, string description, Sprite icon, int rarity)
+    {
+        if (nameText != null) nameText.text = title;
+        if (levelText != null) levelText.text = levelLabel;
 
         if (descriptionText != null)
         {
-            bool hasDescription = !string.IsNullOrWhiteSpace(skill.description);
+            bool hasDescription = !string.IsNullOrWhiteSpace(description);
             descriptionText.gameObject.SetActive(hasDescription);
             if (descriptionBox != null) descriptionBox.SetActive(hasDescription);
-            descriptionText.text = skill.description;
+            descriptionText.text = description;
         }
 
         if (iconImage != null)
         {
-            iconImage.sprite = skill.icon;
-            iconImage.enabled = skill.icon != null;
+            iconImage.sprite = icon;
+            iconImage.enabled = icon != null;
         }
 
-        int rarity = skill.RarityForLevel(level);
         Color plateColor = RarityHelper.Color(rarity);
 
         if (iconPlate != null)
@@ -118,16 +175,6 @@ public class BlacksmithDetailUI : MonoBehaviour
         var theme = UIThemeConfig.Instance;
         if (cardFill != null && theme != null)
             cardFill.color = Color.Lerp(theme.panelBackground, Shade(plateColor, cardFillDarkness), cardFillRarityBlend);
-
-        BuildRows(BuildLines(skill, level, isMax || mode != BlacksmithRowMode.Upgrade));
-        SetWallet(coins, affordable, isMax && mode == BlacksmithRowMode.Upgrade, cost);
-
-        if (animate && card != null)
-        {
-            card.DOKill(true);
-            card.localScale = Vector3.one;
-            card.DOPunchScale(Vector3.one * 0.03f, 0.22f, 6, 0.5f).AsUI(card.gameObject);
-        }
     }
 
     List<TooltipStatLine> BuildLines(SkillDefinition skill, int level, bool currentOnly)

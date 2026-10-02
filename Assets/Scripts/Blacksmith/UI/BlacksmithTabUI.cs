@@ -8,6 +8,7 @@ public enum BlacksmithTab
 {
     Shop,
     Equip,
+    Runes,
 }
 
 public class BlacksmithTabUI : MonoBehaviour

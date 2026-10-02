@@ -10,6 +10,9 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
     [Header("Loja do ferreiro")]
     [Min(0)] public int purchaseCost = 50;
 
+    [Header("Variantes (ativadas com Runa)")]
+    public List<SkillVariantDefinition> variants = new();
+
     public string DisplayName => skillName;
     public Sprite Icon => icon;
 
@@ -25,7 +28,9 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
     public abstract IReadOnlyList<ESkillStatTarget> DisplayStats { get; }
     public abstract float GetStatValue(int level, ESkillStatTarget target);
 
-    public abstract void Cast(SkillCastContext context, int level);
+    public abstract void Cast(SkillCastContext context, int level, SkillVariantDefinition variant);
+
+    public bool HasVariant(SkillVariantDefinition variant) => variant != null && variants.Contains(variant);
 
     public IEnumerable<ESkillStatTarget> VisibleStats(int level)
     {

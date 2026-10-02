@@ -1,13 +1,24 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class StatsUI : MonoBehaviour
 {
+    [Serializable]
+    public struct HighlightRow
+    {
+        public EStatKey key;
+        public GameObject prefab;
+    }
+
     public Transform entitiesContainer;
     public GameObject statRowPrefab;
 
     [Tooltip("Linha usada para stats marcados como destaque (ex.: Moedas). Se vazio, usa a linha padrão.")]
     public GameObject highlightRowPrefab;
+
+    [Tooltip("Linha de destaque própria de um stat (ex.: Runas). Quem não estiver aqui usa a linha de destaque padrão.")]
+    public List<HighlightRow> highlightRowsByStat = new();
 
     readonly List<(StatRowUI row, StatDescriptor stat)> _bound = new();
 
@@ -35,7 +46,7 @@ public class StatsUI : MonoBehaviour
         {
             if (!groups.TryGetValue(stat.Group, out var container)) continue;
 
-            var prefab = stat.Highlight && highlightRowPrefab != null ? highlightRowPrefab : statRowPrefab;
+            var prefab = stat.Highlight ? HighlightPrefabFor(stat.Key) : statRowPrefab;
             var row = Instantiate(prefab, container);
             row.SetActive(true);
 
@@ -45,6 +56,14 @@ public class StatsUI : MonoBehaviour
             rowUI.Setup(stat.Label, stat.GetValue());
             _bound.Add((rowUI, stat));
         }
+    }
+
+    GameObject HighlightPrefabFor(EStatKey key)
+    {
+        foreach (var entry in highlightRowsByStat)
+            if (entry.key == key && entry.prefab != null) return entry.prefab;
+
+        return highlightRowPrefab != null ? highlightRowPrefab : statRowPrefab;
     }
 
     void LateUpdate()

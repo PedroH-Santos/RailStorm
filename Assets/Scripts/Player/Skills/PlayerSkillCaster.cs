@@ -54,7 +54,8 @@ public class PlayerSkillCaster : MonoBehaviour
         {
             if (!IsHeld(bindings[slot]) || !_handler.IsReady(slot)) continue;
 
-            var context = new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner);
+            var burn = _handler.Weapon != null ? _handler.Weapon.burn : null;
+            var context = new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn);
             if (_handler.TryCast(slot, context)) PlayAttackAnimation();
         }
     }

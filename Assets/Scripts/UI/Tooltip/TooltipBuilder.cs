@@ -87,6 +87,10 @@ public static class TooltipBuilder
 
         data.Stats.Add(new TooltipStatLine("Nível", $"{level + 1} / {skill.LevelCount}"));
 
+        var variant = handler != null ? handler.GetActiveVariant(skill) : null;
+        if (variant != null)
+            data.Stats.Add(new TooltipStatLine("Variante", variant.variantName));
+
         int slot = handler != null ? handler.IndexOf(skill) : -1;
         if (slot >= 0 && PlayerSkillCaster.Instance != null)
             data.Stats.Add(new TooltipStatLine("Tecla", PlayerSkillCaster.Instance.GetKeyLabel(slot)));

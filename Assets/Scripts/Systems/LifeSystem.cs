@@ -7,6 +7,7 @@ public class LifeSystem : MonoBehaviour
     [Header("Fighting")]
     [SerializeField] private int life = 100;
 
+    public event Action<int> OnDamaged;
     public event Action<GameObject> OnDeath;
     public static event Action<GameObject> OnAnyDeath;
 
@@ -23,6 +24,8 @@ public class LifeSystem : MonoBehaviour
     public void Damage(int damage)
     {
         if (_dead) return;
+
+        OnDamaged?.Invoke(damage);
 
         if (_stats != null)
         {

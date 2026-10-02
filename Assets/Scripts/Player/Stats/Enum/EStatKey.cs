@@ -4,6 +4,7 @@ public enum EStatKey {
     MaxHP, 
     MoveSpeed, 
     LuckPercent, 
-    Coins 
+    Coins,
+    Runes
 }
 
