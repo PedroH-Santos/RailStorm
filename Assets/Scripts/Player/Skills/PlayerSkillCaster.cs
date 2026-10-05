@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -24,11 +25,8 @@ public class PlayerSkillCaster : MonoBehaviour
         new SlotBinding { key = Key.L, gamepadButton = GamepadButton.RightTrigger, keyLabel = "L", gamepadLabel = "RT" },
     };
 
-    [Header("Animação")]
-    [SerializeField] private float animationInterval = 0.5f;
-
     PlayerSkillHandler _handler;
-    float _animationTimer;
+    bool[] _castingSlot;
 
     public static PlayerSkillCaster Instance { get; private set; }
 
@@ -37,6 +35,7 @@ public class PlayerSkillCaster : MonoBehaviour
         Instance = this;
         _handler = GetComponent<PlayerSkillHandler>();
         if (weaponController == null) weaponController = GetComponent<PlayerWeaponController>();
+        _castingSlot = new bool[bindings.Length];
     }
 
     void OnDestroy()
@@ -44,37 +43,47 @@ public class PlayerSkillCaster : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
+    void OnDisable()
+    {
+        StopAllCoroutines();
+        Array.Clear(_castingSlot, 0, _castingSlot.Length);
+    }
+
     void Update()
     {
-        _animationTimer += Time.deltaTime;
-
         if (Time.timeScale <= 0f || weaponController == null) return;
 
         for (int slot = 0; slot < _handler.UnlockedSlots && slot < bindings.Length; slot++)
         {
-            if (!IsHeld(bindings[slot]) || !_handler.IsReady(slot)) continue;
-
-            var burn = _handler.Weapon != null ? _handler.Weapon.burn : null;
-            var context = new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn);
-            if (_handler.TryCast(slot, context)) PlayAttackAnimation();
+            if (_castingSlot[slot] || !WasPressed(bindings[slot]) || !_handler.IsReady(slot)) continue;
+            StartCoroutine(CastAfterWindup(slot));
         }
     }
 
-    static bool IsHeld(SlotBinding binding)
+    IEnumerator CastAfterWindup(int slot)
     {
-        var keyboard = Keyboard.current;
-        if (keyboard != null && binding.key != Key.None && keyboard[binding.key].isPressed) return true;
+        _castingSlot[slot] = true;
 
-        var gamepad = Gamepad.current;
-        return gamepad != null && gamepad[binding.gamepadButton].isPressed;
+        if (weaponController.Animation != null) weaponController.Animation.PlayAttackAnimation();
+
+        var skill = _handler.GetSlot(slot);
+        float delay = skill != null ? skill.castDelay : 0f;
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+
+        _castingSlot[slot] = false;
+
+        var burn = _handler.Weapon != null ? _handler.Weapon.burn : null;
+        var context = new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn);
+        _handler.TryCast(slot, context);
     }
 
-    void PlayAttackAnimation()
+    static bool WasPressed(SlotBinding binding)
     {
-        if (_animationTimer < animationInterval) return;
+        var keyboard = Keyboard.current;
+        if (keyboard != null && binding.key != Key.None && keyboard[binding.key].wasPressedThisFrame) return true;
 
-        _animationTimer = 0f;
-        if (weaponController.Animation != null) weaponController.Animation.PlayAttackAnimation();
+        var gamepad = Gamepad.current;
+        return gamepad != null && gamepad[binding.gamepadButton].wasPressedThisFrame;
     }
 
     public string GetKeyLabel(int slot)

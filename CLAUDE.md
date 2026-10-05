@@ -108,7 +108,7 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 - **`Stats/PlayerStatsAggregator.cs`** — hub central de stats: `HP`/`MaxHP` (clamp), `MoveSpeed`, `IdleSpeed`, `Coins` (nunca negativo), `LuckPercent` (clamp 0–100); registra `StatDescriptor`s para UI.
 - **`Systems/LifeSystem.cs`** — vida genérica (player ou inimigo); usa `PlayerStatsAggregator.HP` se presente, senão vida local própria; dispara `OnDeath` e o evento estático `OnAnyDeath` **uma vez só** (flag `_dead`/`IsDead`; antes, dois golpes no mesmo frame antes do `Destroy` disparavam a morte em dobro). Depois de morto, `Damage` é ignorado.
 - **Arma do personagem (paralela às armas do vagão)**: `PlayerWeapons/PlayerWeaponController.cs` cuida **só da mira** (mouse/gamepad) e expõe `FirePoint`, `AimDirection` e `Animation`. O ataque saiu dele em 22/09: cada ataque agora é uma **Skill** equipada num slot com tecla própria, com stats no asset (não no código) — ver 4.19. O projétil da bola de fogo é `PlayerWeapons/Skills/Fireball/FireballProjectile.cs`.
-- **`Animations/PlayerAnimationController.cs`** — alterna 2 índices de animação de ataque.
+- **`Animations/PlayerAnimationController.cs`**, **`PlayerCartLean.cs`**, **`PlayerHeadLook.cs`** — animação do personagem (fluxo de combate, inclinação pelo vagão, olhar). Ver 4.23.
 - **`Items/PlayerItemHandler.cs`** — ver seção 4.6.
 - **`Skills/PlayerPerkHandler.cs`** — ver seção 4.6.
 
@@ -1081,7 +1081,8 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 
 **Regras:**
 - **Slots e teclas:** até `SlotLimit = 3` slots. `startingUnlockedSlots` (padrão **1**) define quantos começam liberados; os outros aparecem com cadeado no ferreiro e **não** aparecem no HUD. A tecla é do **slot**, não da Skill: slot 1 = **J** / X (West), slot 2 = **K** / RB, slot 3 = **L** / RT (campo `bindings` do `PlayerSkillCaster`, editável no Inspector). O rótulo troca para o do gamepad quando `InventoryScreenInput.UsingGamepad`.
-- **Disparo:** segurar a tecla dispara sempre que a recarga do slot estiver zerada. Input é ignorado com `Time.timeScale == 0` (telas modais). A mira continua vindo do `PlayerWeaponController` (direção = `forward` do modelo do player).
+- **Disparo por clique (05/10):** cada aperto da tecla dispara uma vez, se a recarga do slot estiver zerada; segurar não repete. Input é ignorado com `Time.timeScale == 0` (telas modais). A mira continua vindo do `PlayerWeaponController` (direção = `forward` do modelo do player).
+- **Atraso de lançamento (`SkillDefinition.castDelay`):** a animação de ataque começa no clique, e o ataque só sai depois de `castDelay` segundos, para casar com o golpe. Bola de Fogo: `4/24 s` (o golpe da `Fireball` é o frame 4). A mira e o ponto de disparo são lidos no momento da saída, e a recarga conta a partir dela. Enquanto o ataque não sai, o mesmo slot não aceita outro clique.
 - **Recarga é opcional:** `GetCooldown(nível) == 0` significa Skill **sem recarga**. Ela dispara em todo frame em que a tecla estiver pressionada, então Skill sem recarga precisa controlar a própria cadência (ou ser do tipo contínuo); no HUD ela não mostra radial nem número, e no ferreiro/tooltip a linha "Recarga" vira "Sem recarga".
 - **Recarga por slot:** cada slot tem a própria recarga (`Time.deltaTime`, congela quando o jogo pausa). Trocar uma Skill de slot leva a recarga junto.
 - **Nível:** começa no nível 1 (índice 0) e vai até `LevelCount`. Subir um nível custa o `upgradeCost` do nível **atual** (definido no asset), debitado de `PlayerStatsAggregator.Coins`. Sem saldo, MELHORAR fica desativado e o custo fica em `actionDestructive`; no último nível o botão vira "MÁXIMO" e o custo "MÁX". O nível é **da run** (vive no `PlayerSkillHandler`, nunca no SO).
@@ -1108,7 +1109,7 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 
 **Runtime (no GameObject `Player`):**
 - **`Player/Skills/PlayerSkillHandler`** — dono do progresso (padrão da 4.12, `Instance`): `weapon`, `startingSkills`, `startingEquipped`, `maxSlots`, `startingUnlockedSlots` (stand-in da escolha pré-run). API: `Owned`, `Catalog`, `GetPurchaseCost`, `CanBuy`, `TryBuy`, `AcquireSkill` (entrada pública para qualquer fonte de skill nova; hoje só o ferreiro chama), `GetLevel`, `IsMaxLevel`, `GetUpgradeCost`, `CanUpgrade`, `TryUpgrade`, `GetSlot`, `IndexOf`, `Equip`, `Unequip`, `UnlockSlot`, `IsSlotUnlocked`, `HasCooldown`, `CooldownRemaining`, `CooldownNormalized`, `IsReady`, `TryCast`, `ResetForNewRun`. Eventos `OnSkillAcquired`, `OnSkillsChanged` (posse/nível, inventário), `OnLoadoutChanged` (slots, HUD), `OnSkillUpgraded`, `OnSkillCast(slot)`.
-- **`Player/Skills/PlayerSkillCaster`** — lê as teclas dos slots, monta o `SkillCastContext` a partir do `PlayerWeaponController`, chama `TryCast` e toca a animação de ataque com `animationInterval = 0.5s`. `GetKeyLabel(slot)` é usado pelo HUD, ferreiro e tooltip.
+- **`Player/Skills/PlayerSkillCaster`** — lê as teclas dos slots, monta o `SkillCastContext` a partir do `PlayerWeaponController`, toca a animação de ataque na hora do clique e chama `TryCast` depois do `castDelay` da Skill (corrotina por slot). `GetKeyLabel(slot)` é usado pelo HUD, ferreiro e tooltip.
 
 **Tela do ferreiro (`BlackSmithUpgradeSkills/CanvasBlacksmith`, cópia da `CanvasItemShop`, mesmo estilo cartoon):**
 - `BlackSmithUpgradeSkills` (prefab `Assets/Prefabs/Enviroment/BlackSmithUpgradeSkills.prefab`) é o ferreiro no mundo: NPC, `BlacksmithStore` e o `BlacksmithZone` (que adiciona o `SphereCollider` trigger). **O prefab não contém UI.**
@@ -1218,6 +1219,67 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - `BurnFlame.prefab` (4.21) usa o mesmo `FlamePuff`, para a Queimadura ler como o mesmo fogo.
 - **`LifeSystem.OnDamaged`** (evento novo, dispara antes de aplicar o dano) e **`Combat/HitFlash`** (no `Orc.prefab`): escreve `_EmissionColor` e `_BaseColor` por `MaterialPropertyBlock` e o limpa ao terminar (para não tirar o renderer do SRP Batcher), mais um `DOPunchScale`. Inimigo novo precisa do componente no prefab para piscar.
 
+### 4.23 Animações do personagem (Wander) — `Assets/Meshes/Player/Player.fbx`, `Assets/Animations/Player/PlayerAnimator.controller` (05/10)
+
+**O que é / ideia central:** o conjunto de animações do mago, feitas à mão no Blender (`Player2.blend`, fora do repo). Cobre combate, momentos fora de combate e a reação do corpo ao movimento do vagão.
+
+**Regras:**
+- O rig é **Generic**, não Humanoid: pernas de 4 ossos, mão em corrente única e proporções chibi não encaixam no Humanoid. Olhar para pontos de interesse fica por script ou Animation Rigging.
+- Toda animação começa ou termina na `Idle_Combat` ou na `Idle_Relaxed`.
+- Clipes (24 fps):
+
+  | Clipe | Frames | Uso |
+  |---|---|---|
+  | `Idle_Combat` | 0–48, loop | parado durante a wave |
+  | `Idle_Relaxed` | 0–48, loop | parado fora de combate (cajado ao lado, mão para trás) |
+  | `Fireball` | 0–14 | ataque da Bola de Fogo, **o tiro sai no frame 4** |
+  | `Guard_Enter` | 0–16 | relaxada → combate, quando a wave começa |
+  | `Celebrate` | 0–58 | fim da wave; combate → relaxada; fogo na mão esquerda nos frames 13–34 |
+  | `Celebrate_Quick` | 0–30 | pegar item ou subir de nível; começa e termina em combate; fogo nos frames 8–20 |
+  | `Gesture_HatFix`, `Gesture_DustOff` | 0–42, 0–40 | gestos ocasionais na `Idle_Relaxed` |
+  | `Lean_F/B/L/R` | 10–20, loop, **aditivo** | inclinação pelo vagão — **fora de uso, a rever** (ver abaixo) |
+  | `Jolt`, `React_Start`, `React_Brake` | 0–10, 0–14, 0–14, **aditivo** | reações ao vagão — **fora de uso, a rever** |
+- Os clipes aditivos usam a própria pose do frame 0 (igual à `Idle_Combat`) como referência (`hasAdditiveReferencePose`). Nos `Lean_*` o frame 0 é a referência e a pose de inclinação fica nos frames 10–20.
+- O cajado (`P_Weapon`) não é filho do osso da mão no FBX: a posição dele está gravada em cada clipe. Exportar sempre com **faixas de NLA** (uma por ação), senão o cajado fica parado.
+- O osso `Hat` é desconectado da cabeça, para o `Gesture_HatFix` conseguir levantar o chapéu.
+
+**Exportação (para não quebrar a cena):** mesma hierarquia e mesmos nomes de objeto (`P_Armature`, `P_Corpo`, `P_Roupa`, `P_Chapeu`, `P_Weapon`), FBX com escala `FBX_SCALE_NONE`, unidades aplicadas e leaf bones. Com `fileIdsGeneration: 2` os IDs dos objetos vêm dos nomes, então a instância da `SampleScene` (overrides, `Animator`, `P_LocalBullet` dentro do `P_Weapon`) continua ligada. Os clipes ganham `internalID` fixo no `.meta`: a `Idle_Combat` herdou o ID da antiga `Idle` e a `Fireball` o do antigo `Attack`, que são os estados do `PlayerAnimator`.
+
+#### Integração no Unity (05/10)
+
+**O que é / ideia central:** o personagem reage ao que acontece no jogo: fica relaxado entre as waves e entra em guarda quando uma começa, comemora o fim da wave e cada coisa nova que ganha, e olha para lojas e baús por perto.
+
+**Regras:**
+- **Combate:** `EnemySpawner.OnWaveStarted` liga `inCombat` (`Idle_Relaxed` → `Guard_Enter` → `Idle_Combat`). `OnWaveCleared` desliga e dispara `Celebrate`, que termina na `Idle_Relaxed`. O jogo começa na `Idle_Relaxed`.
+- **Gestos:** só na `Idle_Relaxed`, fora de combate, sem outra ação tocando. Um dos dois gestos é sorteado a cada `gestureInterval` (8–15 s).
+- **Comemoração rápida:** toca quando o "placar de progresso" sobe: itens possuídos + soma dos níveis de perks, Skills, armas do vagão e weapon perks. Por isso exilar ou vender não comemora. Se o ganho acontece com o jogo pausado (loja, baú, carta), a `Celebrate_Quick` toca quando o jogo volta, e nunca durante a `Celebrate`.
+- **Fogo na mão:** instância do `Assets/Prefabs/VFX/BurnFlame.prefab` (escala `0.7`), sem pai (a mão tem escala de mundo ~11 e esticaria o efeito), seguindo o osso `UpperHand.L` no `LateUpdate`. Acende nos trechos da `Celebrate` (13–34 de 58) e da `Celebrate_Quick` (8–20 de 30).
+- **Olhar:** pescoço e cabeça viram para o `MinimapMarker` mais próximo num raio de `7` (loja, venda, ferreiro, baú, orbe, totem). Limite de `60°` para os lados e `20°` para cima e para baixo; 30% do giro no pescoço. Alvo mais atrás que `84°` é ignorado. Só age com o personagem em Idle (`IsInIdlePose`): nunca durante ataque, comemoração ou gesto. Entra e sai em `0.25 s`.
+
+**`PlayerAnimator.controller`** (no modelo `Player/Player`, Write Defaults ligado em todos os estados):
+
+| Camada | Modo | Estados |
+|---|---|---|
+| Base | — | `Idle_Relaxed` (padrão, tag `Idle`), `Guard_Enter`, `Idle_Combat` (tag `Idle`), `Celebrate`, `Gesture_HatFix`, `Gesture_DustOff` |
+| Action | Override, peso 1 | `Empty` (tag `Empty`), `Fireball` (Any State, trigger `attack`, `0.04 s`, reinicia a cada clique), `Celebrate_Quick` |
+**Código (no modelo `Player/Player`):**
+- **`Player/Animations/PlayerAnimationController.cs`** — fachada do Animator e fluxo: `PlayAttackAnimation`, `EnterCombat`, `LeaveCombat`, `PlayQuickCelebrate`, `InCombat`, `IsInIdlePose`; gestos, placar de progresso e o fogo na mão.
+- **`Player/Animations/PlayerHeadLook.cs`** — olhar no `LateUpdate` (`DefaultExecutionOrder(100)`), girando `Neck` e `Head` por cima da animação.
+
+#### Pendente: reação do corpo ao movimento do vagão (retirada em 05/10, a rever)
+
+**O que é / ideia central:** o mago se inclinar com o vagão (frente na freada, trás na arrancada, para fora nas curvas) e dar trancos em eventos fortes (troca de trilho, inversão de sentido), para passar a sensação de velocidade.
+
+**Status:** chegou a ser integrado no mesmo dia e foi **retirado a pedido do usuário**: o resultado em jogo não ficou bom, o personagem parecia reagir o tempo todo e não nos movimentos que importam. Foram removidos o script `PlayerCartLean`, as camadas aditivas `CartLean` e `Reactions` do `PlayerAnimator` e os parâmetros delas. **Os clipes `Lean_F/B/L/R`, `Jolt`, `React_Start` e `React_Brake` continuam no FBX, já configurados como aditivos, para a retomada.**
+
+**O que se aprendeu nas duas tentativas (ponto de partida para rever):**
+- **1ª versão:** derivava a aceleração da posição do vagão e passava por uma mola pouco amortecida (2,2 Hz, 0,45), com inclinação máxima em 14 m/s². Saturava a cada toque: o vagão vai de 0,5 a 15 m/s com aceleração 6, o que dá ~87 m/s². Também disparava `React_Start` a cada vez que o jogador voltava a apertar uma tecla.
+- **2ª versão:** sinais tirados da lógica do vagão (variação de `CurrentSpeed`; velocidade × giro do rumo), zona morta de 20%, sem mola, reações só em eventos fortes. Ficou calma, mas o usuário continuou não gostando do resultado.
+- **O mago gira com a mira, não com o vagão.** Uma inclinação fisicamente correta (no referencial do mundo) aparece em direções diferentes do corpo conforme ele mira, e isso pode ser parte do que lê errado. Ao rever, decidir com o usuário se a inclinação segue o vagão, a câmera ou o corpo, antes de ajustar números.
+- **O próprio movimento do vagão é brusco** (interpolação rápida até a velocidade máxima, inversão de sentido instantânea). Talvez a sensação de velocidade venha melhor do vagão (balanço do carrinho, poeira, câmera) do que do corpo do mago.
+
+> **A Idle de combate é sutil em jogo (05/10).** Medida em Play, ela funciona: cabeça varia ~4° e chapéu ~8°. Mas o modelo tem escala `0.18` e a câmera é isométrica e distante, então a respiração quase não aparece. Se precisar de mais leitura, aumentar a amplitude no Blender.
+
 ### 4.20 Minimapa — `Assets/Scripts/UI/Minimap/`, `CanvasHUD/MinimapFrame` (28/09)
 
 **O que é / ideia central:** um mapa redondo no canto superior direito do HUD que mostra, ao redor do vagão, os trilhos (liberados e bloqueados) e os pontos de interesse da run. Serve para o jogador saber para onde fica a loja, o ferreiro, o baú ou o orbe sem precisar procurar na tela. É **esquemático**: é desenhado a partir das próprias splines e de marcadores, sem câmera nem RenderTexture. A referência de leitura é o minimapa do Megabonk (círculo escuro, letras de direção, ícones pequenos), mas no estilo cartoon do projeto e com ícones que **representam** cada elemento.
@@ -1275,6 +1337,7 @@ Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 - **Sem `GameManager` central** — nenhuma classe orquestra estado global, transições de cena ou game over. **Pendência concreta ligada a isso (25/08):** `PlayerPerkHandler.ResetForNewRun()`, `PlayerCarWeaponHandler.ResetForNewRun()` e `PlayerItemHandler.ResetForNewRun()` existem e funcionam, mas **ninguém os chama**. Hoje isso não causa bug porque o progresso vive em runtime e morre com o GameObject (ver 4.12); passa a causar no momento em que existir uma segunda run sem recarregar a cena (morrer → recomeçar). Quem criar o `GameManager` deve chamar os três, mais `RunTracker.ResetForNewRun()` (tempo e kills do HUD, 4.17) e `PlayerSkillHandler.ResetForNewRun()` (níveis, slots e recargas das Skills, 4.19).
 - **Escolha do loadout antes da run (22/09, revisto 25/09)** — a tela pré-run também vai escolher região inicial e personagem (7.1, E1). O design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Só existe a **Bola de Fogo** (a Chuva de Brasas foi removida em 02/10 até ser refeita, 7.2).
 - **Runas sem fonte real (02/10)** — o mini-chefe que as daria não existe (7.1, E8). O saldo vem do campo `_runes` do `PlayerStatsAggregator` no Inspector (2 na cena, para teste).
+- **Reação do mago ao movimento do vagão (05/10)** — inclinação e trancos foram integrados e retirados por não ficarem bons em jogo; os clipes aditivos continuam no FBX. Ver "Pendente" na 4.23.
 - **Objetivos do HUD (25/09)** — o `ObjectivesPanel` (com o prefab `ObjectiveCard`) do `CanvasHUD` existe só como visual (4.17). Não há sistema de objetivos que instancie os cartões. O minimapa foi implementado em 28/09 (4.20).
 - **Sem save/load** — nenhum `PlayerPrefs`, `JsonUtility`, arquivo em disco, `SceneManager` ou `DontDestroyOnLoad` encontrado.
 - **Sem meta-progressão persistente** — nenhuma segunda moeda entre runs; `Coins` é só por run e reseta (`PlayerItemHandler.ResetForNewRun()`). Desenho em refinamento na 7.1 (E6).
@@ -1862,7 +1925,7 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 - **Tripla pode iniciar a Queimadura num disparo só:** cada projétil dá 1 acúmulo, então os três no mesmo alvo queimam um inimigo comum.
 - **A Tripla segue os status base da Skill** (regra geral das variantes, ver Runas): dano, recarga, alcance e velocidade são os do nível, sem tabela nem penalidade própria.
 
-- **Forma base:** segurar a tecla dispara **um projétil só**, em linha reta na direção da mira, que para no primeiro inimigo atingido. **1 acúmulo por acerto.** Sem bônus de dano contra quem está queimando: ela é a Skill que prepara o alvo, não a que cobra.
+- **Forma base:** cada clique na tecla dispara **um projétil só** (era "segurar"; mudou para clique em 05/10, ver 4.19), em linha reta na direção da mira, que para no primeiro inimigo atingido. **1 acúmulo por acerto.** Sem bônus de dano contra quem está queimando: ela é a Skill que prepara o alvo, não a que cobra.
 - **Níveis:** só dano, recarga, alcance e velocidade, com os números e preços de hoje. Sai a coluna Projéteis. `purchaseCost` 40.
 
   | Nível | Dano | Recarga | Alcance | Velocidade | Custo p/ próximo |

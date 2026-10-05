@@ -10,6 +10,10 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
     [Header("Loja do ferreiro")]
     [Min(0)] public int purchaseCost = 50;
 
+    [Header("Animação")]
+    [Tooltip("Segundos entre o clique e a saída do ataque, para casar com o golpe da animação.")]
+    [Min(0)] public float castDelay;
+
     [Header("Variantes (ativadas com Runa)")]
     public List<SkillVariantDefinition> variants = new();
 

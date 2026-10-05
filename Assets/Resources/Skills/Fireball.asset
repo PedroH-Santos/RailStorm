@@ -17,6 +17,7 @@ MonoBehaviour:
   description: "Dispara uma bola de fogo na dire\xE7\xE3o da mira. Segure a tecla
     para atirar sem parar. Cada acerto acumula Queimadura."
   purchaseCost: 40
+  castDelay: 0.16666667
   variants:
   - {fileID: 11400000, guid: 259f56438cff229408547e4f4028f378, type: 2}
   projectilePrefab: {fileID: 4630507691419853009, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}

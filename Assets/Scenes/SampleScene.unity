@@ -2537,6 +2537,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 27615433}
   m_CullTransparentMesh: 1
+--- !u!4 &29550794 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -2404083925819949381, guid: 04e041b21a895be438df7bff59c8ae9a, type: 3}
+  m_PrefabInstance: {fileID: 824333998}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &29552707
 GameObject:
   m_ObjectHideFlags: 0
@@ -24869,7 +24874,6 @@ MonoBehaviour:
     gamepadButton: 33
     keyLabel: L
     gamepadLabel: RT
-  animationInterval: 0.5
 --- !u!114 &337154719
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -50603,6 +50607,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 663334757}
   m_CullTransparentMesh: 1
+--- !u!4 &665491814 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -1408600914190565396, guid: 04e041b21a895be438df7bff59c8ae9a, type: 3}
+  m_PrefabInstance: {fileID: 824333998}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &666040937
 GameObject:
   m_ObjectHideFlags: 0
@@ -71106,6 +71115,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 04e041b21a895be438df7bff59c8ae9a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1824179926}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 04e041b21a895be438df7bff59c8ae9a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1824179927}
   m_SourcePrefab: {fileID: 100100000, guid: 04e041b21a895be438df7bff59c8ae9a, type: 3}
 --- !u!4 &824333999 stripped
 Transform:
@@ -89908,6 +89920,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1116814996}
   m_CullTransparentMesh: 1
+--- !u!4 &1117951309 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -3386228076080917945, guid: 04e041b21a895be438df7bff59c8ae9a, type: 3}
+  m_PrefabInstance: {fileID: 824333998}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1118283998
 GameObject:
   m_ObjectHideFlags: 0
@@ -143886,6 +143903,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee8576139206db143a26f9fe07396b25, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
+  gestureInterval: {x: 8, y: 15}
+  gestureCount: 2
+  handFlamePrefab: {fileID: 5696451764467635657, guid: a922b9d6dc668a142854cbb8bbe19538, type: 3}
+  handFlameBone: {fileID: 1117951309}
+  handFlameOffset: {x: 0, y: 0.25, z: 0}
+  handFlameScale: 0.7
+  celebrateFlameWindow: {x: 0.22413793, y: 0.5862069}
+  quickCelebrateFlameWindow: {x: 0.26666668, y: 0.6666667}
+--- !u!114 &1824179927
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1824179924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88e701c9642dea44196eab245c6161bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHeadLook
+  neck: {fileID: 29550794}
+  head: {fileID: 665491814}
+  animationController: {fileID: 1824179926}
+  lookRadius: 7
+  maxYaw: 60
+  maxPitch: 20
+  ignoreBehindFactor: 1.4
+  neckShare: 0.3
+  blendTime: 0.25
+  aimSmoothing: 0.15
 --- !u!1 &1827540669
 GameObject:
   m_ObjectHideFlags: 0
