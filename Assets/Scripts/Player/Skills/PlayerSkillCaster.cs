@@ -17,6 +17,7 @@ public class PlayerSkillCaster : MonoBehaviour
     }
 
     [SerializeField] private PlayerWeaponController weaponController;
+    [SerializeField] private SkillHoldToAimController holdToAim;
 
     [SerializeField] private SlotBinding[] bindings =
     {
@@ -35,6 +36,7 @@ public class PlayerSkillCaster : MonoBehaviour
         Instance = this;
         _handler = GetComponent<PlayerSkillHandler>();
         if (weaponController == null) weaponController = GetComponent<PlayerWeaponController>();
+        if (holdToAim == null) holdToAim = GetComponent<SkillHoldToAimController>();
         _castingSlot = new bool[bindings.Length];
     }
 
@@ -47,6 +49,7 @@ public class PlayerSkillCaster : MonoBehaviour
     {
         StopAllCoroutines();
         Array.Clear(_castingSlot, 0, _castingSlot.Length);
+        if (holdToAim != null) holdToAim.HideAllMarkers();
     }
 
     void Update()
@@ -56,11 +59,42 @@ public class PlayerSkillCaster : MonoBehaviour
         for (int slot = 0; slot < _handler.UnlockedSlots && slot < bindings.Length; slot++)
         {
             if (_castingSlot[slot] || !WasPressed(bindings[slot]) || !_handler.IsReady(slot)) continue;
-            StartCoroutine(CastAfterWindup(slot));
+
+            if (_handler.GetSlot(slot) is IHoldToAimSkill holdToAimSkill && holdToAim != null)
+                StartCoroutine(AimThenCast(slot, holdToAimSkill));
+            else
+                StartCoroutine(CastAfterWindup(slot));
         }
     }
 
-    IEnumerator CastAfterWindup(int slot)
+    IEnumerator AimThenCast(int slot, IHoldToAimSkill holdToAimSkill)
+    {
+        _castingSlot[slot] = true;
+
+        var skill = _handler.GetSlot(slot);
+        bool released = false;
+        Vector3 aimPoint = Vector3.zero;
+
+        yield return holdToAim.HoldToAim(
+            holdToAimSkill,
+            _handler.GetLevel(skill),
+            weaponController,
+            () => IsHeld(bindings[slot]),
+            () => Time.timeScale > 0f && _handler.GetSlot(slot) == skill,
+            point => { released = true; aimPoint = point; });
+
+        if (!released)
+        {
+            _castingSlot[slot] = false;
+            yield break;
+        }
+
+        yield return CastAfterWindup(slot, aimPoint);
+    }
+
+    IEnumerator CastAfterWindup(int slot) => CastAfterWindup(slot, null);
+
+    IEnumerator CastAfterWindup(int slot, Vector3? aimPoint)
     {
         _castingSlot[slot] = true;
 
@@ -73,7 +107,9 @@ public class PlayerSkillCaster : MonoBehaviour
         _castingSlot[slot] = false;
 
         var burn = _handler.Weapon != null ? _handler.Weapon.burn : null;
-        var context = new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn);
+        var context = aimPoint.HasValue
+            ? new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn, aimPoint.Value)
+            : new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn);
         _handler.TryCast(slot, context);
     }
 
@@ -84,6 +120,15 @@ public class PlayerSkillCaster : MonoBehaviour
 
         var gamepad = Gamepad.current;
         return gamepad != null && gamepad[binding.gamepadButton].wasPressedThisFrame;
+    }
+
+    static bool IsHeld(SlotBinding binding)
+    {
+        var keyboard = Keyboard.current;
+        if (keyboard != null && binding.key != Key.None && keyboard[binding.key].isPressed) return true;
+
+        var gamepad = Gamepad.current;
+        return gamepad != null && gamepad[binding.gamepadButton].isPressed;
     }
 
     public string GetKeyLabel(int slot)

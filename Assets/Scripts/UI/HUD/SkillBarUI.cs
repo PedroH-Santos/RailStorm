@@ -83,6 +83,7 @@ public class SkillBarUI : MonoBehaviour
             var skill = handler.GetSlot(i);
             float duration = skill != null ? skill.GetCooldown(handler.GetLevel(skill)) : 0f;
             slot.Tick(handler.HasCooldown(i), handler.CooldownRemaining(i), handler.CooldownNormalized(i), duration);
+            slot.SetCharges(handler.GetChargesRemaining(i), handler.GetChargeTotal(i));
         }
     }
 

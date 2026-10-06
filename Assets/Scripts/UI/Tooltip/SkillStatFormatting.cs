@@ -10,6 +10,8 @@ public static class SkillStatFormatting
         { ESkillStatTarget.Speed, "0.#" },
         { ESkillStatTarget.ProjectileCount, "0" },
         { ESkillStatTarget.Spread, "0°" },
+        { ESkillStatTarget.Radius, "0.#m" },
+        { ESkillStatTarget.Duration, "0.#s" },
     };
 
     public static string Format(ESkillStatTarget target, float value)

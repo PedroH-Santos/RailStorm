@@ -15,6 +15,7 @@ public class PlayerWeaponController : MonoBehaviour
     public Transform FirePoint => firePoint;
     public Transform Owner => player != null ? player : transform;
     public Vector3 AimDirection => Owner.forward;
+    public LayerMask GroundMask => groundMask;
     public PlayerAnimationController Animation => _animation;
 
     void Start()

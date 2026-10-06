@@ -35,6 +35,8 @@ namespace StarterAssets
         public float CurrentSpeed => _currentSpeed;
         public Vector2 RawInput => _input.Move;
 
+        public event System.Action OnSplineSwitched;
+
         void Start()
         {
             _controller = GetComponent<CharacterController>();
@@ -146,6 +148,8 @@ namespace StarterAssets
             _currentT = nearestT;
             _currentSpeed = speedOverride;
             _splineLength = CalcLength(newSpline);
+
+            OnSplineSwitched?.Invoke();
         }
 
         public void SetMovementLocked(bool locked)

@@ -5,5 +5,7 @@ public enum ESkillStatTarget
     Range,
     Speed,
     ProjectileCount,
-    Spread
+    Spread,
+    Radius,
+    Duration
 }

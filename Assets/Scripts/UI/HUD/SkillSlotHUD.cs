@@ -12,6 +12,10 @@ public class SkillSlotHUD : MonoBehaviour
     public Image readyFlash;
     public CanvasGroup group;
 
+    [Tooltip("Cargas restantes de skills com mais de uma carga (ex.: x1). Some quando não há carga pendente.")]
+    public TMP_Text chargesText;
+    public string chargesFormat = "x{0}";
+
     [Tooltip("Carta que gira e desce para formar o leque. Filho do slot, para o punch de escala não brigar com a rotação.")]
     public RectTransform card;
 
@@ -38,12 +42,14 @@ public class SkillSlotHUD : MonoBehaviour
     float _lastDuration;
     string _key;
     int _shownTenths = int.MinValue;
+    int _shownCharges = -1;
 
     public void Bind(SkillDefinition skill)
     {
         _skill = skill;
         _cooling = false;
         _shownTenths = int.MinValue;
+        SetCharges(0, 0);
 
         if (iconImage != null)
         {
@@ -105,6 +111,24 @@ public class SkillSlotHUD : MonoBehaviour
 
         if (_cooling && !cooling && _lastDuration >= minCooldownForReadyFlash) PlayReady();
         _cooling = cooling;
+    }
+
+    public void SetCharges(int remaining, int total)
+    {
+        if (chargesText == null) return;
+
+        int shown = total > 1 && remaining > 0 ? remaining : 0;
+        if (shown == _shownCharges) return;
+
+        _shownCharges = shown;
+        bool visible = shown > 0;
+        if (chargesText.gameObject.activeSelf != visible) chargesText.gameObject.SetActive(visible);
+        if (!visible) return;
+
+        chargesText.text = string.Format(chargesFormat, shown);
+        chargesText.transform.DOKill(true);
+        chargesText.transform.localScale = Vector3.one;
+        chargesText.transform.DOPunchScale(Vector3.one * readyPunch, 0.3f, 6, 0.5f).AsUI(chargesText.gameObject);
     }
 
     public void PlayCast()

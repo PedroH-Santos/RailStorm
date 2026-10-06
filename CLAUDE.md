@@ -108,7 +108,7 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 - **`Stats/PlayerStatsAggregator.cs`** — hub central de stats: `HP`/`MaxHP` (clamp), `MoveSpeed`, `IdleSpeed`, `Coins` (nunca negativo), `LuckPercent` (clamp 0–100); registra `StatDescriptor`s para UI.
 - **`Systems/LifeSystem.cs`** — vida genérica (player ou inimigo); usa `PlayerStatsAggregator.HP` se presente, senão vida local própria; dispara `OnDeath` e o evento estático `OnAnyDeath` **uma vez só** (flag `_dead`/`IsDead`; antes, dois golpes no mesmo frame antes do `Destroy` disparavam a morte em dobro). Depois de morto, `Damage` é ignorado.
 - **Arma do personagem (paralela às armas do vagão)**: `PlayerWeapons/PlayerWeaponController.cs` cuida **só da mira** (mouse/gamepad) e expõe `FirePoint`, `AimDirection` e `Animation`. O ataque saiu dele em 22/09: cada ataque agora é uma **Skill** equipada num slot com tecla própria, com stats no asset (não no código) — ver 4.19. O projétil da bola de fogo é `PlayerWeapons/Skills/Fireball/FireballProjectile.cs`.
-- **`Animations/PlayerAnimationController.cs`**, **`PlayerCartLean.cs`**, **`PlayerHeadLook.cs`** — animação do personagem (fluxo de combate, inclinação pelo vagão, olhar). Ver 4.23.
+- **`Animations/PlayerAnimationController.cs`**, **`PlayerHeadLook.cs`** — animação do personagem (fluxo de combate, tranco na troca de trilho, olhar). Ver 4.23.
 - **`Items/PlayerItemHandler.cs`** — ver seção 4.6.
 - **`Skills/PlayerPerkHandler.cs`** — ver seção 4.6.
 
@@ -1099,17 +1099,33 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
   | 4 | 32 | 0,23s | 18 | 28 | 80 |
   | 5 | 40 | 0,2s | 20 | 30 | — |
 
-- **Chuva de Brasas foi removida (02/10)** até ser refeita como área no ponto mirado (7.2). O asset `EmberRain` e a entrada dela no `FireStaff` saíram; hoje a **Bola de Fogo é a única Skill**, então a LOJA do ferreiro não tem nada para comprar.
+- **Chuva de Brasas** (`Resources/Skills/EmberRain.asset`, refeita em 06/10 conforme a 7.2, `purchaseCost` 60, comprada na LOJA do ferreiro): brasas caem numa área no ponto mirado. **Segurar a tecla** faz um marcador sair do vagão na direção da mira e avançar até o alcance em `aimTravelSeconds = 0.8s`; lá ele para e espera. **Soltar** lança a chuva onde o marcador está (soltar cedo = mais perto). Pulso a cada `0,5s` (primeiro em 0,5s, então 3s = 6 pulsos): dano em todo inimigo no raio + **1 acúmulo** de Queimadura, então quem fica 1,5s dentro começa a queimar. Sem bônus contra quem já queima. Pausar o jogo ou trocar a Skill do slot durante a mira cancela sem gastar a recarga.
+
+  | Nível | Dano por pulso | Recarga | Raio | Duração | Alcance | Custo p/ próximo |
+  |---|---|---|---|---|---|---|
+  | 1 | 6 | 6s | 3 | 3s | 12 | 30 |
+  | 2 | 8 | 5,7s | 3,2 | 3s | 13 | 45 |
+  | 3 | 10 | 5,4s | 3,5 | 3,5s | 13 | 65 |
+  | 4 | 13 | 5,1s | 3,7 | 3,5s | 14 | 90 |
+  | 5 | 16 | 4,8s | 4 | 4s | 15 | — |
+
+  **Variante Dupla** (`Resources/SkillVariants/EmberRainDouble.asset`): duas cargas, cada uma medida com a tecla e com metade da duração (total de pulsos igual). A recarga só começa depois da segunda carga; se ela não for lançada em `chargeWindowSeconds = 4s`, é perdida e a recarga começa. O HUD mostra `x1` na carta enquanto a carga está pendente.
+
+**Capacidades opcionais de Skill (06/10).** **O que é:** comportamento que só algumas Skills têm (mirar segurando a tecla, ter várias cargas) não entra em `SkillDefinition`, `PlayerSkillHandler` nem `PlayerSkillCaster`, que continuam valendo para qualquer Skill (pedido do usuário). A subclasse da Skill implementa uma **interface de capacidade** e as classes genéricas só perguntam se a Skill a tem. **Regras:**
+- **`IHoldToAimSkill`** (`Skills/Capabilities/`): `GetAimMaxDistance`, `GetAimAreaRadius`, `AimTravelSeconds`, `AimMarkerPrefab`. O caster, ao ver essa interface, entrega a mira ao **`Player/Skills/SkillHoldToAimController`** (no `Player`), que move o **`SkillAimMarker`** (prefab `Assets/Prefabs/VFX/SkillAimMarker.prefab`, uma instância cacheada por prefab, projetada no chão pelo `PlayerWeaponController.GroundMask`) e devolve o ponto ao soltar. O ponto chega na Skill por `SkillCastContext.AimPoint`/`HasAimPoint`. A animação de ataque toca **ao soltar**, e o `castDelay` conta a partir daí.
+- **`IMultiChargeSkill`**: `GetChargeCount(nível, variante)`, `ChargeWindowSeconds`. O handler guarda um **`SkillChargeState`** por slot e só inicia a recarga quando as cargas acabam ou a janela expira; o estado acompanha a Skill na troca de slot e é limpo ao trocar a variante. API: `GetChargesRemaining(slot)`, `GetChargeTotal(slot)`.
+- Skill sem nenhuma interface (a Bola de Fogo) segue o fluxo de clique de antes, sem diferença. **Skill nova com comportamento especial = interface nova, não membro novo na base.**
 
 **Dados (SO imutáveis, `Scripts/PlayerWeapons/`):**
 - **`PlayerWeaponDefinition`** — a arma do personagem (`Resources/PlayerWeapons/FireStaff.asset`, "Cajado de Fogo"): nome, ícone, `availableSkills`. O handler ignora Skills iniciais que a arma não suporta (lista vazia = aceita todas).
 - **`Skills/SkillDefinition`** — base abstrata `IDrawable`: `purchaseCost`, `LevelCount`, `GetUpgradeCost`, `GetCooldown`, `HasCooldown`, `DisplayStats` (lista de `ESkillStatTarget`), `GetStatValue`, `VisibleStats(nível)` (omite Recarga sem cooldown), a lista `variants` e `Cast(SkillCastContext, nível, variante)` (`variante == null` é a forma base). O `SkillCastContext` leva também a `BurnDefinition` da arma. **Toda Skill nova é uma subclasse** que declara esses membros; ferreiro, tooltip e HUD leem tudo por eles, sem conhecer o tipo.
 - **`Skills/Fireball/FireballSkillDefinition`** + `FireballLevelData` (dano, velocidade, alcance, recarga, custo) — instancia o `muzzlePrefab` no `FirePoint` e um `FireballProjectile` (ou os da variante), passando a Queimadura e `burnStacksPerHit` no `Init`.
-- `ESkillStatTarget` + `UI/Tooltip/SkillStatFormatting` (formato e `IsImprovement`, que sabe que recarga menor é melhor) + `StatLabels.Of(ESkillStatTarget)` (Dano, Recarga, Alcance, Velocidade, Projéteis, Abertura).
+- **`Skills/EmberRain/EmberRainSkillDefinition`** (`IHoldToAimSkill`, `IMultiChargeSkill`) + `EmberRainLevelData` (dano por pulso, recarga, raio, duração, alcance, custo) + `EmberRainDoubleVariant` — instancia o **`EmberRainArea`** (prefab `Assets/Prefabs/VFX/EmberRain.prefab`) no `AimPoint`. A área faz os pulsos por `OverlapSphere` (tag `Enemy`, `LifeSystem` no pai, um golpe por inimigo por pulso), escala o `areaRoot` (só o anel do chão) pelo raio e escala apenas a **forma** dos `radiusScaledEmitters` (brasas, riscos e estouro do pulso), e para de emitir no fim. Os emissores não podem ser filhos do `areaRoot`: herdariam a escala e a chuva nasceria a 6 × raio de altura, sumindo antes de chegar ao chão (bug encontrado no teste de 06/10).
+- `ESkillStatTarget` + `UI/Tooltip/SkillStatFormatting` (formato e `IsImprovement`, que sabe que recarga menor é melhor) + `StatLabels.Of(ESkillStatTarget)` (Dano, Recarga, Alcance, Velocidade, Projéteis, Abertura, Raio, Duração).
 
 **Runtime (no GameObject `Player`):**
-- **`Player/Skills/PlayerSkillHandler`** — dono do progresso (padrão da 4.12, `Instance`): `weapon`, `startingSkills`, `startingEquipped`, `maxSlots`, `startingUnlockedSlots` (stand-in da escolha pré-run). API: `Owned`, `Catalog`, `GetPurchaseCost`, `CanBuy`, `TryBuy`, `AcquireSkill` (entrada pública para qualquer fonte de skill nova; hoje só o ferreiro chama), `GetLevel`, `IsMaxLevel`, `GetUpgradeCost`, `CanUpgrade`, `TryUpgrade`, `GetSlot`, `IndexOf`, `Equip`, `Unequip`, `UnlockSlot`, `IsSlotUnlocked`, `HasCooldown`, `CooldownRemaining`, `CooldownNormalized`, `IsReady`, `TryCast`, `ResetForNewRun`. Eventos `OnSkillAcquired`, `OnSkillsChanged` (posse/nível, inventário), `OnLoadoutChanged` (slots, HUD), `OnSkillUpgraded`, `OnSkillCast(slot)`.
-- **`Player/Skills/PlayerSkillCaster`** — lê as teclas dos slots, monta o `SkillCastContext` a partir do `PlayerWeaponController`, toca a animação de ataque na hora do clique e chama `TryCast` depois do `castDelay` da Skill (corrotina por slot). `GetKeyLabel(slot)` é usado pelo HUD, ferreiro e tooltip.
+- **`Player/Skills/PlayerSkillHandler`** — dono do progresso (padrão da 4.12, `Instance`): `weapon`, `startingSkills`, `startingEquipped`, `maxSlots`, `startingUnlockedSlots` (stand-in da escolha pré-run). API: `Owned`, `Catalog`, `GetPurchaseCost`, `CanBuy`, `TryBuy`, `AcquireSkill` (entrada pública para qualquer fonte de skill nova; hoje só o ferreiro chama), `GetLevel`, `IsMaxLevel`, `GetUpgradeCost`, `CanUpgrade`, `TryUpgrade`, `GetSlot`, `IndexOf`, `Equip`, `Unequip`, `UnlockSlot`, `IsSlotUnlocked`, `HasCooldown`, `CooldownRemaining`, `CooldownNormalized`, `IsReady`, `TryCast`, `GetChargesRemaining`, `GetChargeTotal`, `ResetForNewRun`. Eventos `OnSkillAcquired`, `OnSkillsChanged` (posse/nível, inventário), `OnLoadoutChanged` (slots, HUD), `OnSkillUpgraded`, `OnSkillCast(slot)`.
+- **`Player/Skills/PlayerSkillCaster`** — lê as teclas dos slots, monta o `SkillCastContext` a partir do `PlayerWeaponController`, toca a animação de ataque na hora do clique e chama `TryCast` depois do `castDelay` da Skill (corrotina por slot). Para Skills `IHoldToAimSkill`, delega a mira ao `SkillHoldToAimController` antes disso. `GetKeyLabel(slot)` é usado pelo HUD, ferreiro e tooltip.
 
 **Tela do ferreiro (`BlackSmithUpgradeSkills/CanvasBlacksmith`, cópia da `CanvasItemShop`, mesmo estilo cartoon):**
 - `BlackSmithUpgradeSkills` (prefab `Assets/Prefabs/Enviroment/BlackSmithUpgradeSkills.prefab`) é o ferreiro no mundo: NPC, `BlacksmithStore` e o `BlacksmithZone` (que adiciona o `SphereCollider` trigger). **O prefab não contém UI.**
@@ -1172,6 +1188,7 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
   - `KeyBadge`: medalhão 42×42 **centrado na borda de baixo** (`CartoonCardPlate9Slice` em `#663300`), letra Lilita 24 creme. Texto da tecla com `Overflow` + `NoWrap`: com `Ellipsis` num rect baixo ele não desenhava nada (mesma armadilha da 4.19).
 - **O tempo da recarga aparece dentro do slot em toda recarga** (`minCooldownForNumber = 0`): uma casa decimal abaixo de 1s (`0.3`), inteiro acima (`4`). Enquanto o número aparece, o ícone cai para `coolingIconAlpha = 0.3`, senão o número briga com o desenho.
 - O pulo + flash de "pronta" só acontece em recargas **≥ `minCooldownForReadyFlash` (1s)**, para disparo contínuo como a bola de fogo (0,2–0,3s) não piscar a cada tiro. Cada disparo dá um punch leve; slot vazio fica com `emptyAlpha = 0.45`.
+- **Contador de cargas (06/10):** `SkillSlotHUD.chargesText` mostra `x{n}` (`chargesFormat`) só quando a Skill tem mais de uma carga e ainda há carga pendente (ex.: Chuva de Brasas Dupla depois do primeiro lançamento). O texto é um TMP duplicado do `CooldownText`, num canto da `Plate` de cada carta.
 
 > **Renderizar UI por RenderTexture pode destruir canvas world-space (24/09).** O truque de trocar `Canvas.renderMode` para `ScreenSpaceCamera` só para capturar uma tela **reescreve o transform do canvas**: aplicado por engano nos dois `BadgeCanvas` dos totens (4.13), eles voltaram com `localScale = 1`, `sizeDelta = 1920×1080` e posição de tela. Ao usar esse truque, filtre pelo canvas que você quer (nunca por "todos os root canvases") e, se precisar restaurar, os valores certos estão na última versão salva da cena (`m_LocalRotation`/`m_LocalScale`/`m_SizeDelta` do `RectTransform` no YAML). Para um canvas que é filho de um objeto do mundo (como o `CanvasBlacksmith`), desparente antes de capturar, senão ele renderiza como uma miniatura na cena.
 
@@ -1238,7 +1255,8 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
   | `Celebrate_Quick` | 0–30 | pegar item ou subir de nível; começa e termina em combate; fogo nos frames 8–20 |
   | `Gesture_HatFix`, `Gesture_DustOff` | 0–42, 0–40 | gestos ocasionais na `Idle_Relaxed` |
   | `Lean_F/B/L/R` | 10–20, loop, **aditivo** | inclinação pelo vagão — **fora de uso, a rever** (ver abaixo) |
-  | `Jolt`, `React_Start`, `React_Brake` | 0–10, 0–14, 0–14, **aditivo** | reações ao vagão — **fora de uso, a rever** |
+  | `Jolt`, `Jolt_Strong` | 0–10, **aditivo** | tranco ao trocar de trilho; em uso o `Jolt_Strong` (ver "Tranco na troca de trilho") |
+| `React_Start`, `React_Brake` | 0–14, 0–14, **aditivo** | reações ao vagão — **fora de uso** |
 - Os clipes aditivos usam a própria pose do frame 0 (igual à `Idle_Combat`) como referência (`hasAdditiveReferencePose`). Nos `Lean_*` o frame 0 é a referência e a pose de inclinação fica nos frames 10–20.
 - O cajado (`P_Weapon`) não é filho do osso da mão no FBX: a posição dele está gravada em cada clipe. Exportar sempre com **faixas de NLA** (uma por ação), senão o cajado fica parado.
 - O osso `Hat` é desconectado da cabeça, para o `Gesture_HatFix` conseguir levantar o chapéu.
@@ -1262,15 +1280,28 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 |---|---|---|
 | Base | — | `Idle_Relaxed` (padrão, tag `Idle`), `Guard_Enter`, `Idle_Combat` (tag `Idle`), `Celebrate`, `Gesture_HatFix`, `Gesture_DustOff` |
 | Action | Override, peso 1 | `Empty` (tag `Empty`), `Fireball` (Any State, trigger `attack`, `0.04 s`, reinicia a cada clique), `Celebrate_Quick` |
+| Reactions | **Additive**, peso 1 | `Empty` (tag `Empty`), `Jolt` (motion `Jolt_Strong`; Any State, trigger `jolt`, `0.05 s`, pode reiniciar; volta ao `Empty` em 90% com `0.12 s`) |
 **Código (no modelo `Player/Player`):**
 - **`Player/Animations/PlayerAnimationController.cs`** — fachada do Animator e fluxo: `PlayAttackAnimation`, `EnterCombat`, `LeaveCombat`, `PlayQuickCelebrate`, `InCombat`, `IsInIdlePose`; gestos, placar de progresso e o fogo na mão.
 - **`Player/Animations/PlayerHeadLook.cs`** — olhar no `LateUpdate` (`DefaultExecutionOrder(100)`), girando `Neck` e `Head` por cima da animação.
+
+#### Tranco na troca de trilho (06/10)
+
+**O que é / ideia central:** a única reação do mago ao vagão. Toda vez que o jogador troca de trilho numa bifurcação, o corpo dá um solavanco curto. É um evento raro e com motivo claro (o jogador decidiu virar), ao contrário da inclinação pela velocidade (abaixo), que reagia o tempo todo.
+
+**Regras:**
+- Toca em **toda** troca de spline, sem filtro de ângulo. Um limite de 20° chegou a existir e foi retirado: as curvas dos caminhos normalmente são pequenas e o tranco quase nunca tocava. (Detalhe técnico, caso o ângulo volte: os trilhos são lineares e têm tangente **zero** em cima dos nós, então a direção precisa ser medida por posições ao longo da spline, não por `EvaluateTangent`.)
+- O tranco não depende do lado da curva: o mago gira com a mira, então uma reação "para dentro da curva" leria em direções diferentes conforme ele mira.
+- É aditivo, numa camada própria: soma à pose atual e não interrompe ataque, comemoração nem gesto.
+- **Clipe em uso: `Jolt_Strong`** (0–10, aditivo), a ação `Jolt` do Blender com o desvio de cada osso em relação ao frame 0 ampliado **2,5×** (tronco ~20°, cabeça ~14° no pico). O `Jolt` original (tronco ~8°) era sutil demais para a câmera isométrica com o modelo em escala `0.18`. Os dois clipes ficam no FBX para comparar; trocar é só mudar o `Motion` do estado `Jolt` na camada Reactions.
+
+**Código:** `PlayerController.OnSplineSwitched`, disparado no fim de `SwitchToSplineIndex`; `PlayerAnimationController.HandleSplineSwitched` dispara o trigger `jolt`.
 
 #### Pendente: reação do corpo ao movimento do vagão (retirada em 05/10, a rever)
 
 **O que é / ideia central:** o mago se inclinar com o vagão (frente na freada, trás na arrancada, para fora nas curvas) e dar trancos em eventos fortes (troca de trilho, inversão de sentido), para passar a sensação de velocidade.
 
-**Status:** chegou a ser integrado no mesmo dia e foi **retirado a pedido do usuário**: o resultado em jogo não ficou bom, o personagem parecia reagir o tempo todo e não nos movimentos que importam. Foram removidos o script `PlayerCartLean`, as camadas aditivas `CartLean` e `Reactions` do `PlayerAnimator` e os parâmetros delas. **Os clipes `Lean_F/B/L/R`, `Jolt`, `React_Start` e `React_Brake` continuam no FBX, já configurados como aditivos, para a retomada.**
+**Status:** chegou a ser integrado no mesmo dia e foi **retirado a pedido do usuário**: o resultado em jogo não ficou bom, o personagem parecia reagir o tempo todo e não nos movimentos que importam. Foram removidos o script `PlayerCartLean`, as camadas aditivas `CartLean` e `Reactions` do `PlayerAnimator` e os parâmetros delas. **Os clipes `Lean_F/B/L/R`, `React_Start` e `React_Brake` continuam no FBX, já configurados como aditivos, para a retomada.**
 
 **O que se aprendeu nas duas tentativas (ponto de partida para rever):**
 - **1ª versão:** derivava a aceleração da posição do vagão e passava por uma mola pouco amortecida (2,2 Hz, 0,45), com inclinação máxima em 14 m/s². Saturava a cada toque: o vagão vai de 0,5 a 15 m/s com aceleração 6, o que dá ~87 m/s². Também disparava `React_Start` a cada vez que o jogador voltava a apertar uma tecla.
@@ -1335,9 +1366,9 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 Itens da visão do jogo (seção 1) que **ainda não existem no código**:
 
 - **Sem `GameManager` central** — nenhuma classe orquestra estado global, transições de cena ou game over. **Pendência concreta ligada a isso (25/08):** `PlayerPerkHandler.ResetForNewRun()`, `PlayerCarWeaponHandler.ResetForNewRun()` e `PlayerItemHandler.ResetForNewRun()` existem e funcionam, mas **ninguém os chama**. Hoje isso não causa bug porque o progresso vive em runtime e morre com o GameObject (ver 4.12); passa a causar no momento em que existir uma segunda run sem recarregar a cena (morrer → recomeçar). Quem criar o `GameManager` deve chamar os três, mais `RunTracker.ResetForNewRun()` (tempo e kills do HUD, 4.17) e `PlayerSkillHandler.ResetForNewRun()` (níveis, slots e recargas das Skills, 4.19).
-- **Escolha do loadout antes da run (22/09, revisto 25/09)** — a tela pré-run também vai escolher região inicial e personagem (7.1, E1). O design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Só existe a **Bola de Fogo** (a Chuva de Brasas foi removida em 02/10 até ser refeita, 7.2).
+- **Escolha do loadout antes da run (22/09, revisto 25/09)** — a tela pré-run também vai escolher região inicial e personagem (7.1, E1). O design diz que o jogador escolhe o loadout **antes** de iniciar a run. Não existe tela pré-run: a posse e o equipado inicial vêm dos campos `startingSkills`/`startingEquipped`/`startingUnlockedSlots` do `PlayerSkillHandler` no Inspector. Skills novas durante a run só vêm da compra no ferreiro (4.19); `PlayerSkillHandler.AcquireSkill` existe para outras fontes (baú, cartas), mas nenhuma chama ainda. `PlayerSkillHandler.UnlockSlot()` existe, mas nada o chama (não há fonte de slot extra ainda). Existem a **Bola de Fogo** e a **Chuva de Brasas** (06/10); faltam Nova de Fogo, Arrancada Ígnea e Vórtice de Cinzas (7.2).
 - **Runas sem fonte real (02/10)** — o mini-chefe que as daria não existe (7.1, E8). O saldo vem do campo `_runes` do `PlayerStatsAggregator` no Inspector (2 na cena, para teste).
-- **Reação do mago ao movimento do vagão (05/10)** — inclinação e trancos foram integrados e retirados por não ficarem bons em jogo; os clipes aditivos continuam no FBX. Ver "Pendente" na 4.23.
+- **Reação do mago ao movimento do vagão (05/10)** — inclinação e trancos pela velocidade foram integrados e retirados por não ficarem bons em jogo; os clipes aditivos continuam no FBX. Desde 06/10 só existe o tranco na troca de trilho. Ver 4.23.
 - **Objetivos do HUD (25/09)** — o `ObjectivesPanel` (com o prefab `ObjectiveCard`) do `CanvasHUD` existe só como visual (4.17). Não há sistema de objetivos que instancie os cartões. O minimapa foi implementado em 28/09 (4.20).
 - **Sem save/load** — nenhum `PlayerPrefs`, `JsonUtility`, arquivo em disco, `SceneManager` ou `DontDestroyOnLoad` encontrado.
 - **Sem meta-progressão persistente** — nenhuma segunda moeda entre runs; `Coins` é só por run e reseta (`PlayerItemHandler.ResetForNewRun()`). Desenho em refinamento na 7.1 (E6).
@@ -1896,7 +1927,7 @@ nenhuma. **E4 fechado pelo usuário em 29/09.**
 | Skill | Status |
 |---|---|
 | Bola de Fogo | **implementada em 02/10** (4.19) |
-| Chuva de Brasas | **fechada em 01/10** |
+| Chuva de Brasas | **implementada em 06/10** (4.19) |
 | Nova de Fogo | **fechada em 01/10** |
 | Arrancada Ígnea (avanço com rastro de fogo) | **fechada em 01/10** |
 | Vórtice de Cinzas | **fechada em 01/10** |

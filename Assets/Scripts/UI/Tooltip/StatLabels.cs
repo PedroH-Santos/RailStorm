@@ -47,6 +47,8 @@ public static class StatLabels
         { ESkillStatTarget.Speed, "Velocidade" },
         { ESkillStatTarget.ProjectileCount, "Projéteis" },
         { ESkillStatTarget.Spread, "Abertura" },
+        { ESkillStatTarget.Radius, "Raio" },
+        { ESkillStatTarget.Duration, "Duração" },
     };
 
     public static string Of(ESkillStatTarget target)

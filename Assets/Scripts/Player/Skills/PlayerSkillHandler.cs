@@ -34,6 +34,7 @@ public class PlayerSkillHandler : MonoBehaviour
     SkillDefinition[] _slots = Array.Empty<SkillDefinition>();
     float[] _cooldownRemaining = Array.Empty<float>();
     float[] _cooldownDuration = Array.Empty<float>();
+    SkillChargeState[] _chargeStates = Array.Empty<SkillChargeState>();
     int _unlockedSlots;
 
     public event Action OnSkillsChanged;
@@ -65,6 +66,10 @@ public class PlayerSkillHandler : MonoBehaviour
         for (int i = 0; i < _cooldownRemaining.Length; i++)
             if (_cooldownRemaining[i] > 0f)
                 _cooldownRemaining[i] = Mathf.Max(0f, _cooldownRemaining[i] - Time.deltaTime);
+
+        for (int i = 0; i < _chargeStates.Length; i++)
+            if (_chargeStates[i].TickWindow(Time.deltaTime))
+                StartCooldown(i, _slots[i]);
     }
 
     void BuildCatalog()
@@ -104,6 +109,8 @@ public class PlayerSkillHandler : MonoBehaviour
         _slots = new SkillDefinition[slotCount];
         _cooldownRemaining = new float[slotCount];
         _cooldownDuration = new float[slotCount];
+        _chargeStates = new SkillChargeState[slotCount];
+        for (int i = 0; i < slotCount; i++) _chargeStates[i] = new SkillChargeState();
         _unlockedSlots = Mathf.Clamp(startingUnlockedSlots, 1, slotCount);
 
         for (int i = 0; i < startingEquipped.Count && i < _unlockedSlots; i++)
@@ -176,6 +183,7 @@ public class PlayerSkillHandler : MonoBehaviour
             _slots[i] = skill;
             _cooldownRemaining[i] = 0f;
             _cooldownDuration[i] = 0f;
+            _chargeStates[i].Clear();
             break;
         }
 
@@ -209,6 +217,7 @@ public class PlayerSkillHandler : MonoBehaviour
         stats.SpendRunes(GetVariantCost(variant));
         _unlockedVariants.Add(variant);
         _activeVariantBySkill[skill] = variant;
+        ClearPendingCharges(skill);
 
         Debug.Log($"[Skills] {skill.skillName}: variante {variant.variantName} ativa");
         OnVariantChanged?.Invoke(skill);
@@ -219,6 +228,7 @@ public class PlayerSkillHandler : MonoBehaviour
     {
         if (skill == null || !_activeVariantBySkill.Remove(skill)) return false;
 
+        ClearPendingCharges(skill);
         OnVariantChanged?.Invoke(skill);
         return true;
     }
@@ -247,11 +257,13 @@ public class PlayerSkillHandler : MonoBehaviour
             _slots[previousSlot] = _slots[slot];
             (_cooldownRemaining[previousSlot], _cooldownRemaining[slot]) = (_cooldownRemaining[slot], _cooldownRemaining[previousSlot]);
             (_cooldownDuration[previousSlot], _cooldownDuration[slot]) = (_cooldownDuration[slot], _cooldownDuration[previousSlot]);
+            (_chargeStates[previousSlot], _chargeStates[slot]) = (_chargeStates[slot], _chargeStates[previousSlot]);
         }
         else
         {
             _cooldownRemaining[slot] = 0f;
             _cooldownDuration[slot] = 0f;
+            _chargeStates[slot].Clear();
         }
 
         _slots[slot] = skill;
@@ -265,6 +277,7 @@ public class PlayerSkillHandler : MonoBehaviour
 
         _slots[slot] = null;
         _cooldownRemaining[slot] = 0f;
+        _chargeStates[slot].Clear();
         OnLoadoutChanged?.Invoke();
         return true;
     }
@@ -301,15 +314,48 @@ public class PlayerSkillHandler : MonoBehaviour
 
         var skill = _slots[slot];
         int level = GetLevel(skill);
-        skill.Cast(context, level, GetActiveVariant(skill));
+        var variant = GetActiveVariant(skill);
+        skill.Cast(context, level, variant);
 
-        float cooldown = skill.GetCooldown(level);
-        _cooldownDuration[slot] = cooldown;
-        _cooldownRemaining[slot] = cooldown;
+        if (skill is IMultiChargeSkill multiCharge)
+            ConsumeCharge(slot, skill, multiCharge, level, variant);
+        else
+            StartCooldown(slot, skill);
 
         OnSkillCast?.Invoke(slot);
         return true;
     }
+
+    void ConsumeCharge(int slot, SkillDefinition skill, IMultiChargeSkill multiCharge, int level, SkillVariantDefinition variant)
+    {
+        var charges = _chargeStates[slot];
+        if (!charges.HasPendingCharges)
+            charges.Begin(multiCharge.GetChargeCount(level, variant), multiCharge.ChargeWindowSeconds);
+        else
+            charges.RestartWindow(multiCharge.ChargeWindowSeconds);
+
+        charges.ConsumeOne();
+        if (!charges.HasPendingCharges) StartCooldown(slot, skill);
+    }
+
+    void StartCooldown(int slot, SkillDefinition skill)
+    {
+        float cooldown = skill != null ? skill.GetCooldown(GetLevel(skill)) : 0f;
+        _cooldownDuration[slot] = cooldown;
+        _cooldownRemaining[slot] = cooldown;
+    }
+
+    void ClearPendingCharges(SkillDefinition skill)
+    {
+        int slot = IndexOf(skill);
+        if (slot >= 0) _chargeStates[slot].Clear();
+    }
+
+    public int GetChargesRemaining(int slot)
+        => slot >= 0 && slot < _chargeStates.Length ? _chargeStates[slot].Remaining : 0;
+
+    public int GetChargeTotal(int slot)
+        => slot >= 0 && slot < _chargeStates.Length ? _chargeStates[slot].Total : 0;
 
     public void ResetForNewRun()
     {

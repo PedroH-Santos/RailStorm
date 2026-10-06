@@ -6,11 +6,13 @@ public class PlayerAnimationController : MonoBehaviour
 {
     public const int BaseLayer = 0;
     public const int ActionLayer = 1;
+    public const int ReactionLayer = 2;
 
     static readonly int AttackHash = Animator.StringToHash("attack");
     static readonly int InCombatHash = Animator.StringToHash("inCombat");
     static readonly int CelebrateHash = Animator.StringToHash("celebrate");
     static readonly int QuickCelebrateHash = Animator.StringToHash("quickCelebrate");
+    static readonly int JoltHash = Animator.StringToHash("jolt");
     static readonly int GestureHash = Animator.StringToHash("gesture");
     static readonly int GestureIndexHash = Animator.StringToHash("gestureIndex");
     static readonly int RelaxedStateHash = Animator.StringToHash("Idle_Relaxed");
@@ -36,6 +38,7 @@ public class PlayerAnimationController : MonoBehaviour
     PlayerPerkHandler _perks;
     PlayerSkillHandler _skills;
     PlayerCarWeaponHandler _carWeapons;
+    PlayerController _cart;
     ParticleSystem _handFlame;
     bool _handFlameOn;
     bool _inCombat;
@@ -61,6 +64,7 @@ public class PlayerAnimationController : MonoBehaviour
         _items = GetComponentInParent<PlayerItemHandler>();
         _perks = GetComponentInParent<PlayerPerkHandler>();
         _skills = GetComponentInParent<PlayerSkillHandler>();
+        _cart = GetComponentInParent<PlayerController>();
         ResetGestureTimer();
     }
 
@@ -71,6 +75,7 @@ public class PlayerAnimationController : MonoBehaviour
         if (_items != null) _items.OnItemsChanged += HandleProgressChanged;
         if (_perks != null) _perks.OnPerksChanged += HandleProgressChanged;
         if (_skills != null) _skills.OnSkillsChanged += HandleProgressChanged;
+        if (_cart != null) _cart.OnSplineSwitched += HandleSplineSwitched;
     }
 
     void Start()
@@ -98,6 +103,7 @@ public class PlayerAnimationController : MonoBehaviour
         if (_perks != null) _perks.OnPerksChanged -= HandleProgressChanged;
         if (_skills != null) _skills.OnSkillsChanged -= HandleProgressChanged;
         if (_carWeapons != null) _carWeapons.OnWeaponsChanged -= HandleProgressChanged;
+        if (_cart != null) _cart.OnSplineSwitched -= HandleSplineSwitched;
     }
 
     void OnDestroy()
@@ -141,6 +147,11 @@ public class PlayerAnimationController : MonoBehaviour
     public void PlayQuickCelebrate()
     {
         _pendingQuickCelebrate = true;
+    }
+
+    void HandleSplineSwitched()
+    {
+        _animator.SetTrigger(JoltHash);
     }
 
     void HandleProgressChanged()
