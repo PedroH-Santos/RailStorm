@@ -22,7 +22,6 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
 
     public abstract int LevelCount { get; }
     public int MaxLevel => Mathf.Max(0, LevelCount - 1);
-
     public int RarityForLevel(int level) => Mathf.Clamp(level, 0, Mathf.Max(0, RarityHelper.Count - 1));
 
     public abstract int GetUpgradeCost(int level);
@@ -30,18 +29,18 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
     public bool HasCooldown(int level) => GetCooldown(level) > 0f;
 
     public abstract IReadOnlyList<ESkillStatTarget> DisplayStats { get; }
-    public abstract float GetStatValue(int level, ESkillStatTarget target);
-
-    public abstract void Cast(SkillCastContext context, int level, SkillVariantDefinition variant);
-
-    public bool HasVariant(SkillVariantDefinition variant) => variant != null && variants.Contains(variant);
+    public abstract float GetStatValue(int level, ESkillStatTarget stat);
 
     public IEnumerable<ESkillStatTarget> VisibleStats(int level)
     {
-        foreach (var target in DisplayStats)
+        foreach (var stat in DisplayStats)
         {
-            if (target == ESkillStatTarget.Cooldown && !HasCooldown(level)) continue;
-            yield return target;
+            bool isCooldownOfSkillWithoutCooldown = stat == ESkillStatTarget.Cooldown && !HasCooldown(level);
+            if (!isCooldownOfSkillWithoutCooldown) yield return stat;
         }
     }
+
+    public bool HasVariant(SkillVariantDefinition variant) => variant != null && variants.Contains(variant);
+
+    public abstract void Cast(SkillCastContext context, int level, SkillVariantDefinition variant);
 }

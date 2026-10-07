@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewFireballSkill", menuName = "Player Weapons/Skills/Fireball")]
-public class FireballSkillDefinition : SkillDefinition
+public class FireballSkillDefinition : LeveledSkillDefinition<FireballLevelData>
 {
-    static readonly ESkillStatTarget[] Targets =
+    static readonly ESkillStatTarget[] StatsShownToPlayer =
     {
         ESkillStatTarget.Damage,
         ESkillStatTarget.Cooldown,
@@ -16,63 +16,38 @@ public class FireballSkillDefinition : SkillDefinition
     public GameObject muzzlePrefab;
     [Min(0)] public int burnStacksPerHit = 1;
 
-    public List<FireballLevelData> levels = new()
-    {
-        new FireballLevelData(),
-    };
-
-    public override int LevelCount => levels.Count;
-    public override IReadOnlyList<ESkillStatTarget> DisplayStats => Targets;
-
-    public FireballLevelData GetLevel(int level)
-    {
-        if (levels.Count == 0) return new FireballLevelData();
-        return levels[Mathf.Clamp(level, 0, levels.Count - 1)];
-    }
-
-    public override int GetUpgradeCost(int level) => GetLevel(level).upgradeCost;
-    public override float GetCooldown(int level) => GetLevel(level).cooldown;
-
-    public override float GetStatValue(int level, ESkillStatTarget target)
-    {
-        var data = GetLevel(level);
-        switch (target)
-        {
-            case ESkillStatTarget.Damage: return data.damage;
-            case ESkillStatTarget.Cooldown: return data.cooldown;
-            case ESkillStatTarget.Range: return data.range;
-            case ESkillStatTarget.Speed: return data.speed;
-            default: return 0f;
-        }
-    }
+    public override IReadOnlyList<ESkillStatTarget> DisplayStats => StatsShownToPlayer;
 
     public override void Cast(SkillCastContext context, int level, SkillVariantDefinition variant)
     {
         if (projectilePrefab == null || context.FirePoint == null) return;
 
-        var stats = GetLevel(level);
+        var stats = GetLevelStats(level);
         var hit = new SkillHit(stats.damage, context.Burn, burnStacksPerHit);
-        Vector3 forward = context.AimDirection.sqrMagnitude > 0.0001f ? context.AimDirection.normalized : context.FirePoint.forward;
+        Vector3 forward = context.AimForward;
 
-        if (muzzlePrefab != null)
-            Instantiate(muzzlePrefab, context.FirePoint.position, Quaternion.LookRotation(forward));
+        SpawnMuzzleFlash(context.FirePoint.position, forward);
 
         if (variant is FireballTripleVariant triple)
-        {
-            var splitHit = hit.WithDamage(triple.DamagePerProjectile(stats.damage));
-            for (int i = 0; i < triple.projectileCount; i++)
-            {
-                float angle = Mathf.Lerp(-triple.spreadAngle * 0.5f, triple.spreadAngle * 0.5f, i / (triple.projectileCount - 1f));
-                Launch(context, stats, Quaternion.AngleAxis(angle, Vector3.up) * forward, splitHit);
-            }
-
-            return;
-        }
-
-        Launch(context, stats, forward, hit);
+            LaunchSpread(context, stats, hit, forward, triple);
+        else
+            LaunchProjectile(context, stats, forward, hit);
     }
 
-    void Launch(SkillCastContext context, FireballLevelData stats, Vector3 direction, SkillHit hit)
+    void SpawnMuzzleFlash(Vector3 position, Vector3 forward)
+    {
+        if (muzzlePrefab != null) Instantiate(muzzlePrefab, position, Quaternion.LookRotation(forward));
+    }
+
+    void LaunchSpread(SkillCastContext context, FireballLevelData stats, SkillHit hit, Vector3 forward, FireballTripleVariant triple)
+    {
+        var hitPerProjectile = hit.WithDamage(triple.DamagePerProjectile(stats.damage));
+
+        foreach (var direction in triple.SpreadDirections(forward))
+            LaunchProjectile(context, stats, direction, hitPerProjectile);
+    }
+
+    void LaunchProjectile(SkillCastContext context, FireballLevelData stats, Vector3 direction, SkillHit hit)
     {
         var projectile = Instantiate(projectilePrefab, context.FirePoint.position, Quaternion.LookRotation(direction));
         projectile.Launch(direction, stats, hit);

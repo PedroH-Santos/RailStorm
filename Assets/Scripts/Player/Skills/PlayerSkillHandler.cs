@@ -14,7 +14,7 @@ public class PlayerSkillHandler : MonoBehaviour
 
     [Header("Loadout inicial (escolhido antes da run)")]
     [SerializeField] private List<SkillDefinition> startingSkills = new();
-    [SerializeField] private List<SkillDefinition> startingEquipped = new();
+    [SerializeField] private List<SkillDefinition> startingEquipped = new(); 
 
     [Header("Slots")]
     [Range(1, SlotLimit)]

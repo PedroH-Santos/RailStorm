@@ -9,6 +9,9 @@ public readonly struct SkillCastContext
     public readonly Vector3 AimPoint;
     public readonly bool HasAimPoint;
 
+    public Vector3 AimForward
+        => AimDirection.sqrMagnitude > 0.0001f ? AimDirection.normalized : FirePoint.forward;
+
     public SkillCastContext(Transform firePoint, Vector3 aimDirection, Transform owner, BurnDefinition burn)
         : this(firePoint, aimDirection, owner, burn, Vector3.zero, false)
     {

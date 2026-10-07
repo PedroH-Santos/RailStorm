@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewEmberRainSkill", menuName = "Player Weapons/Skills/Ember Rain")]
-public class EmberRainSkillDefinition : SkillDefinition, IHoldToAimSkill, IMultiChargeSkill
+public class EmberRainSkillDefinition : LeveledSkillDefinition<EmberRainLevelData>, IHoldToAimSkill, IMultiChargeSkill
 {
-    static readonly ESkillStatTarget[] Targets =
+    static readonly ESkillStatTarget[] StatsShownToPlayer =
     {
         ESkillStatTarget.Damage,
         ESkillStatTarget.Cooldown,
@@ -26,60 +26,29 @@ public class EmberRainSkillDefinition : SkillDefinition, IHoldToAimSkill, IMulti
     [Tooltip("Segundos para lançar as cargas restantes antes de perdê-las e a recarga começar.")]
     [Min(0f)] public float chargeWindowSeconds = 4f;
 
-    public List<EmberRainLevelData> levels = new()
-    {
-        new EmberRainLevelData(),
-    };
-
-    public override int LevelCount => levels.Count;
-    public override IReadOnlyList<ESkillStatTarget> DisplayStats => Targets;
+    public override IReadOnlyList<ESkillStatTarget> DisplayStats => StatsShownToPlayer;
 
     public float AimTravelSeconds => aimTravelSeconds;
     public SkillAimMarker AimMarkerPrefab => aimMarkerPrefab;
+    public float GetAimMaxDistance(int level) => GetLevelStats(level).range;
+    public float GetAimAreaRadius(int level) => GetLevelStats(level).radius;
+
     public float ChargeWindowSeconds => chargeWindowSeconds;
-
-    public EmberRainLevelData GetLevel(int level)
-    {
-        if (levels.Count == 0) return new EmberRainLevelData();
-        return levels[Mathf.Clamp(level, 0, levels.Count - 1)];
-    }
-
-    public override int GetUpgradeCost(int level) => GetLevel(level).upgradeCost;
-    public override float GetCooldown(int level) => GetLevel(level).cooldown;
-
-    public override float GetStatValue(int level, ESkillStatTarget target)
-    {
-        var data = GetLevel(level);
-        switch (target)
-        {
-            case ESkillStatTarget.Damage: return data.damagePerPulse;
-            case ESkillStatTarget.Cooldown: return data.cooldown;
-            case ESkillStatTarget.Radius: return data.radius;
-            case ESkillStatTarget.Duration: return data.duration;
-            case ESkillStatTarget.Range: return data.range;
-            default: return 0f;
-        }
-    }
-
-    public float GetAimMaxDistance(int level) => GetLevel(level).range;
-    public float GetAimAreaRadius(int level) => GetLevel(level).radius;
-
     public int GetChargeCount(int level, SkillVariantDefinition variant)
-        => variant is EmberRainDoubleVariant doubleVariant ? doubleVariant.chargeCount : 1;
+        => variant is EmberRainDoubleVariant doubleRain ? doubleRain.chargeCount : 1;
 
     public override void Cast(SkillCastContext context, int level, SkillVariantDefinition variant)
     {
         if (areaPrefab == null || !context.HasAimPoint) return;
 
-        var data = GetLevel(level);
-        float duration = variant is EmberRainDoubleVariant doubleVariant
-            ? doubleVariant.DurationPerCharge(data.duration)
-            : data.duration;
-
-        var hitPerPulse = new SkillHit(data.damagePerPulse, context.Burn, burnStacksPerPulse);
-        var storm = new EmberRainStorm(data.radius, duration, pulseInterval);
+        var stats = GetLevelStats(level);
+        var storm = new EmberRainStorm(stats.radius, DurationOfOneCast(stats, variant), pulseInterval);
+        var hitPerPulse = new SkillHit(stats.damagePerPulse, context.Burn, burnStacksPerPulse);
 
         var area = Instantiate(areaPrefab, context.AimPoint, Quaternion.identity);
         area.Begin(storm, hitPerPulse);
     }
+
+    static float DurationOfOneCast(EmberRainLevelData stats, SkillVariantDefinition variant)
+        => variant is EmberRainDoubleVariant doubleRain ? doubleRain.DurationPerCharge(stats.duration) : stats.duration;
 }

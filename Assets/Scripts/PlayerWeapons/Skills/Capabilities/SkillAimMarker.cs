@@ -12,7 +12,7 @@ public class SkillAimMarker : MonoBehaviour
     [SerializeField] private float reachedMaxPunch = 0.15f;
 
     float _radius = 1f;
-    bool _reachedMax;
+    bool _reachedMax; 
 
     Transform Visual => areaVisual != null ? areaVisual : transform;
 
