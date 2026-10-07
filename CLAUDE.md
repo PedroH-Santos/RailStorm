@@ -1112,7 +1112,7 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
   **Variante Dupla** (`Resources/SkillVariants/EmberRainDouble.asset`): duas cargas, cada uma medida com a tecla e com metade da duração (total de pulsos igual). A recarga só começa depois da segunda carga; se ela não for lançada em `chargeWindowSeconds = 4s`, é perdida e a recarga começa. O HUD mostra `x1` na carta enquanto a carga está pendente.
 
 **Capacidades opcionais de Skill (06/10).** **O que é:** comportamento que só algumas Skills têm (mirar segurando a tecla, ter várias cargas) não entra em `SkillDefinition`, `PlayerSkillHandler` nem `PlayerSkillCaster`, que continuam valendo para qualquer Skill (pedido do usuário). A subclasse da Skill implementa uma **interface de capacidade** e as classes genéricas só perguntam se a Skill a tem. **Regras:**
-- **`IHoldToAimSkill`** (`Skills/Capabilities/`): `GetAimMaxDistance`, `GetAimAreaRadius`, `AimTravelSeconds`, `AimMarkerPrefab`. O caster, ao ver essa interface, entrega a mira ao **`Player/Skills/SkillHoldToAimController`** (no `Player`), que move o **`SkillAimMarker`** (prefab `Assets/Prefabs/VFX/SkillAimMarker.prefab`, uma instância cacheada por prefab, projetada no chão pelo `PlayerWeaponController.GroundMask`) e devolve o ponto ao soltar. O ponto chega na Skill por `SkillCastContext.AimPoint`/`HasAimPoint`. A animação de ataque toca **ao soltar**, e o `castDelay` conta a partir daí.
+- **`IHoldToAimSkill`** (`Skills/Capabilities/`): `GetAimMaxDistance`, `GetAimAreaRadius`, `AimTravelSeconds`, `AimMarkerPrefab`. O caster, ao ver essa interface, entrega a mira ao **`Player/Skills/SkillHoldToAimController`** (no `Player`). Ele guarda o estado da mira e tem três comandos: `Begin(skill, nível)`, `Release()` (devolve o ponto) e `Cancel()`. Enquanto `IsAiming`, o próprio `Update` dele move o **`SkillAimMarker`** (prefab `Assets/Prefabs/VFX/SkillAimMarker.prefab`, uma instância cacheada por prefab, projetada no chão pelo `PlayerWeaponController.GroundMask`), e os três comandos também acionam a pose do mago. **Uma mira por vez:** o caster não começa outra Skill de mira segurada enquanto `IsAiming`. O ponto chega na Skill por `SkillCastContext.AimPoint`/`HasAimPoint`. Enquanto a tecla está segurada o mago fica com o cajado erguido, e ao soltar toca a estocada; o `castDelay` conta a partir do soltar (animações e transições na 4.23, "Mira segurada da Chuva de Brasas").
 - **`IMultiChargeSkill`**: `GetChargeCount(nível, variante)`, `ChargeWindowSeconds`. O handler guarda um **`SkillChargeState`** por slot e só inicia a recarga quando as cargas acabam ou a janela expira; o estado acompanha a Skill na troca de slot e é limpo ao trocar a variante. API: `GetChargesRemaining(slot)`, `GetChargeTotal(slot)`.
 - Skill sem nenhuma interface (a Bola de Fogo) segue o fluxo de clique de antes, sem diferença. **Skill nova com comportamento especial = interface nova, não membro novo na base.**
 
@@ -1125,7 +1125,8 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 
 **Runtime (no GameObject `Player`):**
 - **`Player/Skills/PlayerSkillHandler`** — dono do progresso (padrão da 4.12, `Instance`): `weapon`, `startingSkills`, `startingEquipped`, `maxSlots`, `startingUnlockedSlots` (stand-in da escolha pré-run). API: `Owned`, `Catalog`, `GetPurchaseCost`, `CanBuy`, `TryBuy`, `AcquireSkill` (entrada pública para qualquer fonte de skill nova; hoje só o ferreiro chama), `GetLevel`, `IsMaxLevel`, `GetUpgradeCost`, `CanUpgrade`, `TryUpgrade`, `GetSlot`, `IndexOf`, `Equip`, `Unequip`, `UnlockSlot`, `IsSlotUnlocked`, `HasCooldown`, `CooldownRemaining`, `CooldownNormalized`, `IsReady`, `TryCast`, `GetChargesRemaining`, `GetChargeTotal`, `ResetForNewRun`. Eventos `OnSkillAcquired`, `OnSkillsChanged` (posse/nível, inventário), `OnLoadoutChanged` (slots, HUD), `OnSkillUpgraded`, `OnSkillCast(slot)`.
-- **`Player/Skills/PlayerSkillCaster`** — lê as teclas dos slots, monta o `SkillCastContext` a partir do `PlayerWeaponController`, toca a animação de ataque na hora do clique e chama `TryCast` depois do `castDelay` da Skill (corrotina por slot). Para Skills `IHoldToAimSkill`, delega a mira ao `SkillHoldToAimController` antes disso. `GetKeyLabel(slot)` é usado pelo HUD, ferreiro e tooltip.
+- **`Player/Skills/PlayerSkillCaster`** — exige `PlayerWeaponController` e `SkillHoldToAimController` no mesmo objeto (`RequireComponent`, sem campo de Inspector além das teclas). Uma corrotina por slot (`CastRoutine`) segue um de dois caminhos: `CastInstantly` (toca o ataque no clique e chama `TryCast` depois do `castDelay`) ou, para `IHoldToAimSkill`, `AimThenCast` (`Begin` → espera soltar a tecla → `Release` → `castDelay` → `TryCast`; pausar ou trocar a Skill do slot chama `Cancel`). `GetKeyLabel(slot)` é usado pelo HUD, ferreiro e tooltip.
+- **`Player/Skills/SkillSlotBinding`** — tecla e botão de gamepad de um slot, com `WasPressedThisFrame`, `IsHeld` e `Label(usandoGamepad)`. Era a classe aninhada `PlayerSkillCaster.SlotBinding`; os valores da cena foram mantidos porque o Unity serializa pelo nome do campo.
 
 **Tela do ferreiro (`BlackSmithUpgradeSkills/CanvasBlacksmith`, cópia da `CanvasItemShop`, mesmo estilo cartoon):**
 - `BlackSmithUpgradeSkills` (prefab `Assets/Prefabs/Enviroment/BlackSmithUpgradeSkills.prefab`) é o ferreiro no mundo: NPC, `BlacksmithStore` e o `BlacksmithZone` (que adiciona o `SphereCollider` trigger). **O prefab não contém UI.**
@@ -1222,11 +1223,22 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 **Regras:**
 - Formas simples, cor chapada, borda dura, **alpha blend, nunca aditivo**, nenhuma cor acima de 1.0 (o Bloom global tem `threshold 1`).
 - Paleta oficial: núcleo Cream `#FCF8E6`, chama Legendary `#FFB020` → Copper `#BC621B` → Brown Deep `#663300`.
-- Poucas partículas: a cadência é de 0,2–0,3s, então cada projétil mantém ~15 vivas e cada impacto usa 10.
+- Partículas contidas: a cadência é de 0,2–0,3s, então cada projétil mantém no máximo 120 vivas no rastro (~85 num voo de 15 m) e cada impacto usa 10.
 - **Disparo:** `FireballMuzzle.prefab` (clarão em estrela de ~0,11s + 4 faíscas em cone), uma vez por disparo, mesmo na Tripla.
-- **Voo (refeito em 03/10): a bola é um modelo 3D, não sprite.** A primeira versão (discos e labaredas em sprite) foi reprovada: "parece apenas um PNG que o player está soltando". `Fireball.prefab` = `Model` (instância de `Assets/Meshes/Fireball/FireballModel.fbx`, escala `0.7`, girando no eixo do tiro por `ConstantSpin`) + `FlameShards` e `EmberShards` (cacos em malha `FireOcta` ficando para trás em world space, encolhendo e subindo). Collider de raio `0.35`.
-- **O modelo** foi feito no Blender (fonte em `Assets/Meshes/Fireball/Source~/FireballModel.blend`; a pasta com `~` é ignorada pelo Unity): três malhas low poly de sombreamento chapado, uma dentro da outra e deslocadas para a frente, `FlameCore` (amarelo, `Fire3DCore.mat`), `FlameInner` (laranja, `Fire3DFlame.mat`) e `FlameOuter` (vermelho, `Fire3DEmber.mat`, com as línguas de fogo da cauda). Materiais URP Lit com emissão abaixo de 1.0. A frente do modelo é `+Z`.
-- **Descartado nessa escolha (não reintroduzir sem pedido):** cinco versões em sprite (cometa, bola de labaredas, chama viva, orbe com anéis, octaedro) e três malhas geradas por código (estrela, cometa com cone, bola com línguas retas). O usuário pediu a modelagem no Blender.
+- **Voo: a bola é um modelo 3D, não sprite** (sprite reprovado em 03/10: "parece apenas um PNG que o player está soltando"). Refeito em 07/10 porque o modelo de 03/10 (três cascas de esfera subdividida, ~720 triângulos) lia "realista" demais ao lado do low poly do jogo. `Fireball.prefab` = `Model` (instância de `Assets/Meshes/Fireball/FireballCartoon.fbx`, escala `0.9`) + `FlameShards` e `EmberShards`. Collider de raio `0.35`.
+- **Modelo cartoon (07/10):** bola low poly facetada com labaredas em espiral em volta. Quatro malhas, todas com o **`Material.001`** (o material dos outros modelos do jogo, textura `ImphenziaPalette02-Albedo`; a cor vem das UVs apontando para uma célula da paleta):
+
+  | Malha | Cor (célula da paleta, linha/coluna de 16×16) | No prefab |
+  |---|---|---|
+  | `FireCore` | amarelo-claro (2,4), aparece na frente | parado |
+  | `FireBody` | dourado (3,1), a bola | `ConstantSpin` z `160` |
+  | `FireSwirl` | laranja (3,2), 4 labaredas curtas em espiral | `ConstantSpin` z `540` |
+  | `FireTail` | vermelho (2,2), 3 labaredas longas para trás | `ConstantSpin` z `-320` |
+
+  **As labaredas giram por efeito na Unity, não por animação no modelo** (pedido do usuário): são malhas separadas com o pivô no centro da bola, e o `ConstantSpin` as gira no eixo do tiro em velocidades e sentidos diferentes. Sombra desligada nas quatro.
+- **Fonte no Blender:** `BlenderModels/FireBall.blend` (fora do repositório), coleção `FireballCartoon`. A frente é `+Y` no Blender e precisa chegar como `+Z` na Unity. O exportador com `axis_forward='Z'` só gira os filhos 180° sem mudar a malha, então a exportação gira a geometria 180° em Z, exporta com `axis_forward='-Z'`, `axis_up='Y'`, `bake_space_transform` e depois desfaz o giro.
+- **Descartado (não reintroduzir sem pedido):** cinco versões em sprite (cometa, bola de labaredas, chama viva, orbe com anéis, octaedro), três malhas geradas por código (estrela, cometa com cone, bola com línguas retas), o modelo de três cascas de 03/10 (`FireballModel.fbx`, sem uso), e em 07/10: cometa com cauda em cone, bola compacta com coroa de chamas e cristal com estilhaços ("cenoura/casquinha", não lê como fogo), além de **contorno escuro** (o mundo 3D não tem contorno) e cores próprias fora da paleta.
+- **Rastro (07/10):** `FlameShards`/`EmberShards` emitem **por distância** (`rateOverDistance` 6 e 3 por metro, `rateOverTime` 0), a `z = -0.3` da bola. Antes emitiam por tempo (20/s e 12/s): a 25 m/s isso dava uma partícula a cada ~1,25 m, de 0,1–0,25 de tamanho, e o rastro não aparecia. Hoje: vida 0,3–0,45s e tamanho 0,24–0,4 nas chamas; vida 0,4–0,6s e tamanho 0,1–0,18 nas brasas. Até 120 partículas. **Projétil rápido sempre emite por distância.**
 - **Impacto:** `FireballImpact.prefab` (estrela que estoura com overshoot, núcleo creme, anel cobre que cresce e some, 7 faíscas esticadas), ao acertar **e** ao chegar no fim do alcance. Autodestrói (`stopAction = Destroy`). As `Flames` são soltas do projétil ao sumir (`detachOnDestroy`) para terminarem de desaparecer sozinhas.
 - **Inimigo atingido:** pisca e dá um pulo de escala, por qualquer fonte de dano.
 
@@ -1250,6 +1262,9 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
   | `Idle_Combat` | 0–48, loop | parado durante a wave |
   | `Idle_Relaxed` | 0–48, loop | parado fora de combate (cajado ao lado, mão para trás) |
   | `Fireball` | 0–14 | ataque da Bola de Fogo, **o tiro sai no frame 4** |
+  | `EmberRain_Enter` | 0–8 | Chuva de Brasas: ao apertar a tecla, ergue o cajado com as duas mãos; termina na pose do `Hold` |
+  | `EmberRain_Hold` | 0–24, loop | Chuva de Brasas: enquanto a tecla está segurada, cajado erguido à direita girando a ponta |
+  | `EmberRain_Release` | 0–16 | Chuva de Brasas: ao soltar, estocada para a frente; **a chuva sai no frame 4**; termina na `Idle_Combat` |
   | `Guard_Enter` | 0–16 | relaxada → combate, quando a wave começa |
   | `Celebrate` | 0–58 | fim da wave; combate → relaxada; fogo na mão esquerda nos frames 13–34 |
   | `Celebrate_Quick` | 0–30 | pegar item ou subir de nível; começa e termina em combate; fogo nos frames 8–20 |
@@ -1279,11 +1294,28 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 | Camada | Modo | Estados |
 |---|---|---|
 | Base | — | `Idle_Relaxed` (padrão, tag `Idle`), `Guard_Enter`, `Idle_Combat` (tag `Idle`), `Celebrate`, `Gesture_HatFix`, `Gesture_DustOff` |
-| Action | Override, peso 1 | `Empty` (tag `Empty`), `Fireball` (Any State, trigger `attack`, `0.04 s`, reinicia a cada clique), `Celebrate_Quick` |
+| Action | Override, peso 1 | `Empty` (tag `Empty`), `Fireball` (Any State, trigger `attack`, `0.04 s`, reinicia a cada clique), `Celebrate_Quick`, `EmberRain_Enter`/`EmberRain_Hold`/`EmberRain_Release` (ver "Mira segurada" abaixo) |
 | Reactions | **Additive**, peso 1 | `Empty` (tag `Empty`), `Jolt` (motion `Jolt_Strong`; Any State, trigger `jolt`, `0.05 s`, pode reiniciar; volta ao `Empty` em 90% com `0.12 s`) |
 **Código (no modelo `Player/Player`):**
 - **`Player/Animations/PlayerAnimationController.cs`** — fachada do Animator e fluxo: `PlayAttackAnimation`, `EnterCombat`, `LeaveCombat`, `PlayQuickCelebrate`, `InCombat`, `IsInIdlePose`; gestos, placar de progresso e o fogo na mão.
 - **`Player/Animations/PlayerHeadLook.cs`** — olhar no `LateUpdate` (`DefaultExecutionOrder(100)`), girando `Neck` e `Head` por cima da animação.
+
+#### Mira segurada da Chuva de Brasas (07/10)
+
+**O que é / ideia central:** a Chuva de Brasas é lançada em dois tempos (segurar para mirar, soltar para lançar), então a animação também tem três partes: o mago ergue o cajado ao apertar, fica com ele no alto enquanto a tecla está segurada e dá a estocada ao soltar.
+
+**Regras:**
+- Apertar a tecla toca `EmberRain_Enter`, que emenda sozinha no `EmberRain_Hold` em loop. Soltar toca o `EmberRain_Release`, e a chuva sai `castDelay = 4/24 s` depois (o frame 4 da estocada).
+- Cancelar a mira (pausar o jogo, trocar a Skill do slot, desativar o caster) volta ao `Empty` em `0.15 s` sem tocar o Release.
+- Uma Bola de Fogo de outro slot durante a mira interrompe a pose; quando ela termina, o `Empty` volta para o `Hold` enquanto `aiming` estiver ligado.
+- As duas mãos seguram o cajado (a esquerda abaixo da direita) e o cajado fica à direita e à frente do rosto, para não cobrir a barba. No Release a mão esquerda troca de pegada e vai para a frente da direita.
+- Os parâmetros são genéricos de "mira segurada", não da Chuva de Brasas: `aiming` (bool), `aimStart` e `aimRelease` (triggers). Outra Skill de mira segurada (o Vórtice de Cinzas usa o mesmo gesto, 7.2) chama os mesmos métodos; se precisar de outro gesto, ganha estados próprios.
+
+**Transições (camada Action):** Any State → `EmberRain_Enter` (`aimStart`, `0.06 s`, sem voltar para si) → `EmberRain_Hold` (fim do clipe, sem blend). `Enter`/`Hold` → `EmberRain_Release` (`aimRelease`, `0.03 s`, listada antes do cancelamento para ganhar no mesmo frame) e → `Empty` (`aiming` falso, `0.15 s`). `Release` → `Empty` em `0.92` com `0.12 s`. `Empty` → `Hold` quando `aiming` está ligado (`0.1 s`).
+
+**Código:** `PlayerAnimationController.BeginAimHold` / `ReleaseAimHold` / `CancelAimHold`. Quem chama é o `SkillHoldToAimController`: `BeginAimHold` no `Begin`, `ReleaseAimHold` no `Release` e `CancelAimHold` no `Cancel` (que o `PlayerSkillCaster` também chama no `OnDisable`).
+
+**Exportação (07/10):** o `.blend` tem duas faixas `Jolt_Strong` iguais; o exportador gera um clipe só. Exportado pelo Blender em segundo plano com `bake_anim_use_nla_strips`, `FBX_SCALE_NONE`, `apply_unit_scale`, leaf bones e só os 5 objetos `P_*`. **Faixas silenciadas no NLA não são exportadas, e a action ativa do armature fica por cima de todos os clipes:** antes de exportar, religar todas as faixas e limpar a action ativa. Os três clipes novos têm `internalID` `7310000000000000015`–`17` no `.meta`.
 
 #### Tranco na troca de trilho (06/10)
 

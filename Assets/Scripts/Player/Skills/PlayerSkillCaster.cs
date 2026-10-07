@@ -5,39 +5,34 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 [RequireComponent(typeof(PlayerSkillHandler))]
+[RequireComponent(typeof(PlayerWeaponController))]
+[RequireComponent(typeof(SkillHoldToAimController))]
 public class PlayerSkillCaster : MonoBehaviour
 {
-    [Serializable]
-    public class SlotBinding
+    [SerializeField] private SkillSlotBinding[] bindings =
     {
-        public Key key = Key.J;
-        public GamepadButton gamepadButton = GamepadButton.West;
-        public string keyLabel = "J";
-        public string gamepadLabel = "X";
-    }
-
-    [SerializeField] private PlayerWeaponController weaponController;
-    [SerializeField] private SkillHoldToAimController holdToAim;
-
-    [SerializeField] private SlotBinding[] bindings =
-    {
-        new SlotBinding { key = Key.J, gamepadButton = GamepadButton.West, keyLabel = "J", gamepadLabel = "X" },
-        new SlotBinding { key = Key.K, gamepadButton = GamepadButton.RightShoulder, keyLabel = "K", gamepadLabel = "RB" },
-        new SlotBinding { key = Key.L, gamepadButton = GamepadButton.RightTrigger, keyLabel = "L", gamepadLabel = "RT" },
+        new SkillSlotBinding(Key.J, GamepadButton.West, "J", "X"),
+        new SkillSlotBinding(Key.K, GamepadButton.RightShoulder, "K", "RB"),
+        new SkillSlotBinding(Key.L, GamepadButton.RightTrigger, "L", "RT"),
     };
 
     PlayerSkillHandler _handler;
-    bool[] _castingSlot;
+    PlayerWeaponController _weapon;
+    SkillHoldToAimController _aim;
+    bool[] _busySlots;
 
     public static PlayerSkillCaster Instance { get; private set; }
+
+    int ActiveSlotCount => Mathf.Min(_handler.UnlockedSlots, bindings.Length);
+    BurnDefinition WeaponBurn => _handler.Weapon != null ? _handler.Weapon.burn : null;
 
     void Awake()
     {
         Instance = this;
         _handler = GetComponent<PlayerSkillHandler>();
-        if (weaponController == null) weaponController = GetComponent<PlayerWeaponController>();
-        if (holdToAim == null) holdToAim = GetComponent<SkillHoldToAimController>();
-        _castingSlot = new bool[bindings.Length];
+        _weapon = GetComponent<PlayerWeaponController>();
+        _aim = GetComponent<SkillHoldToAimController>();
+        _busySlots = new bool[bindings.Length];
     }
 
     void OnDestroy()
@@ -48,94 +43,85 @@ public class PlayerSkillCaster : MonoBehaviour
     void OnDisable()
     {
         StopAllCoroutines();
-        Array.Clear(_castingSlot, 0, _castingSlot.Length);
-        if (holdToAim != null) holdToAim.HideAllMarkers();
+        Array.Clear(_busySlots, 0, _busySlots.Length);
+        _aim.Cancel();
     }
 
     void Update()
     {
-        if (Time.timeScale <= 0f || weaponController == null) return;
+        if (Time.timeScale <= 0f) return;
 
-        for (int slot = 0; slot < _handler.UnlockedSlots && slot < bindings.Length; slot++)
-        {
-            if (_castingSlot[slot] || !WasPressed(bindings[slot]) || !_handler.IsReady(slot)) continue;
-
-            if (_handler.GetSlot(slot) is IHoldToAimSkill holdToAimSkill && holdToAim != null)
-                StartCoroutine(AimThenCast(slot, holdToAimSkill));
-            else
-                StartCoroutine(CastAfterWindup(slot));
-        }
+        for (int slot = 0; slot < ActiveSlotCount; slot++)
+            if (CanStartCast(slot)) StartCoroutine(CastRoutine(slot));
     }
 
-    IEnumerator AimThenCast(int slot, IHoldToAimSkill holdToAimSkill)
+    bool CanStartCast(int slot)
     {
-        _castingSlot[slot] = true;
+        if (_busySlots[slot] || !bindings[slot].WasPressedThisFrame() || !_handler.IsReady(slot)) return false;
 
+        bool needsAim = _handler.GetSlot(slot) is IHoldToAimSkill;
+        return !needsAim || !_aim.IsAiming;
+    }
+
+    IEnumerator CastRoutine(int slot)
+    {
+        _busySlots[slot] = true;
         var skill = _handler.GetSlot(slot);
-        bool released = false;
-        Vector3 aimPoint = Vector3.zero;
 
-        yield return holdToAim.HoldToAim(
-            holdToAimSkill,
-            _handler.GetLevel(skill),
-            weaponController,
-            () => IsHeld(bindings[slot]),
-            () => Time.timeScale > 0f && _handler.GetSlot(slot) == skill,
-            point => { released = true; aimPoint = point; });
+        if (skill is IHoldToAimSkill aimSkill)
+            yield return AimThenCast(slot, skill, aimSkill);
+        else
+            yield return CastInstantly(slot, skill);
 
-        if (!released)
+        _busySlots[slot] = false;
+    }
+
+    IEnumerator CastInstantly(int slot, SkillDefinition skill)
+    {
+        if (_weapon.Animation != null) _weapon.Animation.PlayAttackAnimation();
+
+        yield return WaitForCastDelay(skill);
+        _handler.TryCast(slot, BuildContext());
+    }
+
+    IEnumerator AimThenCast(int slot, SkillDefinition skill, IHoldToAimSkill aimSkill)
+    {
+        _aim.Begin(aimSkill, _handler.GetLevel(skill));
+
+        while (bindings[slot].IsHeld())
         {
-            _castingSlot[slot] = false;
-            yield break;
+            if (!CanKeepAiming(slot, skill))
+            {
+                _aim.Cancel();
+                yield break;
+            }
+            yield return null;
         }
 
-        yield return CastAfterWindup(slot, aimPoint);
+        Vector3 aimPoint = _aim.Release();
+        yield return WaitForCastDelay(skill);
+        _handler.TryCast(slot, BuildContext(aimPoint));
     }
 
-    IEnumerator CastAfterWindup(int slot) => CastAfterWindup(slot, null);
+    bool CanKeepAiming(int slot, SkillDefinition skill) =>
+        Time.timeScale > 0f && _handler.GetSlot(slot) == skill;
 
-    IEnumerator CastAfterWindup(int slot, Vector3? aimPoint)
+    static IEnumerator WaitForCastDelay(SkillDefinition skill)
     {
-        _castingSlot[slot] = true;
-
-        if (weaponController.Animation != null) weaponController.Animation.PlayAttackAnimation();
-
-        var skill = _handler.GetSlot(slot);
-        float delay = skill != null ? skill.castDelay : 0f;
-        if (delay > 0f) yield return new WaitForSeconds(delay);
-
-        _castingSlot[slot] = false;
-
-        var burn = _handler.Weapon != null ? _handler.Weapon.burn : null;
-        var context = aimPoint.HasValue
-            ? new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn, aimPoint.Value)
-            : new SkillCastContext(weaponController.FirePoint, weaponController.AimDirection, weaponController.Owner, burn);
-        _handler.TryCast(slot, context);
+        if (skill != null && skill.castDelay > 0f) yield return new WaitForSeconds(skill.castDelay);
     }
 
-    static bool WasPressed(SlotBinding binding)
-    {
-        var keyboard = Keyboard.current;
-        if (keyboard != null && binding.key != Key.None && keyboard[binding.key].wasPressedThisFrame) return true;
+    SkillCastContext BuildContext() =>
+        new SkillCastContext(_weapon.FirePoint, _weapon.AimDirection, _weapon.Owner, WeaponBurn);
 
-        var gamepad = Gamepad.current;
-        return gamepad != null && gamepad[binding.gamepadButton].wasPressedThisFrame;
-    }
-
-    static bool IsHeld(SlotBinding binding)
-    {
-        var keyboard = Keyboard.current;
-        if (keyboard != null && binding.key != Key.None && keyboard[binding.key].isPressed) return true;
-
-        var gamepad = Gamepad.current;
-        return gamepad != null && gamepad[binding.gamepadButton].isPressed;
-    }
+    SkillCastContext BuildContext(Vector3 aimPoint) =>
+        new SkillCastContext(_weapon.FirePoint, _weapon.AimDirection, _weapon.Owner, WeaponBurn, aimPoint);
 
     public string GetKeyLabel(int slot)
     {
         if (slot < 0 || slot >= bindings.Length) return string.Empty;
 
-        bool gamepad = InventoryScreenInput.Instance != null && InventoryScreenInput.Instance.UsingGamepad;
-        return gamepad ? bindings[slot].gamepadLabel : bindings[slot].keyLabel;
+        bool usingGamepad = InventoryScreenInput.Instance != null && InventoryScreenInput.Instance.UsingGamepad;
+        return bindings[slot].Label(usingGamepad);
     }
 }

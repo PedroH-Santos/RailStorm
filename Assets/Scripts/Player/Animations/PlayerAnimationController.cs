@@ -13,6 +13,9 @@ public class PlayerAnimationController : MonoBehaviour
     static readonly int CelebrateHash = Animator.StringToHash("celebrate");
     static readonly int QuickCelebrateHash = Animator.StringToHash("quickCelebrate");
     static readonly int JoltHash = Animator.StringToHash("jolt");
+    static readonly int AimingHash = Animator.StringToHash("aiming");
+    static readonly int AimStartHash = Animator.StringToHash("aimStart");
+    static readonly int AimReleaseHash = Animator.StringToHash("aimRelease");
     static readonly int GestureHash = Animator.StringToHash("gesture");
     static readonly int GestureIndexHash = Animator.StringToHash("gestureIndex");
     static readonly int RelaxedStateHash = Animator.StringToHash("Idle_Relaxed");
@@ -127,6 +130,27 @@ public class PlayerAnimationController : MonoBehaviour
     public void PlayAttackAnimation()
     {
         _animator.SetTrigger(AttackHash);
+    }
+
+    public void BeginAimHold()
+    {
+        _animator.ResetTrigger(AimReleaseHash);
+        _animator.SetBool(AimingHash, true);
+        _animator.SetTrigger(AimStartHash);
+    }
+
+    public void ReleaseAimHold()
+    {
+        _animator.ResetTrigger(AimStartHash);
+        _animator.SetBool(AimingHash, false);
+        _animator.SetTrigger(AimReleaseHash);
+    }
+
+    public void CancelAimHold()
+    {
+        _animator.ResetTrigger(AimStartHash);
+        _animator.ResetTrigger(AimReleaseHash);
+        _animator.SetBool(AimingHash, false);
     }
 
     public void EnterCombat()

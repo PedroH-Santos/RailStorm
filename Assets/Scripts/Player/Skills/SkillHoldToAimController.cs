@@ -1,8 +1,7 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(PlayerWeaponController))]
 public class SkillHoldToAimController : MonoBehaviour
 {
     [SerializeField] private float groundProbeHeight = 20f;
@@ -10,65 +9,86 @@ public class SkillHoldToAimController : MonoBehaviour
 
     readonly Dictionary<SkillAimMarker, SkillAimMarker> _markerByPrefab = new();
 
-    public IEnumerator HoldToAim(
-        IHoldToAimSkill skill,
-        int level,
-        PlayerWeaponController weapon,
-        Func<bool> isKeyHeld,
-        Func<bool> isAimStillValid,
-        Action<Vector3> onReleased)
+    PlayerWeaponController _weapon;
+    SkillAimMarker _marker;
+    float _maxDistance;
+    float _travelSeconds;
+    float _elapsed;
+
+    public bool IsAiming { get; private set; }
+    public Vector3 AimPoint { get; private set; }
+
+    PlayerAnimationController PlayerAnimation => _weapon.Animation;
+
+    void Awake()
     {
-        float maxDistance = skill.GetAimMaxDistance(level);
-        float travelSeconds = Mathf.Max(0.01f, skill.AimTravelSeconds);
-        var marker = GetMarker(skill.AimMarkerPrefab);
-        if (marker != null) marker.Show(skill.GetAimAreaRadius(level));
-
-        float elapsed = 0f;
-        Vector3 aimPoint = ProjectToGround(weapon, 0f);
-
-        while (true)
-        {
-            if (!isAimStillValid())
-            {
-                if (marker != null) marker.Hide();
-                yield break;
-            }
-
-            elapsed += Time.deltaTime;
-            float distance = Mathf.Min(maxDistance, maxDistance * elapsed / travelSeconds);
-            aimPoint = ProjectToGround(weapon, distance);
-
-            if (marker != null)
-            {
-                marker.MoveTo(aimPoint);
-                marker.SetReachedMax(distance >= maxDistance);
-            }
-
-            if (!isKeyHeld()) break;
-            yield return null;
-        }
-
-        if (marker != null) marker.Hide();
-        onReleased?.Invoke(aimPoint);
+        _weapon = GetComponent<PlayerWeaponController>();
     }
 
-    public void HideAllMarkers()
+    void Update()
     {
-        foreach (var marker in _markerByPrefab.Values)
-            if (marker != null) marker.Hide();
+        if (IsAiming) AdvanceAim(Time.deltaTime);
     }
 
-    Vector3 ProjectToGround(PlayerWeaponController weapon, float distance)
+    public void Begin(IHoldToAimSkill skill, int level)
     {
-        var owner = weapon.Owner;
-        Vector3 direction = weapon.AimDirection;
+        _maxDistance = skill.GetAimMaxDistance(level);
+        _travelSeconds = Mathf.Max(0.01f, skill.AimTravelSeconds);
+        _elapsed = 0f;
+
+        _marker = GetMarker(skill.AimMarkerPrefab);
+        if (_marker != null) _marker.Show(skill.GetAimAreaRadius(level));
+
+        IsAiming = true;
+        AdvanceAim(0f);
+
+        if (PlayerAnimation != null) PlayerAnimation.BeginAimHold();
+    }
+
+    public Vector3 Release()
+    {
+        StopAiming();
+        if (PlayerAnimation != null) PlayerAnimation.ReleaseAimHold();
+        return AimPoint;
+    }
+
+    public void Cancel()
+    {
+        if (!IsAiming) return;
+
+        StopAiming();
+        if (PlayerAnimation != null) PlayerAnimation.CancelAimHold();
+    }
+
+    void AdvanceAim(float deltaTime)
+    {
+        _elapsed += deltaTime;
+        float distance = Mathf.Min(_maxDistance, _maxDistance * _elapsed / _travelSeconds);
+        AimPoint = ProjectToGround(distance);
+
+        if (_marker == null) return;
+        _marker.MoveTo(AimPoint);
+        _marker.SetReachedMax(distance >= _maxDistance);
+    }
+
+    void StopAiming()
+    {
+        IsAiming = false;
+        if (_marker != null) _marker.Hide();
+        _marker = null;
+    }
+
+    Vector3 ProjectToGround(float distance)
+    {
+        var owner = _weapon.Owner;
+        Vector3 direction = _weapon.AimDirection;
         direction.y = 0f;
         if (direction.sqrMagnitude < 0.0001f) direction = owner.forward;
 
         Vector3 flatPoint = owner.position + direction.normalized * distance;
         Vector3 probeOrigin = flatPoint + Vector3.up * groundProbeHeight;
 
-        if (Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit hit, groundProbeDistance, weapon.GroundMask, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit hit, groundProbeDistance, _weapon.GroundMask, QueryTriggerInteraction.Ignore))
             return hit.point;
 
         return flatPoint;
