@@ -109,7 +109,7 @@ Fora das runs, o jogador usaria um segundo tipo de **moeda de meta-progressão**
 - **`Stats/PlayerStatsAggregator.cs`** — hub central de stats: `HP`/`MaxHP` (clamp), `MoveSpeed`, `IdleSpeed`, `Coins` (nunca negativo), `LuckPercent` (clamp 0–100); registra `StatDescriptor`s para UI.
 - **`Systems/LifeSystem.cs`** — vida genérica (player ou inimigo); usa `PlayerStatsAggregator.HP` se presente, senão vida local própria; dispara `OnDeath` e o evento estático `OnAnyDeath` **uma vez só** (flag `_dead`/`IsDead`; antes, dois golpes no mesmo frame antes do `Destroy` disparavam a morte em dobro). Depois de morto, `Damage` é ignorado.
 - **Arma do personagem (paralela às armas do vagão)**: `Player/PlayerAim.cs` (antes `PlayerWeaponController`, renomeado em 07/10 com o `.meta`, GUID mantido) cuida **só da mira**: gira o `Model` do personagem pelo analógico (`TryReadStickDirection`) ou, sem ele, pelo ponto do chão sob o mouse (`TryReadMouseDirection`), e expõe `Model`, `FirePoint`, `FacingDirection` e `GroundMask`. O campo `model` era `player` (`FormerlySerializedAs`). Quem precisa da animação pega o `PlayerAnimationController` direto nos filhos, não pela mira. O ataque saiu dele em 22/09: cada ataque agora é uma **Skill** equipada num slot com tecla própria, com stats no asset (não no código) — ver 4.19. O projétil da bola de fogo é `PlayerWeapons/Skills/Fireball/FireballProjectile.cs`.
-- **`Animations/PlayerAnimationController.cs`**, **`PlayerHeadLook.cs`** — animação do personagem (fluxo de combate, tranco na troca de trilho, olhar). Ver 4.23.
+- **`Animations/`** — animação do personagem: `PlayerAnimationController` (ponte com o Animator) e um componente por comportamento (`PlayerCombatStance`, `PlayerProgressCelebration`, `PlayerIdleGestures`, `PlayerHandFlame`, `PlayerTrackSwitchJolt`, `PlayerHeadLook`). Ver 4.23.
 - **`Items/PlayerItemHandler.cs`** — ver seção 4.6.
 - **`Skills/PlayerPerkHandler.cs`** — ver seção 4.6.
 
@@ -1307,7 +1307,13 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 | Action | Override, peso 1 | `Empty` (tag `Empty`), `Fireball` (Any State, trigger `attack`, `0.04 s`, reinicia a cada clique), `Celebrate_Quick`, `EmberRain_Enter`/`EmberRain_Hold`/`EmberRain_Release` (ver "Mira segurada" abaixo) |
 | Reactions | **Additive**, peso 1 | `Empty` (tag `Empty`), `Jolt` (motion `Jolt_Strong`; Any State, trigger `jolt`, `0.05 s`, pode reiniciar; volta ao `Empty` em 90% com `0.12 s`) |
 **Código (no modelo `Player/Player`):**
-- **`Player/Animations/PlayerAnimationController.cs`** — fachada do Animator e fluxo: `PlayAttackAnimation`, `EnterCombat`, `LeaveCombat`, `PlayQuickCelebrate`, `InCombat`, `IsInIdlePose`; gestos, placar de progresso e o fogo na mão.
+- **`Player/Animations/PlayerAnimationController.cs`** — **só a ponte com o Animator** (07/10): guarda os hashes e traduz comandos em parâmetros. Comandos: `PlayAttackAnimation`, `BeginAimHold`/`ReleaseAimHold`/`CancelAimHold`, `EnterCombatStance`, `LeaveCombatAndCelebrate`, `PlayQuickCelebrate`, `PlayJolt`, `PlayGesture(índice)`. Leituras: `InCombat`, `IsInIdlePose`, `IsInRelaxedIdle`, `CanStartQuickCelebrate`, `TryGetCelebrateProgress`/`TryGetQuickCelebrateProgress`. Não escuta evento nenhum do jogo.
+- Cada comportamento é um componente próprio no mesmo objeto do modelo (dividido em 07/10; antes tudo morava no `PlayerAnimationController`):
+  - **`PlayerCombatStance`** — waves → `EnterCombatStance` / `LeaveCombatAndCelebrate`. Entra em combate no `Start` se a wave já estiver rolando.
+  - **`PlayerProgressCelebration`** — placar de progresso (`ItemsOwned` + `PerkLevels` + `SkillLevels` + `CarWeaponLevels`). Quando sobe, deixa a comemoração rápida pendente e a toca assim que o jogo volta e `CanStartQuickCelebrate`.
+  - **`PlayerIdleGestures`** — `gestureInterval`, `gestureCount`. Conta o tempo só na Idle relaxada, reinicia a espera quando o combate acaba.
+  - **`PlayerHandFlame`** — `handFlamePrefab`, `handFlameBone` (`UpperHand.L`), offset, escala e as duas janelas de fogo.
+  - **`PlayerTrackSwitchJolt`** — `PlayerController.OnSplineSwitched` → `PlayJolt`.
 - **`Player/Animations/PlayerHeadLook.cs`** — olhar no `LateUpdate` (`DefaultExecutionOrder(100)`), girando `Neck` e `Head` por cima da animação.
 
 #### Mira segurada da Chuva de Brasas (07/10)
@@ -1337,7 +1343,7 @@ Estrutura (`Card` `330×128`, ancorado logo acima do `Tail`):
 - É aditivo, numa camada própria: soma à pose atual e não interrompe ataque, comemoração nem gesto.
 - **Clipe em uso: `Jolt_Strong`** (0–10, aditivo), a ação `Jolt` do Blender com o desvio de cada osso em relação ao frame 0 ampliado **2,5×** (tronco ~20°, cabeça ~14° no pico). O `Jolt` original (tronco ~8°) era sutil demais para a câmera isométrica com o modelo em escala `0.18`. Os dois clipes ficam no FBX para comparar; trocar é só mudar o `Motion` do estado `Jolt` na camada Reactions.
 
-**Código:** `PlayerController.OnSplineSwitched`, disparado no fim de `SwitchToSplineIndex`; `PlayerAnimationController.HandleSplineSwitched` dispara o trigger `jolt`.
+**Código:** `PlayerController.OnSplineSwitched`, disparado no fim de `SwitchToSplineIndex`; `PlayerTrackSwitchJolt` chama `PlayerAnimationController.PlayJolt`, que dispara o trigger `jolt`.
 
 #### Pendente: reação do corpo ao movimento do vagão (retirada em 05/10, a rever)
 
