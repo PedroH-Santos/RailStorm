@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 [RequireComponent(typeof(PlayerSkillHandler))]
-[RequireComponent(typeof(PlayerWeaponController))]
+[RequireComponent(typeof(PlayerAim))]
 [RequireComponent(typeof(SkillHoldToAimController))]
 public class PlayerSkillCaster : MonoBehaviour
 {
@@ -16,23 +16,25 @@ public class PlayerSkillCaster : MonoBehaviour
         new SkillSlotBinding(Key.L, GamepadButton.RightTrigger, "L", "RT"),
     };
 
-    PlayerSkillHandler _handler;
-    PlayerWeaponController _weapon;
-    SkillHoldToAimController _aim;
-    bool[] _busySlots;
+    PlayerSkillHandler _skills;
+    PlayerAim _playerAim;
+    SkillHoldToAimController _holdToAim;
+    PlayerAnimationController _animation;
+    bool[] _slotIsCasting;
 
     public static PlayerSkillCaster Instance { get; private set; }
 
-    int ActiveSlotCount => Mathf.Min(_handler.UnlockedSlotCount, bindings.Length);
-    BurnDefinition WeaponBurn => _handler.Weapon != null ? _handler.Weapon.burn : null;
+    int UsableSlotCount => Mathf.Min(_skills.UnlockedSlotCount, bindings.Length);
+    BurnDefinition WeaponBurn => _skills.Weapon != null ? _skills.Weapon.burn : null;
 
     void Awake()
     {
         Instance = this;
-        _handler = GetComponent<PlayerSkillHandler>();
-        _weapon = GetComponent<PlayerWeaponController>();
-        _aim = GetComponent<SkillHoldToAimController>();
-        _busySlots = new bool[bindings.Length];
+        _skills = GetComponent<PlayerSkillHandler>();
+        _playerAim = GetComponent<PlayerAim>();
+        _holdToAim = GetComponent<SkillHoldToAimController>();
+        _animation = GetComponentInChildren<PlayerAnimationController>();
+        _slotIsCasting = new bool[bindings.Length];
     }
 
     void OnDestroy()
@@ -43,81 +45,80 @@ public class PlayerSkillCaster : MonoBehaviour
     void OnDisable()
     {
         StopAllCoroutines();
-        Array.Clear(_busySlots, 0, _busySlots.Length);
-        _aim.Cancel();
+        Array.Clear(_slotIsCasting, 0, _slotIsCasting.Length);
+        _holdToAim.Cancel();
     }
 
     void Update()
     {
-        if (Time.timeScale <= 0f) return;
+        bool gameIsPaused = Time.timeScale <= 0f;
+        if (gameIsPaused) return;
 
-        for (int index = 0; index < ActiveSlotCount; index++)
-            if (CanStartCast(index)) StartCoroutine(CastRoutine(_handler.GetSlot(index)));
+        for (int index = 0; index < UsableSlotCount; index++)
+            if (PlayerStartedCastingFrom(index)) StartCoroutine(CastRoutine(_skills.GetSlot(index)));
     }
 
-    bool CanStartCast(int index)
+    bool PlayerStartedCastingFrom(int index)
     {
-        var slot = _handler.GetSlot(index);
-        if (_busySlots[index] || !bindings[index].WasPressedThisFrame() || !slot.IsReady) return false;
+        var slot = _skills.GetSlot(index);
+        if (_slotIsCasting[index] || !bindings[index].WasPressedThisFrame() || !slot.IsReady) return false;
 
-        bool needsAim = slot.Skill.Definition is IHoldToAimSkill;
-        return !needsAim || !_aim.IsAiming;
+        bool needsGroundAim = slot.Skill.Definition is IHoldToAimSkill;
+        return !needsGroundAim || !_holdToAim.IsAiming;
     }
 
     IEnumerator CastRoutine(SkillSlot slot)
     {
-        _busySlots[slot.Index] = true;
+        _slotIsCasting[slot.Index] = true;
         var skill = slot.Skill;
 
-        if (skill.Definition is IHoldToAimSkill aimSkill)
-            yield return AimThenCast(slot, skill, aimSkill);
+        if (skill.Definition is IHoldToAimSkill holdToAimSkill)
+            yield return AimThenCast(slot, skill, holdToAimSkill);
         else
             yield return CastInstantly(slot, skill);
 
-        _busySlots[slot.Index] = false;
+        _slotIsCasting[slot.Index] = false;
     }
 
     IEnumerator CastInstantly(SkillSlot slot, OwnedSkill skill)
     {
-        if (_weapon.Animation != null) _weapon.Animation.PlayAttackAnimation();
+        if (_animation != null) _animation.PlayAttackAnimation();
 
-        yield return WaitForCastDelay(skill);
-        _handler.TryCast(slot.Index, BuildContext());
+        yield return WaitForAttackSwing(skill);
+        _skills.TryCast(slot.Index, SkillCastContext.TowardsAim(_playerAim.FirePoint, _playerAim.FacingDirection, WeaponBurn));
     }
 
-    IEnumerator AimThenCast(SkillSlot slot, OwnedSkill skill, IHoldToAimSkill aimSkill)
+    IEnumerator AimThenCast(SkillSlot slot, OwnedSkill skill, IHoldToAimSkill holdToAimSkill)
     {
-        _aim.Begin(aimSkill, skill.Level);
+        _holdToAim.Begin(holdToAimSkill, skill.Level);
 
         while (bindings[slot.Index].IsHeld())
         {
             if (!CanKeepAiming(slot, skill))
             {
-                _aim.Cancel();
+                _holdToAim.Cancel();
                 yield break;
             }
             yield return null;
         }
 
-        Vector3 aimPoint = _aim.Release();
-        yield return WaitForCastDelay(skill);
-        _handler.TryCast(slot.Index, BuildContext(aimPoint));
+        Vector3 groundPoint = _holdToAim.Release();
+        yield return WaitForAttackSwing(skill);
+        _skills.TryCast(slot.Index, SkillCastContext.AtGroundPoint(_playerAim.FirePoint, _playerAim.FacingDirection, WeaponBurn, groundPoint));
     }
 
-    static bool CanKeepAiming(SkillSlot slot, OwnedSkill skill) =>
-        Time.timeScale > 0f && slot.Skill == skill;
-
-    static IEnumerator WaitForCastDelay(OwnedSkill skill)
+    static bool CanKeepAiming(SkillSlot slot, OwnedSkill skill)
     {
-        float delay = skill.Definition.castDelay;
-        if (delay > 0f) yield return new WaitForSeconds(delay);
+        bool gameIsRunning = Time.timeScale > 0f;
+        bool skillIsStillInThisSlot = slot.Skill == skill;
+        return gameIsRunning && skillIsStillInThisSlot;
     }
 
-    SkillCastContext BuildContext() =>
-        new SkillCastContext(_weapon.FirePoint, _weapon.AimDirection, _weapon.Owner, WeaponBurn);
-
-    SkillCastContext BuildContext(Vector3 aimPoint) =>
-        new SkillCastContext(_weapon.FirePoint, _weapon.AimDirection, _weapon.Owner, WeaponBurn, aimPoint);
+    static IEnumerator WaitForAttackSwing(OwnedSkill skill)
+    {
+        float swingSeconds = skill.Definition.castDelay;
+        if (swingSeconds > 0f) yield return new WaitForSeconds(swingSeconds);
+    }
 
     public string GetKeyLabel(int slot)
     {
