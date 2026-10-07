@@ -18,7 +18,7 @@ public class FireballSkillDefinition : LeveledSkillDefinition<FireballLevelData>
 
     public override IReadOnlyList<ESkillStatTarget> DisplayStats => StatsShownToPlayer;
 
-    public override void Cast(SkillCastContext context, int level, SkillVariantDefinition variant)
+    public override void Cast(SkillCastContext context, SkillLevel level, SkillVariantDefinition variant)
     {
         if (projectilePrefab == null || context.FirePoint == null) return;
 

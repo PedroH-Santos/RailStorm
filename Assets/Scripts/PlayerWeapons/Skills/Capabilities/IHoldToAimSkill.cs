@@ -1,7 +1,7 @@
 public interface IHoldToAimSkill
 {
-    float GetAimMaxDistance(int level);
-    float GetAimAreaRadius(int level);
+    float GetAimMaxDistance(SkillLevel level);
+    float GetAimAreaRadius(SkillLevel level);
     float AimTravelSeconds { get; }
     SkillAimMarker AimMarkerPrefab { get; }
 }

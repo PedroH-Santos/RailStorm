@@ -197,7 +197,7 @@ public class PlayerAnimationController : MonoBehaviour
 
         if (_skills != null)
             foreach (var skill in _skills.Owned)
-                score += _skills.GetLevel(skill) + 1;
+                score += skill.Level.Number;
 
         if (_carWeapons != null)
             foreach (var weapon in _carWeapons.AcquiredWeapons)

@@ -30,7 +30,7 @@ public class SkillHoldToAimController : MonoBehaviour
         if (IsAiming) AdvanceAim(Time.deltaTime);
     }
 
-    public void Begin(IHoldToAimSkill skill, int level)
+    public void Begin(IHoldToAimSkill skill, SkillLevel level)
     {
         _maxDistance = skill.GetAimMaxDistance(level);
         _travelSeconds = Mathf.Max(0.01f, skill.AimTravelSeconds);

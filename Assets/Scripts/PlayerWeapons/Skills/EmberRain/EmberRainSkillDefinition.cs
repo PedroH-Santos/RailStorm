@@ -30,14 +30,14 @@ public class EmberRainSkillDefinition : LeveledSkillDefinition<EmberRainLevelDat
 
     public float AimTravelSeconds => aimTravelSeconds;
     public SkillAimMarker AimMarkerPrefab => aimMarkerPrefab;
-    public float GetAimMaxDistance(int level) => GetLevelStats(level).range;
-    public float GetAimAreaRadius(int level) => GetLevelStats(level).radius;
+    public float GetAimMaxDistance(SkillLevel level) => GetLevelStats(level).range;
+    public float GetAimAreaRadius(SkillLevel level) => GetLevelStats(level).radius;
 
     public float ChargeWindowSeconds => chargeWindowSeconds;
-    public int GetChargeCount(int level, SkillVariantDefinition variant)
+    public int GetChargeCount(SkillLevel level, SkillVariantDefinition variant)
         => variant is EmberRainDoubleVariant doubleRain ? doubleRain.chargeCount : 1;
 
-    public override void Cast(SkillCastContext context, int level, SkillVariantDefinition variant)
+    public override void Cast(SkillCastContext context, SkillLevel level, SkillVariantDefinition variant)
     {
         if (areaPrefab == null || !context.HasAimPoint) return;
 

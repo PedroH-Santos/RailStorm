@@ -74,26 +74,26 @@ public static class TooltipBuilder
     static TooltipData BuildSkill(SkillDefinition skill)
     {
         var handler = PlayerSkillHandler.Instance;
-        int level = handler != null ? Mathf.Max(handler.GetLevel(skill), 0) : 0;
+        var owned = handler != null ? handler.FindOwned(skill) : null;
+        var level = owned != null ? owned.Level : SkillLevel.First;
 
-        var data = NewData("Skill", skill, skill.RarityForLevel(level));
+        var data = NewData("Skill", skill, skill.RarityAt(level));
         data.Description = skill.description;
 
-        foreach (var target in skill.VisibleStats(level))
-            data.Stats.Add(new TooltipStatLine(StatLabels.Of(target), SkillStatFormatting.Format(target, skill.GetStatValue(level, target))));
+        foreach (var stat in skill.VisibleStats(level))
+            data.Stats.Add(new TooltipStatLine(StatLabels.Of(stat), SkillStatFormatting.Format(stat, skill.GetStatValue(level, stat))));
 
         if (!skill.HasCooldown(level))
             data.Stats.Add(new TooltipStatLine(StatLabels.Of(ESkillStatTarget.Cooldown), "Sem recarga"));
 
-        data.Stats.Add(new TooltipStatLine("Nível", $"{level + 1} / {skill.LevelCount}"));
+        data.Stats.Add(new TooltipStatLine("Nível", $"{level.Number} / {skill.LevelCount}"));
 
-        var variant = handler != null ? handler.GetActiveVariant(skill) : null;
-        if (variant != null)
-            data.Stats.Add(new TooltipStatLine("Variante", variant.variantName));
+        if (owned != null && owned.ActiveVariant != null)
+            data.Stats.Add(new TooltipStatLine("Variante", owned.ActiveVariant.variantName));
 
-        int slot = handler != null ? handler.IndexOf(skill) : -1;
-        if (slot >= 0 && PlayerSkillCaster.Instance != null)
-            data.Stats.Add(new TooltipStatLine("Tecla", PlayerSkillCaster.Instance.GetKeyLabel(slot)));
+        var slot = handler != null ? handler.SlotHolding(skill) : null;
+        if (slot != null && PlayerSkillCaster.Instance != null)
+            data.Stats.Add(new TooltipStatLine("Tecla", PlayerSkillCaster.Instance.GetKeyLabel(slot.Index)));
 
         return data;
     }

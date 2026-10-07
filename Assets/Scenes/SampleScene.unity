@@ -24825,7 +24825,7 @@ MonoBehaviour:
   _acceleration: 6
   _deceleration: 4
   _rotationSmoothTime: 0.1
-  _coins: 150
+  _coins: 500
   _runes: 2
   _luckPercent: 0
 --- !u!114 &337154716
@@ -24864,8 +24864,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fb1d2bee66abb04e8c73361f58fea8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSkillCaster
-  weaponController: {fileID: 337154710}
-  holdToAim: {fileID: 337154720}
   bindings:
   - key: 24
     gamepadButton: 7
@@ -166418,6 +166416,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5108052005838641350, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
+      propertyPath: InitialModule.startSizeY.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5108052005838641350, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
+      propertyPath: InitialModule.startSizeZ.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 6358198007250492734, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
       propertyPath: m_Name
       value: Fireball
@@ -166425,6 +166431,14 @@ PrefabInstance:
     - target: {fileID: 6358198007250492734, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6422627420602376852, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
+      propertyPath: InitialModule.startSizeY.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6422627420602376852, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
+      propertyPath: InitialModule.startSizeZ.minMaxState
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 8838444246159983790, guid: 21711404b1abfdc48a8bd26b00736603, type: 3}
       propertyPath: m_LocalPosition.z

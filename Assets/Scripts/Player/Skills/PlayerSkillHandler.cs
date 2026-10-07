@@ -14,7 +14,7 @@ public class PlayerSkillHandler : MonoBehaviour
 
     [Header("Loadout inicial (escolhido antes da run)")]
     [SerializeField] private List<SkillDefinition> startingSkills = new();
-    [SerializeField] private List<SkillDefinition> startingEquipped = new(); 
+    [SerializeField] private List<SkillDefinition> startingEquipped = new();
 
     [Header("Slots")]
     [Range(1, SlotLimit)]
@@ -27,33 +27,28 @@ public class PlayerSkillHandler : MonoBehaviour
     [SerializeField] private int runesPerVariant = 1;
 
     readonly List<SkillDefinition> _catalog = new();
-    readonly List<SkillDefinition> _owned = new();
-    readonly Dictionary<SkillDefinition, int> _levelBySkill = new();
+    readonly List<OwnedSkill> _owned = new();
     readonly HashSet<SkillVariantDefinition> _unlockedVariants = new();
-    readonly Dictionary<SkillDefinition, SkillVariantDefinition> _activeVariantBySkill = new();
-    SkillDefinition[] _slots = Array.Empty<SkillDefinition>();
-    float[] _cooldownRemaining = Array.Empty<float>();
-    float[] _cooldownDuration = Array.Empty<float>();
-    SkillChargeState[] _chargeStates = Array.Empty<SkillChargeState>();
-    int _unlockedSlots;
+    SkillLoadout _loadout;
 
     public event Action OnSkillsChanged;
-    public event Action<SkillDefinition> OnSkillAcquired;
     public event Action OnLoadoutChanged;
-    public event Action<SkillDefinition> OnSkillUpgraded;
+    public event Action<OwnedSkill> OnSkillAcquired;
+    public event Action<OwnedSkill> OnSkillUpgraded;
+    public event Action<OwnedSkill> OnVariantChanged;
     public event Action<int> OnSkillCast;
-    public event Action<SkillDefinition> OnVariantChanged;
 
     public PlayerWeaponDefinition Weapon => weapon;
-    public IReadOnlyList<SkillDefinition> Owned => _owned;
     public IReadOnlyList<SkillDefinition> Catalog => _catalog;
-    public int MaxSlots => _slots.Length;
-    public int UnlockedSlots => _unlockedSlots;
+    public IReadOnlyList<OwnedSkill> Owned => _owned;
+    public IReadOnlyList<SkillSlot> Slots => _loadout.Slots;
+    public int UnlockedSlotCount => _loadout.UnlockedCount;
+    public int RunesPerVariant => runesPerVariant;
 
     void Awake()
     {
         Instance = this;
-        BuildInitialLoadout();
+        StartNewRun();
     }
 
     void OnDestroy()
@@ -63,304 +58,187 @@ public class PlayerSkillHandler : MonoBehaviour
 
     void Update()
     {
-        for (int i = 0; i < _cooldownRemaining.Length; i++)
-            if (_cooldownRemaining[i] > 0f)
-                _cooldownRemaining[i] = Mathf.Max(0f, _cooldownRemaining[i] - Time.deltaTime);
+        _loadout.Tick(Time.deltaTime);
+    }
 
-        for (int i = 0; i < _chargeStates.Length; i++)
-            if (_chargeStates[i].TickWindow(Time.deltaTime))
-                StartCooldown(i, _slots[i]);
+    public void ResetForNewRun()
+    {
+        StartNewRun();
+        OnSkillsChanged?.Invoke();
+        OnLoadoutChanged?.Invoke();
+    }
+
+    void StartNewRun()
+    {
+        BuildCatalog();
+        _owned.Clear();
+        _unlockedVariants.Clear();
+        _loadout = new SkillLoadout(Mathf.Clamp(maxSlots, 1, SlotLimit), startingUnlockedSlots);
+
+        foreach (var skill in startingSkills)
+            if (CanOwn(skill)) _owned.Add(new OwnedSkill(skill));
+
+        EquipStartingSkills();
     }
 
     void BuildCatalog()
     {
         _catalog.Clear();
 
-        IEnumerable<SkillDefinition> source = weapon != null && weapon.availableSkills.Count > 0
+        bool weaponListsItsSkills = weapon != null && weapon.availableSkills.Count > 0;
+        IEnumerable<SkillDefinition> source = weaponListsItsSkills
             ? weapon.availableSkills
             : Resources.LoadAll<SkillDefinition>("Skills");
 
         foreach (var skill in source)
-        {
-            if (skill == null || _catalog.Contains(skill)) continue;
-            if (weapon != null && !weapon.Supports(skill)) continue;
-            _catalog.Add(skill);
-        }
+            if (skill != null && !_catalog.Contains(skill) && WeaponSupports(skill))
+                _catalog.Add(skill);
     }
 
-    void BuildInitialLoadout()
+    void EquipStartingSkills()
     {
-        BuildCatalog();
-        _owned.Clear();
-        _levelBySkill.Clear();
-        _unlockedVariants.Clear();
-        _activeVariantBySkill.Clear();
-
-        foreach (var skill in startingSkills)
+        for (int slot = 0; slot < startingEquipped.Count && slot < _loadout.UnlockedCount; slot++)
         {
-            if (skill == null || _owned.Contains(skill)) continue;
-            if (weapon != null && !weapon.Supports(skill)) continue;
-
-            _owned.Add(skill);
-            _levelBySkill[skill] = 0;
+            var owned = FindOwned(startingEquipped[slot]);
+            bool alreadyEquipped = owned != null && _loadout.SlotHolding(owned.Definition) != null;
+            if (owned != null && !alreadyEquipped) _loadout.Get(slot).Equip(owned);
         }
 
-        int slotCount = Mathf.Clamp(maxSlots, 1, SlotLimit);
-        _slots = new SkillDefinition[slotCount];
-        _cooldownRemaining = new float[slotCount];
-        _cooldownDuration = new float[slotCount];
-        _chargeStates = new SkillChargeState[slotCount];
-        for (int i = 0; i < slotCount; i++) _chargeStates[i] = new SkillChargeState();
-        _unlockedSlots = Mathf.Clamp(startingUnlockedSlots, 1, slotCount);
-
-        for (int i = 0; i < startingEquipped.Count && i < _unlockedSlots; i++)
-            if (Owns(startingEquipped[i]) && IndexOf(startingEquipped[i]) < 0)
-                _slots[i] = startingEquipped[i];
-
-        if (IsEmpty() && _owned.Count > 0)
-            _slots[0] = _owned[0];
+        bool nothingEquipped = _loadout.IsEmpty;
+        if (nothingEquipped && _owned.Count > 0) _loadout.Get(0).Equip(_owned[0]);
     }
 
-    bool IsEmpty()
+    public OwnedSkill FindOwned(SkillDefinition skill)
     {
-        foreach (var slot in _slots)
-            if (slot != null) return false;
+        foreach (var owned in _owned)
+            if (owned.Definition == skill) return owned;
+        return null;
+    }
+
+    public bool Owns(SkillDefinition skill) => skill != null && FindOwned(skill) != null;
+
+    bool WeaponSupports(SkillDefinition skill) => weapon == null || weapon.Supports(skill);
+
+    bool CanOwn(SkillDefinition skill) => skill != null && !Owns(skill) && WeaponSupports(skill);
+
+    public bool CanBuy(SkillDefinition skill, PlayerStatsAggregator stats)
+        => CanOwn(skill) && stats != null && stats.Coins >= skill.purchaseCost;
+
+    public bool TryBuy(SkillDefinition skill, PlayerStatsAggregator stats)
+    {
+        if (!CanBuy(skill, stats)) return false;
+
+        stats.SpendCoins(skill.purchaseCost);
+        return AcquireSkill(skill);
+    }
+
+    public bool AcquireSkill(SkillDefinition skill)
+    {
+        if (!CanOwn(skill)) return false;
+
+        var owned = new OwnedSkill(skill);
+        _owned.Add(owned);
+
+        var freeSlot = _loadout.FirstEmptyUnlockedSlot();
+        if (freeSlot != null) freeSlot.Equip(owned);
+
+        Debug.Log($"[Skills] Nova skill: {skill.skillName}");
+        OnSkillAcquired?.Invoke(owned);
+        OnSkillsChanged?.Invoke();
+        OnLoadoutChanged?.Invoke();
         return true;
     }
 
-    public bool Owns(SkillDefinition skill) => skill != null && _levelBySkill.ContainsKey(skill);
+    public bool CanUpgrade(OwnedSkill skill, PlayerStatsAggregator stats)
+        => skill != null && !skill.IsAtMaxLevel && stats != null && stats.Coins >= skill.UpgradeCost;
 
-    public int GetLevel(SkillDefinition skill)
-        => skill != null && _levelBySkill.TryGetValue(skill, out int level) ? level : -1;
-
-    public bool IsMaxLevel(SkillDefinition skill) => Owns(skill) && GetLevel(skill) >= skill.MaxLevel;
-
-    public int GetUpgradeCost(SkillDefinition skill)
-        => Owns(skill) && !IsMaxLevel(skill) ? skill.GetUpgradeCost(GetLevel(skill)) : 0;
-
-    public bool CanUpgrade(SkillDefinition skill, PlayerStatsAggregator stats)
-        => Owns(skill) && !IsMaxLevel(skill) && stats != null && stats.Coins >= GetUpgradeCost(skill);
-
-    public bool TryUpgrade(SkillDefinition skill, PlayerStatsAggregator stats)
+    public bool TryUpgrade(OwnedSkill skill, PlayerStatsAggregator stats)
     {
         if (!CanUpgrade(skill, stats)) return false;
 
-        stats.SpendCoins(GetUpgradeCost(skill));
-        _levelBySkill[skill] = GetLevel(skill) + 1;
+        stats.SpendCoins(skill.UpgradeCost);
+        skill.LevelUp();
 
-        Debug.Log($"[Skills] {skill.skillName} → Nv. {GetLevel(skill) + 1}");
+        Debug.Log($"[Skills] {skill.Definition.skillName} → Nv. {skill.Level.Number}");
         OnSkillUpgraded?.Invoke(skill);
         OnSkillsChanged?.Invoke();
         OnLoadoutChanged?.Invoke();
         return true;
     }
 
-    public int GetPurchaseCost(SkillDefinition skill) => skill != null ? skill.purchaseCost : 0;
-
-    public bool CanBuy(SkillDefinition skill, PlayerStatsAggregator stats)
-        => skill != null && !Owns(skill) && (weapon == null || weapon.Supports(skill))
-           && stats != null && stats.Coins >= GetPurchaseCost(skill);
-
-    public bool TryBuy(SkillDefinition skill, PlayerStatsAggregator stats)
-    {
-        if (!CanBuy(skill, stats)) return false;
-
-        stats.SpendCoins(GetPurchaseCost(skill));
-        return AcquireSkill(skill);
-    }
-
-    public bool AcquireSkill(SkillDefinition skill)
-    {
-        if (skill == null || Owns(skill)) return false;
-        if (weapon != null && !weapon.Supports(skill)) return false;
-
-        _owned.Add(skill);
-        _levelBySkill[skill] = 0;
-
-        for (int i = 0; i < _unlockedSlots; i++)
-        {
-            if (_slots[i] != null) continue;
-            _slots[i] = skill;
-            _cooldownRemaining[i] = 0f;
-            _cooldownDuration[i] = 0f;
-            _chargeStates[i].Clear();
-            break;
-        }
-
-        Debug.Log($"[Skills] Nova skill: {skill.skillName}");
-        OnSkillAcquired?.Invoke(skill);
-        OnSkillsChanged?.Invoke();
-        OnLoadoutChanged?.Invoke();
-        return true;
-    }
-
-    public int RunesPerVariant => runesPerVariant;
-
-    public SkillVariantDefinition GetActiveVariant(SkillDefinition skill)
-        => skill != null && _activeVariantBySkill.TryGetValue(skill, out var variant) ? variant : null;
-
     public bool IsVariantUnlocked(SkillVariantDefinition variant) => variant != null && _unlockedVariants.Contains(variant);
-
-    public bool IsVariantActive(SkillDefinition skill, SkillVariantDefinition variant)
-        => variant != null && GetActiveVariant(skill) == variant;
 
     public int GetVariantCost(SkillVariantDefinition variant) => IsVariantUnlocked(variant) ? 0 : runesPerVariant;
 
-    public bool CanActivateVariant(SkillDefinition skill, SkillVariantDefinition variant, PlayerStatsAggregator stats)
-        => Owns(skill) && skill.HasVariant(variant) && !IsVariantActive(skill, variant)
+    public bool CanActivateVariant(OwnedSkill skill, SkillVariantDefinition variant, PlayerStatsAggregator stats)
+        => skill != null && skill.Definition.HasVariant(variant) && !skill.IsUsing(variant)
            && stats != null && stats.Runes >= GetVariantCost(variant);
 
-    public bool TryActivateVariant(SkillDefinition skill, SkillVariantDefinition variant, PlayerStatsAggregator stats)
+    public bool TryActivateVariant(OwnedSkill skill, SkillVariantDefinition variant, PlayerStatsAggregator stats)
     {
         if (!CanActivateVariant(skill, variant, stats)) return false;
 
         stats.SpendRunes(GetVariantCost(variant));
         _unlockedVariants.Add(variant);
-        _activeVariantBySkill[skill] = variant;
-        ClearPendingCharges(skill);
+        skill.UseVariant(variant);
+        DropUnusedCharges(skill);
 
-        Debug.Log($"[Skills] {skill.skillName}: variante {variant.variantName} ativa");
+        Debug.Log($"[Skills] {skill.Definition.skillName}: variante {variant.variantName} ativa");
         OnVariantChanged?.Invoke(skill);
         return true;
     }
 
-    public bool ClearVariant(SkillDefinition skill)
+    public bool TryUseBaseForm(OwnedSkill skill)
     {
-        if (skill == null || !_activeVariantBySkill.Remove(skill)) return false;
+        if (skill == null || skill.ActiveVariant == null) return false;
 
-        ClearPendingCharges(skill);
+        skill.UseBaseForm();
+        DropUnusedCharges(skill);
         OnVariantChanged?.Invoke(skill);
         return true;
     }
 
-    public bool IsSlotUnlocked(int slot) => slot >= 0 && slot < _unlockedSlots;
-
-    public SkillDefinition GetSlot(int slot)
-        => slot >= 0 && slot < _slots.Length ? _slots[slot] : null;
-
-    public int IndexOf(SkillDefinition skill)
+    void DropUnusedCharges(OwnedSkill skill)
     {
-        if (skill == null) return -1;
-        for (int i = 0; i < _slots.Length; i++)
-            if (_slots[i] == skill) return i;
-        return -1;
+        var slot = _loadout.SlotHolding(skill.Definition);
+        if (slot != null) slot.Charges.Clear();
     }
 
-    public bool Equip(int slot, SkillDefinition skill)
+    public SkillSlot GetSlot(int index) => _loadout.Get(index);
+
+    public SkillSlot SlotHolding(SkillDefinition skill) => _loadout.SlotHolding(skill);
+
+    public bool Equip(int slot, OwnedSkill skill)
     {
-        if (!IsSlotUnlocked(slot) || !Owns(skill)) return false;
-        if (_slots[slot] == skill) return false;
+        if (!_loadout.Equip(slot, skill)) return false;
 
-        int previousSlot = IndexOf(skill);
-        if (previousSlot >= 0)
-        {
-            _slots[previousSlot] = _slots[slot];
-            (_cooldownRemaining[previousSlot], _cooldownRemaining[slot]) = (_cooldownRemaining[slot], _cooldownRemaining[previousSlot]);
-            (_cooldownDuration[previousSlot], _cooldownDuration[slot]) = (_cooldownDuration[slot], _cooldownDuration[previousSlot]);
-            (_chargeStates[previousSlot], _chargeStates[slot]) = (_chargeStates[slot], _chargeStates[previousSlot]);
-        }
-        else
-        {
-            _cooldownRemaining[slot] = 0f;
-            _cooldownDuration[slot] = 0f;
-            _chargeStates[slot].Clear();
-        }
-
-        _slots[slot] = skill;
         OnLoadoutChanged?.Invoke();
         return true;
     }
 
     public bool Unequip(int slot)
     {
-        if (GetSlot(slot) == null) return false;
+        if (!_loadout.Unequip(slot)) return false;
 
-        _slots[slot] = null;
-        _cooldownRemaining[slot] = 0f;
-        _chargeStates[slot].Clear();
         OnLoadoutChanged?.Invoke();
         return true;
     }
 
     public bool UnlockSlot()
     {
-        if (_unlockedSlots >= _slots.Length) return false;
+        if (!_loadout.UnlockNextSlot()) return false;
 
-        _unlockedSlots++;
         OnLoadoutChanged?.Invoke();
         return true;
     }
 
-    public bool HasCooldown(int slot)
+    public bool TryCast(int slotIndex, SkillCastContext context)
     {
-        var skill = GetSlot(slot);
-        return skill != null && skill.HasCooldown(GetLevel(skill));
-    }
+        var slot = _loadout.Get(slotIndex);
+        if (slot == null || !slot.IsReady) return false;
 
-    public float CooldownRemaining(int slot)
-        => slot >= 0 && slot < _cooldownRemaining.Length ? _cooldownRemaining[slot] : 0f;
-
-    public float CooldownNormalized(int slot)
-    {
-        if (slot < 0 || slot >= _cooldownRemaining.Length || _cooldownDuration[slot] <= 0f) return 0f;
-        return Mathf.Clamp01(_cooldownRemaining[slot] / _cooldownDuration[slot]);
-    }
-
-    public bool IsReady(int slot) => GetSlot(slot) != null && IsSlotUnlocked(slot) && CooldownRemaining(slot) <= 0f;
-
-    public bool TryCast(int slot, SkillCastContext context)
-    {
-        if (!IsReady(slot)) return false;
-
-        var skill = _slots[slot];
-        int level = GetLevel(skill);
-        var variant = GetActiveVariant(skill);
-        skill.Cast(context, level, variant);
-
-        if (skill is IMultiChargeSkill multiCharge)
-            ConsumeCharge(slot, skill, multiCharge, level, variant);
-        else
-            StartCooldown(slot, skill);
-
-        OnSkillCast?.Invoke(slot);
+        slot.Cast(context);
+        OnSkillCast?.Invoke(slotIndex);
         return true;
-    }
-
-    void ConsumeCharge(int slot, SkillDefinition skill, IMultiChargeSkill multiCharge, int level, SkillVariantDefinition variant)
-    {
-        var charges = _chargeStates[slot];
-        if (!charges.HasPendingCharges)
-            charges.Begin(multiCharge.GetChargeCount(level, variant), multiCharge.ChargeWindowSeconds);
-        else
-            charges.RestartWindow(multiCharge.ChargeWindowSeconds);
-
-        charges.ConsumeOne();
-        if (!charges.HasPendingCharges) StartCooldown(slot, skill);
-    }
-
-    void StartCooldown(int slot, SkillDefinition skill)
-    {
-        float cooldown = skill != null ? skill.GetCooldown(GetLevel(skill)) : 0f;
-        _cooldownDuration[slot] = cooldown;
-        _cooldownRemaining[slot] = cooldown;
-    }
-
-    void ClearPendingCharges(SkillDefinition skill)
-    {
-        int slot = IndexOf(skill);
-        if (slot >= 0) _chargeStates[slot].Clear();
-    }
-
-    public int GetChargesRemaining(int slot)
-        => slot >= 0 && slot < _chargeStates.Length ? _chargeStates[slot].Remaining : 0;
-
-    public int GetChargeTotal(int slot)
-        => slot >= 0 && slot < _chargeStates.Length ? _chargeStates[slot].Total : 0;
-
-    public void ResetForNewRun()
-    {
-        BuildInitialLoadout();
-        OnSkillsChanged?.Invoke();
-        OnLoadoutChanged?.Invoke();
     }
 }

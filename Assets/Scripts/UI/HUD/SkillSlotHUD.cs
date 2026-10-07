@@ -44,12 +44,12 @@ public class SkillSlotHUD : MonoBehaviour
     int _shownTenths = int.MinValue;
     int _shownCharges = -1;
 
-    public void Bind(SkillDefinition skill)
+    public void ShowSkill(SkillDefinition skill)
     {
         _skill = skill;
         _cooling = false;
         _shownTenths = int.MinValue;
-        SetCharges(0, 0);
+        ShowChargeCount(0, 0);
 
         if (iconImage != null)
         {
@@ -77,9 +77,15 @@ public class SkillSlotHUD : MonoBehaviour
         keyText.text = key;
     }
 
-    public void Tick(bool hasCooldown, float remaining, float normalized, float duration)
+    public void ShowCooldown(SkillSlot slot)
     {
-        if (_skill == null || !hasCooldown)
+        bool skillHasCooldown = !slot.IsEmpty && slot.Skill.HasCooldown;
+        var cooldown = slot.Cooldown;
+        float remaining = cooldown.Remaining;
+        float normalized = cooldown.RemainingFraction;
+        float duration = cooldown.Duration;
+
+        if (_skill == null || !skillHasCooldown)
         {
             if (cooldownOverlay != null) cooldownOverlay.fillAmount = 0f;
             if (cooldownText != null && cooldownText.gameObject.activeSelf) cooldownText.gameObject.SetActive(false);
@@ -113,7 +119,9 @@ public class SkillSlotHUD : MonoBehaviour
         _cooling = cooling;
     }
 
-    public void SetCharges(int remaining, int total)
+    public void ShowCharges(SkillCharges charges) => ShowChargeCount(charges.Remaining, charges.Total);
+
+    void ShowChargeCount(int remaining, int total)
     {
         if (chargesText == null) return;
 

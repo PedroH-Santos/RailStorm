@@ -41,12 +41,13 @@ public class SkillBarUI : MonoBehaviour
     {
         for (int i = 0; i < slots.Count; i++)
         {
-            var slot = slots[i];
-            if (slot == null) continue;
+            var card = slots[i];
+            if (card == null) continue;
 
-            bool visible = handler != null && handler.IsSlotUnlocked(i);
-            slot.gameObject.SetActive(visible);
-            if (visible) slot.Bind(handler.GetSlot(i));
+            var slot = handler != null ? handler.GetSlot(i) : null;
+            bool visible = slot != null && slot.IsUnlocked;
+            card.gameObject.SetActive(visible);
+            if (visible) card.ShowSkill(slot.IsEmpty ? null : slot.Skill.Definition);
         }
 
         ApplyFan();
@@ -75,15 +76,16 @@ public class SkillBarUI : MonoBehaviour
 
         for (int i = 0; i < slots.Count; i++)
         {
-            var slot = slots[i];
-            if (slot == null || !slot.gameObject.activeSelf) continue;
+            var card = slots[i];
+            if (card == null || !card.gameObject.activeSelf) continue;
 
-            if (caster != null) slot.SetKey(caster.GetKeyLabel(i));
+            if (caster != null) card.SetKey(caster.GetKeyLabel(i));
 
-            var skill = handler.GetSlot(i);
-            float duration = skill != null ? skill.GetCooldown(handler.GetLevel(skill)) : 0f;
-            slot.Tick(handler.HasCooldown(i), handler.CooldownRemaining(i), handler.CooldownNormalized(i), duration);
-            slot.SetCharges(handler.GetChargesRemaining(i), handler.GetChargeTotal(i));
+            var slot = handler.GetSlot(i);
+            if (slot == null) continue;
+
+            card.ShowCooldown(slot);
+            card.ShowCharges(slot.Charges);
         }
     }
 

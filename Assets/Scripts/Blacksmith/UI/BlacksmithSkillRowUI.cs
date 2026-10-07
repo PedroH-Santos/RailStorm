@@ -97,30 +97,30 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
         if (group != null) group.alpha = 1f;
     }
 
-    public void SetupUpgrade(SkillDefinition skill, int level, int cost, bool isMax, bool affordable, string equippedKey,
+    public void SetupUpgrade(OwnedSkill skill, bool affordable, string equippedKey,
         Action<BlacksmithSkillRowUI> onFocus, Action<BlacksmithSkillRowUI> onAction)
     {
-        Bind(skill, level, BlacksmithRowMode.Upgrade, onFocus, onAction);
-        SetLevelText(LevelLabel(skill, level), equippedKey, false);
-        SetUpgradeState(cost, isMax, affordable);
+        Bind(skill.Definition, skill.Level, BlacksmithRowMode.Upgrade, onFocus, onAction);
+        SetLevelText(LevelLabel(skill.Definition, skill.Level), equippedKey, false);
+        SetUpgradeState(skill.UpgradeCost, skill.IsAtMaxLevel, affordable);
     }
 
-    public void SetupBuy(SkillDefinition skill, int cost, bool affordable,
+    public void SetupBuy(SkillDefinition skill, bool affordable,
         Action<BlacksmithSkillRowUI> onFocus, Action<BlacksmithSkillRowUI> onAction)
     {
-        Bind(skill, 0, BlacksmithRowMode.Buy, onFocus, onAction);
-        if (levelText != null) levelText.text = $"{newSkillText}  ·  {LevelLabel(skill, 0)}";
-        SetPrice(cost, affordable, buyText);
+        Bind(skill, SkillLevel.First, BlacksmithRowMode.Buy, onFocus, onAction);
+        if (levelText != null) levelText.text = $"{newSkillText}  ·  {LevelLabel(skill, SkillLevel.First)}";
+        SetPrice(skill.purchaseCost, affordable, buyText);
     }
 
-    public void SetupEquip(SkillDefinition skill, int level, int equippedSlot, IReadOnlyList<string> slotKeys, int unlockedSlots,
+    public void SetupEquip(OwnedSkill skill, int equippedSlot, IReadOnlyList<string> slotKeys, int unlockedSlots,
         Action<BlacksmithSkillRowUI> onFocus, Action<BlacksmithSkillRowUI, int> onSlot)
     {
-        Bind(skill, level, BlacksmithRowMode.Equip, onFocus, null);
+        Bind(skill.Definition, skill.Level, BlacksmithRowMode.Equip, onFocus, null);
         _onSlot = onSlot;
 
         string equippedKey = equippedSlot >= 0 && equippedSlot < slotKeys.Count ? slotKeys[equippedSlot] : null;
-        SetLevelText(LevelLabel(skill, level), equippedKey, true);
+        SetLevelText(LevelLabel(skill.Definition, skill.Level), equippedKey, true);
 
         CaptureCostColor();
         if (costText != null)
@@ -155,11 +155,12 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
         }
     }
 
-    public void SetupRune(SkillDefinition skill, int level, SkillVariantDefinition variant, bool active, bool unlocked, int cost, bool affordable,
+    public void SetupRune(OwnedSkill skill, SkillVariantDefinition variant, bool unlocked, int cost, bool affordable,
         Action<BlacksmithSkillRowUI> onFocus, Action<BlacksmithSkillRowUI> onAction)
     {
-        Bind(skill, level, BlacksmithRowMode.Rune, onFocus, onAction);
+        Bind(skill.Definition, skill.Level, BlacksmithRowMode.Rune, onFocus, onAction);
         Variant = variant;
+        bool active = skill.IsUsing(variant);
 
         if (nameText != null) nameText.text = variant.variantName;
 
@@ -172,23 +173,23 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
         string state = active ? variantActiveText : unlocked ? variantUnlockedText : variantLockedText;
         if (levelText != null) levelText.text = state;
 
-        bool charges = !active && !unlocked;
+        bool costsARune = !active && !unlocked;
 
         CaptureCostColor();
         if (costText != null)
         {
-            costText.text = active ? variantActiveText : charges ? cost.ToString() : freeText;
+            costText.text = active ? variantActiveText : costsARune ? cost.ToString() : freeText;
             var theme = UIThemeConfig.Instance;
-            costText.color = !charges || affordable || theme == null ? _costColor : theme.actionDestructive;
+            costText.color = !costsARune || affordable || theme == null ? _costColor : theme.actionDestructive;
         }
 
         if (coinIcon != null) coinIcon.SetActive(false);
-        if (runeIcon != null) runeIcon.SetActive(charges);
+        if (runeIcon != null) runeIcon.SetActive(costsARune);
         if (upgradeLabel != null) upgradeLabel.text = active ? deactivateText : activateText;
         if (upgradeButton != null) upgradeButton.interactable = active || affordable;
     }
 
-    static string LevelLabel(SkillDefinition skill, int level) => $"Nv. {level + 1}/{skill.LevelCount}";
+    static string LevelLabel(SkillDefinition skill, SkillLevel level) => $"Nv. {level.Number}/{skill.LevelCount}";
 
     void SetLevelText(string levelLabel, string equippedKey, bool showUnequipped)
     {
@@ -200,7 +201,7 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
             levelText.text = showUnequipped ? $"{levelLabel}  ·  {notEquippedText}" : levelLabel;
     }
 
-    void Bind(SkillDefinition skill, int level, BlacksmithRowMode mode, Action<BlacksmithSkillRowUI> onFocus, Action<BlacksmithSkillRowUI> onAction)
+    void Bind(SkillDefinition skill, SkillLevel level, BlacksmithRowMode mode, Action<BlacksmithSkillRowUI> onFocus, Action<BlacksmithSkillRowUI> onAction)
     {
         Skill = skill;
         Mode = mode;
@@ -222,7 +223,7 @@ public class BlacksmithSkillRowUI : MonoBehaviour, IPointerEnterHandler, IPointe
 
         if (nameText != null) nameText.text = skill.skillName;
 
-        int rarity = skill.RarityForLevel(level);
+        int rarity = skill.RarityAt(level);
         Color plateColor = RarityHelper.Color(rarity);
 
         if (iconPlate != null)

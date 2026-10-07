@@ -21,17 +21,20 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
     public Sprite Icon => icon;
 
     public abstract int LevelCount { get; }
-    public int MaxLevel => Mathf.Max(0, LevelCount - 1);
-    public int RarityForLevel(int level) => Mathf.Clamp(level, 0, Mathf.Max(0, RarityHelper.Count - 1));
+    public SkillLevel LastLevel => SkillLevel.FromIndex(LevelCount - 1);
+    public bool IsLastLevel(SkillLevel level) => level.Index >= LastLevel.Index;
+    public SkillLevel NextLevelOrLast(SkillLevel level) => IsLastLevel(level) ? LastLevel : level.Next;
 
-    public abstract int GetUpgradeCost(int level);
-    public abstract float GetCooldown(int level);
-    public bool HasCooldown(int level) => GetCooldown(level) > 0f;
+    public int RarityAt(SkillLevel level) => Mathf.Clamp(level.Index, 0, Mathf.Max(0, RarityHelper.Count - 1));
+
+    public abstract int GetUpgradeCost(SkillLevel level);
+    public abstract float GetCooldown(SkillLevel level);
+    public bool HasCooldown(SkillLevel level) => GetCooldown(level) > 0f;
 
     public abstract IReadOnlyList<ESkillStatTarget> DisplayStats { get; }
-    public abstract float GetStatValue(int level, ESkillStatTarget stat);
+    public abstract float GetStatValue(SkillLevel level, ESkillStatTarget stat);
 
-    public IEnumerable<ESkillStatTarget> VisibleStats(int level)
+    public IEnumerable<ESkillStatTarget> VisibleStats(SkillLevel level)
     {
         foreach (var stat in DisplayStats)
         {
@@ -42,5 +45,5 @@ public abstract class SkillDefinition : ScriptableObject, IDrawable
 
     public bool HasVariant(SkillVariantDefinition variant) => variant != null && variants.Contains(variant);
 
-    public abstract void Cast(SkillCastContext context, int level, SkillVariantDefinition variant);
+    public abstract void Cast(SkillCastContext context, SkillLevel level, SkillVariantDefinition variant);
 }

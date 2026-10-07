@@ -23,7 +23,7 @@ public class PlayerSkillCaster : MonoBehaviour
 
     public static PlayerSkillCaster Instance { get; private set; }
 
-    int ActiveSlotCount => Mathf.Min(_handler.UnlockedSlots, bindings.Length);
+    int ActiveSlotCount => Mathf.Min(_handler.UnlockedSlotCount, bindings.Length);
     BurnDefinition WeaponBurn => _handler.Weapon != null ? _handler.Weapon.burn : null;
 
     void Awake()
@@ -51,44 +51,45 @@ public class PlayerSkillCaster : MonoBehaviour
     {
         if (Time.timeScale <= 0f) return;
 
-        for (int slot = 0; slot < ActiveSlotCount; slot++)
-            if (CanStartCast(slot)) StartCoroutine(CastRoutine(slot));
+        for (int index = 0; index < ActiveSlotCount; index++)
+            if (CanStartCast(index)) StartCoroutine(CastRoutine(_handler.GetSlot(index)));
     }
 
-    bool CanStartCast(int slot)
+    bool CanStartCast(int index)
     {
-        if (_busySlots[slot] || !bindings[slot].WasPressedThisFrame() || !_handler.IsReady(slot)) return false;
+        var slot = _handler.GetSlot(index);
+        if (_busySlots[index] || !bindings[index].WasPressedThisFrame() || !slot.IsReady) return false;
 
-        bool needsAim = _handler.GetSlot(slot) is IHoldToAimSkill;
+        bool needsAim = slot.Skill.Definition is IHoldToAimSkill;
         return !needsAim || !_aim.IsAiming;
     }
 
-    IEnumerator CastRoutine(int slot)
+    IEnumerator CastRoutine(SkillSlot slot)
     {
-        _busySlots[slot] = true;
-        var skill = _handler.GetSlot(slot);
+        _busySlots[slot.Index] = true;
+        var skill = slot.Skill;
 
-        if (skill is IHoldToAimSkill aimSkill)
+        if (skill.Definition is IHoldToAimSkill aimSkill)
             yield return AimThenCast(slot, skill, aimSkill);
         else
             yield return CastInstantly(slot, skill);
 
-        _busySlots[slot] = false;
+        _busySlots[slot.Index] = false;
     }
 
-    IEnumerator CastInstantly(int slot, SkillDefinition skill)
+    IEnumerator CastInstantly(SkillSlot slot, OwnedSkill skill)
     {
         if (_weapon.Animation != null) _weapon.Animation.PlayAttackAnimation();
 
         yield return WaitForCastDelay(skill);
-        _handler.TryCast(slot, BuildContext());
+        _handler.TryCast(slot.Index, BuildContext());
     }
 
-    IEnumerator AimThenCast(int slot, SkillDefinition skill, IHoldToAimSkill aimSkill)
+    IEnumerator AimThenCast(SkillSlot slot, OwnedSkill skill, IHoldToAimSkill aimSkill)
     {
-        _aim.Begin(aimSkill, _handler.GetLevel(skill));
+        _aim.Begin(aimSkill, skill.Level);
 
-        while (bindings[slot].IsHeld())
+        while (bindings[slot.Index].IsHeld())
         {
             if (!CanKeepAiming(slot, skill))
             {
@@ -100,15 +101,16 @@ public class PlayerSkillCaster : MonoBehaviour
 
         Vector3 aimPoint = _aim.Release();
         yield return WaitForCastDelay(skill);
-        _handler.TryCast(slot, BuildContext(aimPoint));
+        _handler.TryCast(slot.Index, BuildContext(aimPoint));
     }
 
-    bool CanKeepAiming(int slot, SkillDefinition skill) =>
-        Time.timeScale > 0f && _handler.GetSlot(slot) == skill;
+    static bool CanKeepAiming(SkillSlot slot, OwnedSkill skill) =>
+        Time.timeScale > 0f && slot.Skill == skill;
 
-    static IEnumerator WaitForCastDelay(SkillDefinition skill)
+    static IEnumerator WaitForCastDelay(OwnedSkill skill)
     {
-        if (skill != null && skill.castDelay > 0f) yield return new WaitForSeconds(skill.castDelay);
+        float delay = skill.Definition.castDelay;
+        if (delay > 0f) yield return new WaitForSeconds(delay);
     }
 
     SkillCastContext BuildContext() =>

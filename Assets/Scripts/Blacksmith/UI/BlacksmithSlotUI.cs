@@ -38,14 +38,16 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
     Action<int> _onClick;
     bool _unlocked;
 
-    public void Setup(int index, SkillDefinition skill, int level, bool unlocked, string key, bool selected, Action<int> onClick)
+    public void Setup(SkillSlot slot, string key, bool selected, Action<int> onClick)
     {
-        Index = index;
+        Index = slot.Index;
         _onClick = onClick;
-        _unlocked = unlocked;
+        _unlocked = slot.IsUnlocked;
 
-        bool hasSkill = unlocked && skill != null;
-        int rarity = hasSkill ? skill.RarityForLevel(level) : 0;
+        bool unlocked = slot.IsUnlocked;
+        bool hasSkill = unlocked && !slot.IsEmpty;
+        var skill = hasSkill ? slot.Skill.Definition : null;
+        int rarity = hasSkill ? slot.Skill.Rarity : 0;
 
         if (iconImage != null)
         {
@@ -69,7 +71,7 @@ public class BlacksmithSlotUI : MonoBehaviour, IPointerClickHandler
         }
 
         if (levelLabel != null)
-            levelLabel.text = !unlocked ? lockedText : hasSkill ? $"LVL {level + 1}" : emptyText;
+            levelLabel.text = !unlocked ? lockedText : hasSkill ? $"LVL {slot.Skill.Level.Number}" : emptyText;
 
         if (keyText != null) keyText.text = key;
         if (keyBadge != null) keyBadge.SetActive(unlocked);

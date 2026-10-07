@@ -7,15 +7,15 @@ public abstract class LeveledSkillDefinition<TLevel> : SkillDefinition where TLe
 
     public override int LevelCount => levels.Count;
 
-    public TLevel GetLevelStats(int level)
+    public TLevel GetLevelStats(SkillLevel level)
     {
         bool hasNoLevelsConfigured = levels.Count == 0;
         if (hasNoLevelsConfigured) return new TLevel();
 
-        return levels[Mathf.Clamp(level, 0, levels.Count - 1)];
+        return levels[Mathf.Clamp(level.Index, 0, levels.Count - 1)];
     }
 
-    public override int GetUpgradeCost(int level) => GetLevelStats(level).upgradeCost;
-    public override float GetCooldown(int level) => GetLevelStats(level).cooldown;
-    public override float GetStatValue(int level, ESkillStatTarget stat) => GetLevelStats(level).GetStat(stat);
+    public override int GetUpgradeCost(SkillLevel level) => GetLevelStats(level).upgradeCost;
+    public override float GetCooldown(SkillLevel level) => GetLevelStats(level).cooldown;
+    public override float GetStatValue(SkillLevel level, ESkillStatTarget stat) => GetLevelStats(level).GetStat(stat);
 }

@@ -64,45 +64,61 @@ public class BlacksmithDetailUI : MonoBehaviour
         }
     }
 
-    public void Show(BlacksmithRowMode mode, SkillDefinition skill, int level, int cost, bool isMax, int coins, bool affordable, bool animate)
+    public void ShowNothing(bool showWallet, int coins)
     {
-        bool hasSkill = skill != null;
-        if (contentRoot != null) contentRoot.SetActive(hasSkill);
-        if (emptyState != null) emptyState.SetActive(!hasSkill);
+        ShowContent(false);
+        ShowWalletBox(showWallet);
+        SetCurrency(false);
+        SetWallet(coins, true, true, 0);
+    }
 
-        if (walletBox != null) walletBox.SetActive(mode != BlacksmithRowMode.Equip);
+    public void ShowForSale(SkillDefinition skill, int coins, bool affordable, bool animate)
+    {
+        var firstLevel = SkillLevel.First;
+
+        ShowContent(true);
+        ShowWalletBox(true);
         SetCurrency(false);
 
-        if (!hasSkill)
-        {
-            SetWallet(coins, true, true, 0);
-            return;
-        }
-
-        string levelLabel = $"Nível {level + 1} / {skill.LevelCount}";
-        if (mode == BlacksmithRowMode.Buy) levelLabel = $"{newSkillText}  ·  {levelLabel}";
-        else if (isMax) levelLabel = $"{levelLabel} (máx.)";
-
-        ApplyHeader(skill.skillName, levelLabel, skill.description, skill.icon, skill.RarityForLevel(level));
-
-        BuildRows(BuildLines(skill, level, isMax || mode != BlacksmithRowMode.Upgrade));
-        SetWallet(coins, affordable, isMax && mode == BlacksmithRowMode.Upgrade, cost);
+        ApplyHeader(skill.skillName, $"{newSkillText}  ·  {LevelLabel(skill, firstLevel)}", skill.description, skill.icon, skill.RarityAt(firstLevel));
+        BuildRows(CurrentStatLines(skill, firstLevel));
+        SetWallet(coins, affordable, false, skill.purchaseCost);
         PlayCardPunch(animate);
     }
 
-    public void ShowVariant(SkillDefinition skill, SkillVariantDefinition variant, int level, bool active, bool unlocked,
-        int cost, bool affordable, bool animate)
+    public void ShowForUpgrade(OwnedSkill skill, int coins, bool affordable, bool animate)
     {
-        if (contentRoot != null) contentRoot.SetActive(true);
-        if (emptyState != null) emptyState.SetActive(false);
-        bool charges = !active && !unlocked;
-        if (walletBox != null) walletBox.SetActive(charges);
+        ShowOwnedSkillHeader(skill, true);
+
+        var lines = skill.IsAtMaxLevel
+            ? CurrentStatLines(skill.Definition, skill.Level)
+            : UpgradeStatLines(skill.Definition, skill.Level);
+        BuildRows(lines);
+
+        SetWallet(coins, affordable, skill.IsAtMaxLevel, skill.UpgradeCost);
+        PlayCardPunch(animate);
+    }
+
+    public void ShowForEquip(OwnedSkill skill, bool animate)
+    {
+        ShowOwnedSkillHeader(skill, false);
+        BuildRows(CurrentStatLines(skill.Definition, skill.Level));
+        PlayCardPunch(animate);
+    }
+
+    public void ShowVariant(OwnedSkill skill, SkillVariantDefinition variant, bool unlocked, int cost, bool affordable, bool animate)
+    {
+        bool costsARune = !skill.IsUsing(variant) && !unlocked;
+
+        ShowContent(true);
+        ShowWalletBox(costsARune);
         SetCurrency(true);
 
-        ApplyHeader(variant.variantName, skill.skillName, variant.description,
-            variant.icon != null ? variant.icon : skill.icon, skill.RarityForLevel(level));
+        var definition = skill.Definition;
+        ApplyHeader(variant.variantName, definition.skillName, variant.description,
+            variant.icon != null ? variant.icon : definition.icon, skill.Rarity);
 
-        BuildRows(BuildLines(skill, level, true));
+        BuildRows(CurrentStatLines(definition, skill.Level));
 
         if (costText != null)
         {
@@ -112,6 +128,32 @@ public class BlacksmithDetailUI : MonoBehaviour
         }
 
         PlayCardPunch(animate);
+    }
+
+    void ShowOwnedSkillHeader(OwnedSkill skill, bool showWallet)
+    {
+        ShowContent(true);
+        ShowWalletBox(showWallet);
+        SetCurrency(false);
+
+        var definition = skill.Definition;
+        string levelLabel = LevelLabel(definition, skill.Level);
+        if (skill.IsAtMaxLevel) levelLabel = $"{levelLabel} (máx.)";
+
+        ApplyHeader(definition.skillName, levelLabel, definition.description, definition.icon, skill.Rarity);
+    }
+
+    static string LevelLabel(SkillDefinition skill, SkillLevel level) => $"Nível {level.Number} / {skill.LevelCount}";
+
+    void ShowContent(bool hasSkill)
+    {
+        if (contentRoot != null) contentRoot.SetActive(hasSkill);
+        if (emptyState != null) emptyState.SetActive(!hasSkill);
+    }
+
+    void ShowWalletBox(bool visible)
+    {
+        if (walletBox != null) walletBox.SetActive(visible);
     }
 
     void SetCurrency(bool runes)
@@ -177,35 +219,50 @@ public class BlacksmithDetailUI : MonoBehaviour
             cardFill.color = Color.Lerp(theme.panelBackground, Shade(plateColor, cardFillDarkness), cardFillRarityBlend);
     }
 
-    List<TooltipStatLine> BuildLines(SkillDefinition skill, int level, bool currentOnly)
+    List<TooltipStatLine> CurrentStatLines(SkillDefinition skill, SkillLevel level)
     {
         var lines = new List<TooltipStatLine>();
-        int next = Mathf.Min(level + 1, skill.MaxLevel);
-        string hex = ColorUtility.ToHtmlStringRGB(improvementColor);
+        foreach (var stat in skill.DisplayStats)
+            lines.Add(new TooltipStatLine(StatLabels.Of(stat), FormatStat(skill, level, stat)));
+        return lines;
+    }
 
-        foreach (var target in skill.DisplayStats)
+    List<TooltipStatLine> UpgradeStatLines(SkillDefinition skill, SkillLevel level)
+    {
+        var lines = new List<TooltipStatLine>();
+        var next = skill.NextLevelOrLast(level);
+        string improvementHex = ColorUtility.ToHtmlStringRGB(improvementColor);
+
+        foreach (var stat in skill.DisplayStats)
         {
-            bool isCooldown = target == ESkillStatTarget.Cooldown;
-            bool currentHas = !isCooldown || skill.HasCooldown(level);
-            bool nextHas = !isCooldown || skill.HasCooldown(next);
+            string current = FormatStat(skill, level, stat);
+            string value = StatImproves(skill, level, next, stat)
+                ? $"{current} <color=#{improvementHex}>» {FormatStat(skill, next, stat)}</color>"
+                : current;
 
-            string current = currentHas ? SkillStatFormatting.Format(target, skill.GetStatValue(level, target)) : noCooldownText;
-            if (currentOnly)
-            {
-                lines.Add(new TooltipStatLine(StatLabels.Of(target), current));
-                continue;
-            }
-
-            string upcoming = nextHas ? SkillStatFormatting.Format(target, skill.GetStatValue(next, target)) : noCooldownText;
-            bool improves = currentHas && nextHas
-                ? SkillStatFormatting.IsImprovement(target, skill.GetStatValue(level, target), skill.GetStatValue(next, target))
-                : currentHas && !nextHas;
-
-            string value = improves ? $"{current} <color=#{hex}>» {upcoming}</color>" : current;
-            lines.Add(new TooltipStatLine(StatLabels.Of(target), value));
+            lines.Add(new TooltipStatLine(StatLabels.Of(stat), value));
         }
 
         return lines;
+    }
+
+    string FormatStat(SkillDefinition skill, SkillLevel level, ESkillStatTarget stat)
+    {
+        bool isMissingCooldown = stat == ESkillStatTarget.Cooldown && !skill.HasCooldown(level);
+        return isMissingCooldown ? noCooldownText : SkillStatFormatting.Format(stat, skill.GetStatValue(level, stat));
+    }
+
+    static bool StatImproves(SkillDefinition skill, SkillLevel current, SkillLevel next, ESkillStatTarget stat)
+    {
+        if (stat == ESkillStatTarget.Cooldown)
+        {
+            bool hasNow = skill.HasCooldown(current);
+            bool hasNext = skill.HasCooldown(next);
+            if (!hasNow) return false;
+            if (!hasNext) return true;
+        }
+
+        return SkillStatFormatting.IsImprovement(stat, skill.GetStatValue(current, stat), skill.GetStatValue(next, stat));
     }
 
     public void SetWallet(int coins, bool affordable, bool isMax, int cost)
