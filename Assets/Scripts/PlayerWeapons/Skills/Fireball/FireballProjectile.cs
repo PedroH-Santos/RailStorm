@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody))]
 public class FireballProjectile : MonoBehaviour
 {
     [Header("Visual")]
@@ -8,71 +9,64 @@ public class FireballProjectile : MonoBehaviour
     [SerializeField] private ParticleSystem[] detachOnDestroy;
     [SerializeField] private float detachedLifetime = 0.6f;
 
-    float _range = 15f;
-    int _damage = 15;
-    BurnDefinition _burn;
-    int _burnStacks;
-    Vector3 _startPosition;
-    Rigidbody _rb;
-    bool _finished;
+    Rigidbody _body;
+    Vector3 _launchPosition;
+    float _range;
+    SkillHit _hit;
+    bool _exploded;
 
     void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
+        _body = GetComponent<Rigidbody>();
     }
 
-    public void Init(Vector3 direction, float speed, float range, int damage, BurnDefinition burn, int burnStacks)
+    public void Launch(Vector3 direction, FireballLevelData stats, SkillHit hit)
     {
-        _startPosition = transform.position;
-        _range = range;
-        _damage = damage;
-        _burn = burn;
-        _burnStacks = burnStacks;
+        _launchPosition = transform.position;
+        _range = stats.range;
+        _hit = hit;
 
-        _rb.linearVelocity = direction * speed;
-
-        if (direction != Vector3.zero)
-            transform.rotation = Quaternion.LookRotation(direction);
+        transform.rotation = Quaternion.LookRotation(direction);
+        _body.linearVelocity = direction * stats.speed;
     }
 
     void Update()
     {
-        if (_finished) return;
-
-        if (Vector3.Distance(_startPosition, transform.position) >= _range)
-            Finish();
+        if (!_exploded && HasTraveledFullRange()) Explode();
     }
 
     void OnTriggerEnter(Collider other)
     {
-        if (_finished) return;
+        if (_exploded || !EnemyTargeting.TryGetLivingEnemy(other, out var enemy)) return;
 
-        var target = other.gameObject;
-        if (!target.CompareTag("Enemy")) return;
-        if (!target.TryGetComponent<LifeSystem>(out var lifeSystem)) return;
-
-        lifeSystem.Damage(_damage);
-        if (!lifeSystem.IsDead) BurnReceiver.ApplyStack(target, _burn, _burnStacks);
-
-        Finish();
+        _hit.ApplyTo(enemy);
+        Explode();
     }
 
-    void Finish()
+    bool HasTraveledFullRange() => Vector3.Distance(_launchPosition, transform.position) >= _range;
+
+    void Explode()
     {
-        _finished = true;
-
-        if (impactPrefab != null)
-            Instantiate(impactPrefab, transform.position, transform.rotation);
-
-        foreach (var system in detachOnDestroy)
-        {
-            if (system == null) continue;
-
-            system.transform.SetParent(null, true);
-            system.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            Destroy(system.gameObject, detachedLifetime);
-        }
-
+        _exploded = true;
+        SpawnImpact();
+        LetTrailFadeOutAlone();
         Destroy(gameObject);
+    }
+
+    void SpawnImpact()
+    {
+        if (impactPrefab != null) Instantiate(impactPrefab, transform.position, transform.rotation);
+    }
+
+    void LetTrailFadeOutAlone()
+    {
+        foreach (var trail in detachOnDestroy)
+        {
+            if (trail == null) continue;
+
+            trail.transform.SetParent(null, true);
+            trail.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            Destroy(trail.gameObject, detachedLifetime);
+        }
     }
 }

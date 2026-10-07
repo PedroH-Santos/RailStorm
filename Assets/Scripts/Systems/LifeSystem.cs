@@ -11,14 +11,16 @@ public class LifeSystem : MonoBehaviour
     public event Action<GameObject> OnDeath;
     public static event Action<GameObject> OnAnyDeath;
 
-    PlayerStatsAggregator _stats;
+    PlayerStatsAggregator _playerStats;
     bool _dead;
 
     public bool IsDead => _dead;
 
+    bool BelongsToPlayer => _playerStats != null;
+
     void Awake()
     {
-        _stats = GetComponent<PlayerStatsAggregator>();
+        _playerStats = GetComponent<PlayerStatsAggregator>();
     }
 
     public void Damage(int damage)
@@ -27,23 +29,23 @@ public class LifeSystem : MonoBehaviour
 
         OnDamaged?.Invoke(damage);
 
-        if (_stats != null)
-        {
-            _stats.HP -= damage;
+        if (BelongsToPlayer) DamagePlayer(damage);
+        else DamageEnemy(damage);
+    }
 
-            if (_stats.HP <= 0)
-                Die();
-        }
-        else
-        {
-            life -= damage;
+    void DamagePlayer(int damage)
+    {
+        _playerStats.HP -= damage;
+        if (_playerStats.HP <= 0) Die();
+    }
 
-            if (life <= 0)
-            {
-                Die();
-                Destroy(gameObject);
-            }
-        }
+    void DamageEnemy(int damage)
+    {
+        life -= damage;
+        if (life > 0) return;
+
+        Die();
+        Destroy(gameObject);
     }
 
     void Die()

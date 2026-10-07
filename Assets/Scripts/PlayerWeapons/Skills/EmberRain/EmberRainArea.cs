@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class EmberRainArea : MonoBehaviour
 {
+    const int MaxCollidersPerPulse = 64;
+
     [Header("Visual")]
     [Tooltip("Visual do chão escalado pelo raio. Escala 1 deve cobrir raio 1.")]
     [SerializeField] private Transform areaRoot;
@@ -17,29 +19,72 @@ public class EmberRainArea : MonoBehaviour
     [SerializeField] private Transform groundRing;
     [SerializeField] private float lingerSeconds = 1f;
 
-    readonly HashSet<LifeSystem> _hitThisPulse = new();
-    readonly Collider[] _overlapBuffer = new Collider[64];
+    readonly Collider[] _collidersInRadius = new Collider[MaxCollidersPerPulse];
+    readonly HashSet<LifeSystem> _enemiesHitThisPulse = new();
 
-    int _damagePerPulse;
-    float _radius;
-    float _duration;
-    float _pulseInterval;
-    BurnDefinition _burn;
-    int _burnStacksPerPulse;
+    EmberRainStorm _storm;
+    SkillHit _hitPerPulse;
     float _elapsed;
-    float _nextPulseAt;
-    bool _finished;
+    int _pulsesDone;
+    bool _ended;
 
-    public void Init(int damagePerPulse, float radius, float duration, float pulseInterval, BurnDefinition burn, int burnStacksPerPulse)
+    public void Begin(EmberRainStorm storm, SkillHit hitPerPulse)
     {
-        _damagePerPulse = damagePerPulse;
-        _radius = radius;
-        _duration = duration;
-        _pulseInterval = Mathf.Max(0.05f, pulseInterval);
-        _burn = burn;
-        _burnStacksPerPulse = burnStacksPerPulse;
-        _nextPulseAt = _pulseInterval;
+        _storm = storm;
+        _hitPerPulse = hitPerPulse;
 
+        ScaleVisualsToRadius(storm.Radius);
+        GrowGroundRing();
+    }
+
+    void Update()
+    {
+        if (_ended) return;
+
+        _elapsed += Time.deltaTime;
+
+        while (HasPulseDue()) Pulse();
+
+        if (_elapsed >= _storm.Duration) End();
+    }
+
+    bool HasPulseDue()
+    {
+        int nextPulse = _pulsesDone + 1;
+        return nextPulse <= _storm.TotalPulses && _elapsed >= _storm.TimeOfPulse(nextPulse);
+    }
+
+    void Pulse()
+    {
+        _pulsesDone++;
+        if (pulseBurst != null) pulseBurst.Emit(pulseBurstCount);
+        HitEnemiesInRadius();
+    }
+
+    void HitEnemiesInRadius()
+    {
+        _enemiesHitThisPulse.Clear();
+        int found = Physics.OverlapSphereNonAlloc(transform.position, _storm.Radius, _collidersInRadius, ~0, QueryTriggerInteraction.Collide);
+
+        for (int i = 0; i < found; i++)
+        {
+            if (!EnemyTargeting.TryGetLivingEnemy(_collidersInRadius[i], out var enemy)) continue;
+
+            bool isFirstColliderOfThisEnemy = _enemiesHitThisPulse.Add(enemy);
+            if (isFirstColliderOfThisEnemy) _hitPerPulse.ApplyTo(enemy);
+        }
+    }
+
+    void End()
+    {
+        _ended = true;
+        StopContinuousEffects();
+        ShrinkGroundRing();
+        Destroy(gameObject, lingerSeconds);
+    }
+
+    void ScaleVisualsToRadius(float radius)
+    {
         if (areaRoot != null) areaRoot.localScale = Vector3.one * radius;
 
         foreach (var emitter in radiusScaledEmitters)
@@ -48,60 +93,24 @@ public class EmberRainArea : MonoBehaviour
             var shape = emitter.shape;
             shape.scale = Vector3.one * radius;
         }
-
-        if (groundRing != null)
-        {
-            groundRing.localScale = Vector3.zero;
-            groundRing.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack).SetLink(gameObject);
-        }
     }
 
-    void Update()
+    void StopContinuousEffects()
     {
-        if (_finished) return;
-
-        _elapsed += Time.deltaTime;
-
-        while (_elapsed >= _nextPulseAt && _nextPulseAt <= _duration + 0.0001f)
-        {
-            Pulse();
-            _nextPulseAt += _pulseInterval;
-        }
-
-        if (_elapsed >= _duration) Finish();
-    }
-
-    void Pulse()
-    {
-        if (pulseBurst != null) pulseBurst.Emit(pulseBurstCount);
-
-        _hitThisPulse.Clear();
-        int count = Physics.OverlapSphereNonAlloc(transform.position, _radius, _overlapBuffer, ~0, QueryTriggerInteraction.Collide);
-
-        for (int i = 0; i < count; i++)
-        {
-            var collider = _overlapBuffer[i];
-            if (collider == null) continue;
-
-            var life = collider.GetComponentInParent<LifeSystem>();
-            if (life == null || life.IsDead || !life.CompareTag("Enemy")) continue;
-            if (!_hitThisPulse.Add(life)) continue;
-
-            life.Damage(_damagePerPulse);
-            if (!life.IsDead) BurnReceiver.ApplyStack(life.gameObject, _burn, _burnStacksPerPulse);
-        }
-    }
-
-    void Finish()
-    {
-        _finished = true;
-
         foreach (var effect in continuousEffects)
             if (effect != null) effect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+    }
 
-        if (groundRing != null)
-            groundRing.DOScale(Vector3.zero, 0.25f).SetEase(Ease.InBack).SetLink(gameObject);
+    void GrowGroundRing()
+    {
+        if (groundRing == null) return;
 
-        Destroy(gameObject, lingerSeconds);
+        groundRing.localScale = Vector3.zero;
+        groundRing.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack).SetLink(gameObject);
+    }
+
+    void ShrinkGroundRing()
+    {
+        if (groundRing != null) groundRing.DOScale(Vector3.zero, 0.25f).SetEase(Ease.InBack).SetLink(gameObject);
     }
 }

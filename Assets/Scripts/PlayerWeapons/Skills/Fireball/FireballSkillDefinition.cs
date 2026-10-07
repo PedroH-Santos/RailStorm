@@ -50,7 +50,8 @@ public class FireballSkillDefinition : SkillDefinition
     {
         if (projectilePrefab == null || context.FirePoint == null) return;
 
-        var data = GetLevel(level);
+        var stats = GetLevel(level);
+        var hit = new SkillHit(stats.damage, context.Burn, burnStacksPerHit);
         Vector3 forward = context.AimDirection.sqrMagnitude > 0.0001f ? context.AimDirection.normalized : context.FirePoint.forward;
 
         if (muzzlePrefab != null)
@@ -58,22 +59,22 @@ public class FireballSkillDefinition : SkillDefinition
 
         if (variant is FireballTripleVariant triple)
         {
-            int damage = triple.DamagePerProjectile(data.damage);
+            var splitHit = hit.WithDamage(triple.DamagePerProjectile(stats.damage));
             for (int i = 0; i < triple.projectileCount; i++)
             {
                 float angle = Mathf.Lerp(-triple.spreadAngle * 0.5f, triple.spreadAngle * 0.5f, i / (triple.projectileCount - 1f));
-                Launch(context, data, Quaternion.AngleAxis(angle, Vector3.up) * forward, damage);
+                Launch(context, stats, Quaternion.AngleAxis(angle, Vector3.up) * forward, splitHit);
             }
 
             return;
         }
 
-        Launch(context, data, forward, data.damage);
+        Launch(context, stats, forward, hit);
     }
 
-    void Launch(SkillCastContext context, FireballLevelData data, Vector3 direction, int damage)
+    void Launch(SkillCastContext context, FireballLevelData stats, Vector3 direction, SkillHit hit)
     {
         var projectile = Instantiate(projectilePrefab, context.FirePoint.position, Quaternion.LookRotation(direction));
-        projectile.Init(direction, data.speed, data.range, damage, context.Burn, burnStacksPerHit);
+        projectile.Launch(direction, stats, hit);
     }
 }

@@ -76,7 +76,10 @@ public class EmberRainSkillDefinition : SkillDefinition, IHoldToAimSkill, IMulti
             ? doubleVariant.DurationPerCharge(data.duration)
             : data.duration;
 
+        var hitPerPulse = new SkillHit(data.damagePerPulse, context.Burn, burnStacksPerPulse);
+        var storm = new EmberRainStorm(data.radius, duration, pulseInterval);
+
         var area = Instantiate(areaPrefab, context.AimPoint, Quaternion.identity);
-        area.Init(data.damagePerPulse, data.radius, duration, pulseInterval, context.Burn, burnStacksPerPulse);
+        area.Begin(storm, hitPerPulse);
     }
 }

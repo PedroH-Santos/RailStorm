@@ -21,75 +21,95 @@ public class BurnIndicator : MonoBehaviour
 
     BurnReceiver _receiver;
     Transform _camera;
-    bool _burning;
+    bool _showingBurning;
 
-    public void Bind(BurnReceiver receiver)
+    public void Track(BurnReceiver receiver)
     {
         _receiver = receiver;
-        _receiver.OnStacksChanged += Refresh;
+        _receiver.OnStacksChanged += ShowState;
 
         if (Camera.main != null) _camera = Camera.main.transform;
         if (fill != null) fill.fillAmount = 0f;
         if (group != null) group.alpha = 0f;
 
-        Follow();
+        StayNextToEnemy();
     }
 
     void OnDestroy()
     {
-        if (_receiver != null) _receiver.OnStacksChanged -= Refresh;
+        if (_receiver != null) _receiver.OnStacksChanged -= ShowState;
     }
 
     void LateUpdate()
     {
-        if (_receiver == null)
+        bool enemyIsGone = _receiver == null;
+        if (enemyIsGone)
         {
             Destroy(gameObject);
             return;
         }
 
-        Follow();
+        StayNextToEnemy();
     }
 
-    void Follow()
+    void StayNextToEnemy()
     {
         var burn = _receiver.Burn;
-        Vector3 side = _camera != null ? _camera.right : Vector3.right;
-        transform.position = _receiver.transform.position + Vector3.up * burn.indicatorHeight + side * burn.indicatorSide;
+        Vector3 screenRight = _camera != null ? _camera.right : Vector3.right;
+
+        transform.position = _receiver.transform.position + Vector3.up * burn.indicatorHeight + screenRight * burn.indicatorSide;
         if (_camera != null) transform.rotation = _camera.rotation;
     }
 
-    void Refresh(BurnReceiver receiver)
+    void ShowState(BurnReceiver receiver)
     {
-        float target = receiver.FillNormalized;
-        bool visible = target > 0f;
-        bool burning = receiver.IsBurning;
+        float progress = receiver.IgnitionProgress;
+        bool hasAnything = progress > 0f;
 
-        if (group != null)
-        {
-            group.DOKill();
-            group.DOFade(visible ? 1f : 0f, fadeDuration).SetLink(gameObject);
-        }
+        FadeTo(hasAnything ? 1f : 0f);
+        FillTo(progress, receiver.IsBurning);
+        AnimateIcon(receiver.IsBurning, hasAnything);
+    }
 
-        if (fill != null)
-        {
-            fill.DOKill();
-            fill.color = burning ? burningColor : stackingColor;
-            fill.DOFillAmount(target, fillDuration).SetEase(Ease.OutQuad).SetLink(gameObject);
-        }
+    void FadeTo(float alpha)
+    {
+        if (group == null) return;
 
+        group.DOKill();
+        group.DOFade(alpha, fadeDuration).SetLink(gameObject);
+    }
+
+    void FillTo(float progress, bool burning)
+    {
+        if (fill == null) return;
+
+        fill.DOKill();
+        fill.color = burning ? burningColor : stackingColor;
+        fill.DOFillAmount(progress, fillDuration).SetEase(Ease.OutQuad).SetLink(gameObject);
+    }
+
+    void AnimateIcon(bool burning, bool hasStacks)
+    {
         if (icon == null) return;
 
-        bool wasBurning = _burning;
-        _burning = burning;
-        if (burning && wasBurning) return;
+        bool alreadyPulsingForThisBurn = burning && _showingBurning;
+        _showingBurning = burning;
+        if (alreadyPulsingForThisBurn) return;
 
         icon.DOKill();
         icon.localScale = Vector3.one;
 
-        if (burning)
-            icon.DOScale(burningPulseScale, burningPulseDuration).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo).SetLink(gameObject);
-        else if (visible)
-            icon.DOPunchScale(Vector3.one * stackPunch, 0.25f, 6, 0.5f).SetLink(gameObject);
+        if (burning) PulseWhileBurning();
+        else if (hasStacks) PunchForNewStack();
+    }
+
+    void PulseWhileBurning()
+    {
+        icon.DOScale(burningPulseScale, burningPulseDuration).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo).SetLink(gameObject);
+    }
+
+    void PunchForNewStack()
+    {
+        icon.DOPunchScale(Vector3.one * stackPunch, 0.25f, 6, 0.5f).SetLink(gameObject);
     }
 }

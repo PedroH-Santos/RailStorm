@@ -17,15 +17,17 @@ public class HitFlash : MonoBehaviour
 
     LifeSystem _life;
     MaterialPropertyBlock _block;
-    float _flashBlend;
-    Tween _tween;
+    Color[] _originalBodyColors;
     Vector3 _restScale;
-    bool _sustained;
-    Color _sustainedColor;
-    Color _sustainedBodyTint;
-    Color[] _baseColors;
-    float _sustainedSpeed;
-    float _sustainedTime;
+
+    float _hitFlashStrength;
+    Tween _hitFlashFade;
+
+    bool _glowing;
+    Color _glowColor;
+    Color _glowBodyTint;
+    float _glowPulseSpeed;
+    float _glowElapsed;
 
     void Awake()
     {
@@ -36,90 +38,112 @@ public class HitFlash : MonoBehaviour
         if (renderers == null || renderers.Length == 0)
             renderers = GetComponentsInChildren<Renderer>();
 
-        _baseColors = new Color[renderers.Length];
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            var material = renderers[i] != null ? renderers[i].sharedMaterial : null;
-            _baseColors[i] = material != null && material.HasProperty(BaseColorId) ? material.GetColor(BaseColorId) : Color.white;
-        }
+        _originalBodyColors = ReadOriginalBodyColors();
     }
 
-    void OnEnable() => _life.OnDamaged += Play;
+    void OnEnable() => _life.OnDamaged += FlashOnHit;
 
     void OnDisable()
     {
-        _life.OnDamaged -= Play;
-        _tween?.Kill();
+        _life.OnDamaged -= FlashOnHit;
+        _hitFlashFade?.Kill();
         transform.DOKill();
     }
 
     void Update()
     {
-        if (!_sustained) return;
+        if (!_glowing) return;
 
-        _sustainedTime += Time.deltaTime;
-        Apply();
+        _glowElapsed += Time.deltaTime;
+        PaintRenderers();
     }
 
-    public void SetSustainedGlow(Color color, Color bodyTint, float pulseSpeed)
+    public void StartGlowing(Color glowColor, Color bodyTint, float pulseSpeed)
     {
-        _sustained = true;
-        _sustainedColor = color;
-        _sustainedBodyTint = bodyTint;
-        _sustainedSpeed = pulseSpeed;
-        _sustainedTime = 0f;
-        Apply();
+        _glowing = true;
+        _glowColor = glowColor;
+        _glowBodyTint = bodyTint;
+        _glowPulseSpeed = pulseSpeed;
+        _glowElapsed = 0f;
+        PaintRenderers();
     }
 
-    public void ClearSustainedGlow()
+    public void StopGlowing()
     {
-        _sustained = false;
-        Apply();
+        _glowing = false;
+        PaintRenderers();
     }
 
-    void Play(int damage)
+    void FlashOnHit(int damage)
     {
-        _tween?.Kill();
-        _flashBlend = 1f;
-        Apply();
-        _tween = DOTween.To(() => _flashBlend, value => { _flashBlend = value; Apply(); }, 0f, flashDuration)
+        FadeHitFlashFromFull();
+        PunchScale();
+    }
+
+    void FadeHitFlashFromFull()
+    {
+        _hitFlashFade?.Kill();
+        _hitFlashStrength = 1f;
+        PaintRenderers();
+
+        _hitFlashFade = DOTween.To(() => _hitFlashStrength, value => { _hitFlashStrength = value; PaintRenderers(); }, 0f, flashDuration)
             .SetEase(Ease.OutQuad)
             .SetLink(gameObject);
+    }
 
+    void PunchScale()
+    {
         transform.DOKill(true);
         transform.localScale = _restScale;
         transform.DOPunchScale(_restScale * punchScale, flashDuration * 2f, 6, 0.5f).SetLink(gameObject);
     }
 
-    float SustainedStrength()
+    float CurrentGlowStrength()
     {
-        if (!_sustained) return 0f;
+        if (!_glowing) return 0f;
 
-        float wave = 0.5f + 0.5f * Mathf.Sin(_sustainedTime * _sustainedSpeed);
+        float wave = 0.5f + 0.5f * Mathf.Sin(_glowElapsed * _glowPulseSpeed);
         return Mathf.Lerp(sustainedPulseFloor, 1f, wave);
     }
 
-    void Apply()
+    void PaintRenderers()
     {
-        bool idle = !_sustained && _flashBlend <= 0f;
-        float strength = SustainedStrength();
-        Color emission = flashColor * _flashBlend + _sustainedColor * strength;
+        bool nothingToShow = !_glowing && _hitFlashStrength <= 0f;
+        if (nothingToShow)
+        {
+            RestoreOriginalLook();
+            return;
+        }
+
+        float glowStrength = CurrentGlowStrength();
+        Color emission = flashColor * _hitFlashStrength + _glowColor * glowStrength;
 
         for (int i = 0; i < renderers.Length; i++)
         {
-            var target = renderers[i];
-            if (target == null) continue;
+            if (renderers[i] == null) continue;
 
-            if (idle)
-            {
-                target.SetPropertyBlock(null);
-                continue;
-            }
-
-            target.GetPropertyBlock(_block);
+            Color tintedBody = Color.Lerp(_originalBodyColors[i], _originalBodyColors[i] * _glowBodyTint, glowStrength);
+            renderers[i].GetPropertyBlock(_block);
             _block.SetColor(EmissionColorId, emission);
-            _block.SetColor(BaseColorId, Color.Lerp(_baseColors[i], _baseColors[i] * _sustainedBodyTint, strength));
-            target.SetPropertyBlock(_block);
+            _block.SetColor(BaseColorId, tintedBody);
+            renderers[i].SetPropertyBlock(_block);
         }
+    }
+
+    void RestoreOriginalLook()
+    {
+        foreach (var target in renderers)
+            if (target != null) target.SetPropertyBlock(null);
+    }
+
+    Color[] ReadOriginalBodyColors()
+    {
+        var colors = new Color[renderers.Length];
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            var material = renderers[i] != null ? renderers[i].sharedMaterial : null;
+            colors[i] = material != null && material.HasProperty(BaseColorId) ? material.GetColor(BaseColorId) : Color.white;
+        }
+        return colors;
     }
 }

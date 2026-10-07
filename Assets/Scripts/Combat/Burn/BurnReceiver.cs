@@ -11,29 +11,30 @@ public class BurnReceiver : MonoBehaviour
     HitFlash _flash;
     GameObject _flame;
     BurnIndicator _indicator;
-    int _stacks;
-    float _decayTimer;
-    float _burnTimer;
-    float _tickTimer;
 
-    public bool IsBurning => _burnTimer > 0f;
+    int _stacks;
+    float _secondsUntilStacksFade;
+    float _secondsOfBurnLeft;
+    float _secondsUntilNextTick;
+
+    public BurnDefinition Burn => _burn;
+    public bool IsBurning => _secondsOfBurnLeft > 0f;
     public int Stacks => _stacks;
     public int StacksToIgnite => _burn != null ? _burn.StacksToIgnite(isBoss) : 1;
-    public float FillNormalized => IsBurning ? 1f : Mathf.Clamp01(_stacks / (float)StacksToIgnite);
-    public BurnDefinition Burn => _burn;
+    public float IgnitionProgress => IsBurning ? 1f : Mathf.Clamp01(_stacks / (float)StacksToIgnite);
 
     public event Action<BurnReceiver> OnStacksChanged;
     public event Action<BurnReceiver> OnIgnited;
     public event Action<BurnReceiver> OnExtinguished;
 
-    public static void ApplyStack(GameObject target, BurnDefinition burn, int stacks = 1)
+    public static void AddStacks(GameObject target, BurnDefinition burn, int stacks)
     {
         if (target == null || burn == null || stacks <= 0) return;
 
         if (!target.TryGetComponent<BurnReceiver>(out var receiver))
             receiver = target.AddComponent<BurnReceiver>();
 
-        receiver.AddStacks(burn, stacks);
+        receiver.ReceiveStacks(burn, stacks);
     }
 
     public static bool IsTargetBurning(GameObject target)
@@ -50,94 +51,117 @@ public class BurnReceiver : MonoBehaviour
         if (_indicator != null) Destroy(_indicator.gameObject);
     }
 
-    void AddStacks(BurnDefinition burn, int stacks)
+    void Update()
     {
-        if (IsBurning) return;
-        if (_life != null && _life.IsDead) return;
+        if (IsBurning) KeepBurning();
+        else if (_stacks > 0) FadeStacksWhenNotHitForAWhile();
+    }
+
+    void ReceiveStacks(BurnDefinition burn, int stacks)
+    {
+        bool stacksAreIgnoredWhileBurning = IsBurning;
+        if (stacksAreIgnoredWhileBurning || IsDead) return;
 
         _burn = burn;
         _stacks += stacks;
-        _decayTimer = burn.stackDecaySeconds;
-        EnsureIndicator();
+        _secondsUntilStacksFade = burn.stackDecaySeconds;
+        ShowIndicator();
 
-        if (_stacks >= burn.StacksToIgnite(isBoss))
-        {
-            Ignite();
-            return;
-        }
-
-        OnStacksChanged?.Invoke(this);
+        if (_stacks >= StacksToIgnite) Ignite();
+        else NotifyStacksChanged();
     }
 
     void Ignite()
     {
         _stacks = 0;
-        _burnTimer = _burn.burnDuration;
-        _tickTimer = _burn.tickInterval;
-        SetFlameVisible(true);
-        if (_flash != null) _flash.SetSustainedGlow(_burn.burnTint, _burn.burnBodyTint, _burn.tintPulseSpeed);
+        _secondsOfBurnLeft = _burn.burnDuration;
+        _secondsUntilNextTick = _burn.tickInterval;
+
+        ShowFlame();
+        if (_flash != null) _flash.StartGlowing(_burn.burnTint, _burn.burnBodyTint, _burn.tintPulseSpeed);
+
         OnIgnited?.Invoke(this);
-        OnStacksChanged?.Invoke(this);
+        NotifyStacksChanged();
     }
 
-    void Update()
+    void KeepBurning()
     {
-        if (IsBurning)
-        {
-            UpdateBurn();
-            return;
-        }
+        _secondsOfBurnLeft -= Time.deltaTime;
+        DealBurnTicksThatAreDue();
 
-        if (_stacks <= 0) return;
-
-        _decayTimer -= Time.deltaTime;
-        if (_decayTimer > 0f) return;
-
-        _stacks = 0;
-        OnStacksChanged?.Invoke(this);
+        if (_secondsOfBurnLeft <= 0f) Extinguish();
     }
 
-    void UpdateBurn()
+    void DealBurnTicksThatAreDue()
     {
-        _burnTimer -= Time.deltaTime;
-        _tickTimer -= Time.deltaTime;
+        _secondsUntilNextTick -= Time.deltaTime;
 
-        while (_tickTimer <= 0f)
+        while (_secondsUntilNextTick <= 0f)
         {
-            _tickTimer += _burn.tickInterval;
+            _secondsUntilNextTick += _burn.tickInterval;
             if (_life != null) _life.Damage(_burn.DamagePerTick);
         }
-
-        if (_burnTimer > 0f) return;
-
-        _burnTimer = 0f;
-        _stacks = 0;
-        SetFlameVisible(false);
-        if (_flash != null) _flash.ClearSustainedGlow();
-        OnExtinguished?.Invoke(this);
-        OnStacksChanged?.Invoke(this);
     }
 
-    void EnsureIndicator()
+    void Extinguish()
+    {
+        _secondsOfBurnLeft = 0f;
+        _stacks = 0;
+
+        HideFlame();
+        if (_flash != null) _flash.StopGlowing();
+
+        OnExtinguished?.Invoke(this);
+        NotifyStacksChanged();
+    }
+
+    void FadeStacksWhenNotHitForAWhile()
+    {
+        _secondsUntilStacksFade -= Time.deltaTime;
+        if (_secondsUntilStacksFade > 0f) return;
+
+        _stacks = 0;
+        NotifyStacksChanged();
+    }
+
+    bool IsDead => _life != null && _life.IsDead;
+
+    void NotifyStacksChanged() => OnStacksChanged?.Invoke(this);
+
+    void ShowIndicator()
     {
         if (_indicator != null || _burn.indicatorPrefab == null) return;
 
         _indicator = Instantiate(_burn.indicatorPrefab);
-        _indicator.Bind(this);
+        _indicator.Track(this);
     }
 
-    void SetFlameVisible(bool visible)
+    void ShowFlame()
     {
-        if (visible && _flame == null && _burn != null && _burn.flamePrefab != null)
-        {
-            _flame = Instantiate(_burn.flamePrefab, transform);
-            Vector3 scale = transform.lossyScale;
-            _flame.transform.localScale = new Vector3(SafeInverse(scale.x), SafeInverse(scale.y), SafeInverse(scale.z));
-            _flame.transform.position = transform.position + _burn.flameOffset;
-            _flame.transform.localRotation = Quaternion.identity;
-        }
+        if (_flame == null) _flame = SpawnFlameOverHead();
+        if (_flame != null) _flame.SetActive(true);
+    }
 
-        if (_flame != null) _flame.SetActive(visible);
+    void HideFlame()
+    {
+        if (_flame != null) _flame.SetActive(false);
+    }
+
+    GameObject SpawnFlameOverHead()
+    {
+        if (_burn.flamePrefab == null) return null;
+
+        var flame = Instantiate(_burn.flamePrefab, transform);
+        flame.transform.localScale = InverseOfWorldScale(transform);
+        flame.transform.position = transform.position + _burn.flameOffset;
+        flame.transform.localRotation = Quaternion.identity;
+        return flame;
+    }
+
+    static Vector3 InverseOfWorldScale(Transform parent)
+    {
+        Vector3 scale = parent.lossyScale;
+        return new Vector3(SafeInverse(scale.x), SafeInverse(scale.y), SafeInverse(scale.z));
     }
 
     static float SafeInverse(float value) => Mathf.Approximately(value, 0f) ? 1f : 1f / value;
