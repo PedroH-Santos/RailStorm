@@ -24238,7 +24238,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.2303658, y: 4.5095363, z: -12.189253}
+  m_LocalPosition: {x: 1.2303648, y: 4.509535, z: -12.189254}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -24597,8 +24597,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StarterAssets.PlayerController
   splineContainer: {fileID: 717960645}
   startT: 0
-  knotThreshold: 0.8
-  minDecisionDot: 0.3
 --- !u!143 &337154706
 CharacterController:
   m_ObjectHideFlags: 0

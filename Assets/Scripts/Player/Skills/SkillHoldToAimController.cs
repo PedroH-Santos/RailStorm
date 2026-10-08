@@ -71,6 +71,7 @@ public class SkillHoldToAimController : MonoBehaviour
 
         if (_marker == null) return;
         _marker.MoveTo(AimPoint);
+        _marker.SetRangeProgress(distance / _maxDistance);
         _marker.SetReachedMax(distance >= _maxDistance);
     }
 
