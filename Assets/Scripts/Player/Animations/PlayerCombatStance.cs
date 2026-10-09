@@ -24,7 +24,7 @@ public class PlayerCombatStance : MonoBehaviour
 
     void Start()
     {
-        var spawner = FindFirstObjectByType<EnemySpawner>();
+        var spawner = FindAnyObjectByType<EnemySpawner>();
         bool joinedDuringAWave = spawner != null && spawner.WaveInProgress;
         if (joinedDuringAWave) _animation.EnterCombatStance();
     }

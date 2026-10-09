@@ -45,10 +45,10 @@ public class MinimapUI : MonoBehaviour
 
     void Awake()
     {
-        if (splineContainer == null) splineContainer = FindFirstObjectByType<SplineContainer>();
+        if (splineContainer == null) splineContainer = FindAnyObjectByType<SplineContainer>();
         if (player == null)
         {
-            var controller = FindFirstObjectByType<PlayerController>();
+            var controller = FindAnyObjectByType<PlayerController>();
             if (controller != null) player = controller.transform;
         }
 

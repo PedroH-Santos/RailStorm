@@ -15,7 +15,7 @@ public class ChooseWayScreenUI : MonoBehaviour
         {
             if (_instance == null)
             {
-                var found = FindFirstObjectByType<ChooseWayScreenUI>(FindObjectsInactive.Include);
+                var found = FindAnyObjectByType<ChooseWayScreenUI>(FindObjectsInactive.Include);
                 if (found != null)
                 {
                     found.gameObject.SetActive(true);

@@ -15,8 +15,8 @@ public class SkillBarUI : MonoBehaviour
 
     void Awake()
     {
-        if (handler == null) handler = FindFirstObjectByType<PlayerSkillHandler>();
-        if (caster == null) caster = FindFirstObjectByType<PlayerSkillCaster>();
+        if (handler == null) handler = FindAnyObjectByType<PlayerSkillHandler>();
+        if (caster == null) caster = FindAnyObjectByType<PlayerSkillCaster>();
     }
 
     void OnEnable()

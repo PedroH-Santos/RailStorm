@@ -3,9 +3,12 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerAnimationController))]
 public class PlayerHandFlame : MonoBehaviour
 {
-    [SerializeField] private ParticleSystem handFlamePrefab;
+    [SerializeField] private LowPolyFlame handFlamePrefab;
     [SerializeField] private Transform handFlameBone;
-    [SerializeField] private Vector3 handFlameOffset = new(0f, 0.25f, 0f);
+    [Tooltip("Centro da mão no espaço do osso. A base da chama nasce aqui e acompanha a mão quando ela gira.")]
+    [SerializeField] private Vector3 palmCenterInBoneSpace = new(0f, 0.0085f, 0.0015f);
+    [Tooltip("Ajuste fino em unidades do mundo, somado depois do centro da mão.")]
+    [SerializeField] private Vector3 offsetFromPalm = Vector3.zero;
     [SerializeField] private float handFlameScale = 0.7f;
     [Tooltip("Trecho (tempo normalizado) da Celebrate com fogo na mão: frames 13–34 de 58.")]
     [SerializeField] private Vector2 celebrateFlameWindow = new(13f / 58f, 34f / 58f);
@@ -13,7 +16,7 @@ public class PlayerHandFlame : MonoBehaviour
     [SerializeField] private Vector2 quickCelebrateFlameWindow = new(8f / 30f, 20f / 30f);
 
     PlayerAnimationController _animation;
-    ParticleSystem _flame;
+    LowPolyFlame _flame;
     bool _burning;
 
     void Awake()
@@ -27,7 +30,6 @@ public class PlayerHandFlame : MonoBehaviour
 
         _flame = Instantiate(handFlamePrefab);
         _flame.transform.localScale = Vector3.one * handFlameScale;
-        _flame.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
     }
 
     void OnDestroy()
@@ -39,7 +41,7 @@ public class PlayerHandFlame : MonoBehaviour
     {
         if (_flame == null || handFlameBone == null) return;
 
-        _flame.transform.position = handFlameBone.position + handFlameOffset;
+        _flame.transform.position = handFlameBone.TransformPoint(palmCenterInBoneSpace) + offsetFromPalm;
         SetBurning(IsCelebratingWithFire());
     }
 
@@ -59,7 +61,7 @@ public class PlayerHandFlame : MonoBehaviour
         if (burning == _burning) return;
         _burning = burning;
 
-        if (burning) _flame.Play(true);
-        else _flame.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        if (burning) _flame.Ignite();
+        else _flame.Extinguish();
     }
 }

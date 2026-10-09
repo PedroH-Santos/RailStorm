@@ -21,6 +21,7 @@ public class PlayerSkillCaster : MonoBehaviour
     SkillHoldToAimController _holdToAim;
     PlayerAnimationController _animation;
     bool[] _slotIsCasting;
+    SkillCharges _chargesWaitingForAim;
 
     public static PlayerSkillCaster Instance { get; private set; }
 
@@ -47,6 +48,7 @@ public class PlayerSkillCaster : MonoBehaviour
         StopAllCoroutines();
         Array.Clear(_slotIsCasting, 0, _slotIsCasting.Length);
         _holdToAim.Cancel();
+        LetChargeWindowRun();
     }
 
     void Update()
@@ -91,12 +93,14 @@ public class PlayerSkillCaster : MonoBehaviour
     IEnumerator AimThenCast(SkillSlot slot, OwnedSkill skill, IHoldToAimSkill holdToAimSkill)
     {
         _holdToAim.Begin(holdToAimSkill, skill.Level);
+        KeepChargeWindowOpenWhileAiming(slot.Charges);
 
         while (bindings[slot.Index].IsHeld())
         {
             if (!CanKeepAiming(slot, skill))
             {
                 _holdToAim.Cancel();
+                LetChargeWindowRun();
                 yield break;
             }
             yield return null;
@@ -105,6 +109,21 @@ public class PlayerSkillCaster : MonoBehaviour
         Vector3 groundPoint = _holdToAim.Release();
         yield return WaitForAttackSwing(skill);
         _skills.TryCast(slot.Index, SkillCastContext.AtGroundPoint(_playerAim.FirePoint, _playerAim.FacingDirection, WeaponBurn, groundPoint));
+        LetChargeWindowRun();
+    }
+
+    void KeepChargeWindowOpenWhileAiming(SkillCharges charges)
+    {
+        _chargesWaitingForAim = charges;
+        _chargesWaitingForAim.HoldWindowOpen();
+    }
+
+    void LetChargeWindowRun()
+    {
+        if (_chargesWaitingForAim == null) return;
+
+        _chargesWaitingForAim.LetWindowRun();
+        _chargesWaitingForAim = null;
     }
 
     static bool CanKeepAiming(SkillSlot slot, OwnedSkill skill)

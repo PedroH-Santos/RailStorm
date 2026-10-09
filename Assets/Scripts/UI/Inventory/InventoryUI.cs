@@ -20,13 +20,13 @@ public class InventoryUI : MonoBehaviour
     void Awake()
     {
         if (weaponHandler == null)
-            weaponHandler = FindFirstObjectByType<PlayerCarWeaponHandler>();
+            weaponHandler = FindAnyObjectByType<PlayerCarWeaponHandler>();
         if (itemHandler == null)
-            itemHandler = FindFirstObjectByType<PlayerItemHandler>();
+            itemHandler = FindAnyObjectByType<PlayerItemHandler>();
         if (perkHandler == null)
-            perkHandler = FindFirstObjectByType<StarterAssets.PlayerPerkHandler>();
+            perkHandler = FindAnyObjectByType<StarterAssets.PlayerPerkHandler>();
         if (playerSkillHandler == null)
-            playerSkillHandler = FindFirstObjectByType<PlayerSkillHandler>();
+            playerSkillHandler = FindAnyObjectByType<PlayerSkillHandler>();
 
         RegisterSection(SectionWeapons);
         RegisterSection(SectionPerks);

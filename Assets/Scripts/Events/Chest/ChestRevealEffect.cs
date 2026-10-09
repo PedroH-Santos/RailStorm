@@ -16,7 +16,7 @@ public class ChestRevealEffect : MonoBehaviour
         {
             if (_instance == null)
             {
-                var found = FindFirstObjectByType<ChestRevealEffect>(FindObjectsInactive.Include);
+                var found = FindAnyObjectByType<ChestRevealEffect>(FindObjectsInactive.Include);
                 if (found != null && !found.gameObject.activeSelf)
                     found.gameObject.SetActive(true);
             }
@@ -65,7 +65,7 @@ public class ChestRevealEffect : MonoBehaviour
         btnExile.onClick.AddListener(() => Decide(btnExile, ExileAnimation, _onExile));
         btnSkip.onClick.AddListener(() => Decide(btnSkip, SkipAnimation, _onSkip));
 
-        if (playerStats == null) playerStats = FindFirstObjectByType<StarterAssets.PlayerStatsAggregator>();
+        if (playerStats == null) playerStats = FindAnyObjectByType<StarterAssets.PlayerStatsAggregator>();
     }
 
     public void Show(ItemDefinition item, IReadOnlyList<ItemDefinition> reelPool, Action onTake, Action onExile, Action onSkip)

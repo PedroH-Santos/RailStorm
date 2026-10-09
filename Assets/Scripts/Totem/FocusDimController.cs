@@ -12,7 +12,7 @@ public class FocusDimController : MonoBehaviour
         {
             if (_instance == null)
             {
-                var found = FindFirstObjectByType<FocusDimController>(FindObjectsInactive.Include);
+                var found = FindAnyObjectByType<FocusDimController>(FindObjectsInactive.Include);
                 if (found != null)
                 {
                     found.gameObject.SetActive(true);

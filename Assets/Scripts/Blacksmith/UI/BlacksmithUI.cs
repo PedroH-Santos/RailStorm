@@ -14,7 +14,7 @@ public class BlacksmithUI : MonoBehaviour
         get
         {
             if (_instance == null)
-                _instance = FindFirstObjectByType<BlacksmithUI>(FindObjectsInactive.Include);
+                _instance = FindAnyObjectByType<BlacksmithUI>(FindObjectsInactive.Include);
 
             return _instance;
         }

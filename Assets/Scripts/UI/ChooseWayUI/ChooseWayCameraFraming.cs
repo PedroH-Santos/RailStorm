@@ -10,7 +10,7 @@ public class ChooseWayCameraFraming : MonoBehaviour
         {
             if (_instance == null)
             {
-                var found = FindFirstObjectByType<ChooseWayCameraFraming>(FindObjectsInactive.Include);
+                var found = FindAnyObjectByType<ChooseWayCameraFraming>(FindObjectsInactive.Include);
                 if (found != null)
                 {
                     found.gameObject.SetActive(true);

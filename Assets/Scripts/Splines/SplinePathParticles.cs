@@ -12,7 +12,7 @@ public class SplinePathParticles : MonoBehaviour
         {
             if (_instance == null)
             {
-                var found = FindFirstObjectByType<SplinePathParticles>(FindObjectsInactive.Include);
+                var found = FindAnyObjectByType<SplinePathParticles>(FindObjectsInactive.Include);
                 if (found != null)
                 {
                     found.gameObject.SetActive(true);

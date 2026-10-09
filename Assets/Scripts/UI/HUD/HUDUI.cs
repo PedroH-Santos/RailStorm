@@ -66,12 +66,12 @@ public class HUDUI : MonoBehaviour
         _group = GetComponent<CanvasGroup>();
         if (_group == null) _group = gameObject.AddComponent<CanvasGroup>();
 
-        if (stats == null) stats = FindFirstObjectByType<PlayerStatsAggregator>();
-        if (spawner == null) spawner = FindFirstObjectByType<EnemySpawner>();
-        if (weaponHandler == null) weaponHandler = FindFirstObjectByType<PlayerCarWeaponHandler>();
-        if (perkHandler == null) perkHandler = FindFirstObjectByType<PlayerPerkHandler>();
-        if (itemHandler == null) itemHandler = FindFirstObjectByType<PlayerItemHandler>();
-        if (playerSkillHandler == null) playerSkillHandler = FindFirstObjectByType<PlayerSkillHandler>();
+        if (stats == null) stats = FindAnyObjectByType<PlayerStatsAggregator>();
+        if (spawner == null) spawner = FindAnyObjectByType<EnemySpawner>();
+        if (weaponHandler == null) weaponHandler = FindAnyObjectByType<PlayerCarWeaponHandler>();
+        if (perkHandler == null) perkHandler = FindAnyObjectByType<PlayerPerkHandler>();
+        if (itemHandler == null) itemHandler = FindAnyObjectByType<PlayerItemHandler>();
+        if (playerSkillHandler == null) playerSkillHandler = FindAnyObjectByType<PlayerSkillHandler>();
 
         if (healthFill != null) _healthColor = healthFill.color;
 

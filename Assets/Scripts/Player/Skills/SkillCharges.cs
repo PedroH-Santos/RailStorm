@@ -7,6 +7,7 @@ public class SkillCharges
 
     float _secondsLeftToUseTheRest;
     bool _hasTimeLimit;
+    bool _windowHeldOpen;
 
     public bool HasChargesLeft => Remaining > 0;
 
@@ -15,6 +16,10 @@ public class SkillCharges
         Total = Mathf.Max(1, total);
         Remaining = Total;
     }
+
+    public void HoldWindowOpen() => _windowHeldOpen = true;
+
+    public void LetWindowRun() => _windowHeldOpen = false;
 
     public void SpendOne(float secondsToUseTheRest)
     {
@@ -27,7 +32,7 @@ public class SkillCharges
 
     public bool RanOutOfTime(float deltaTime)
     {
-        if (!HasChargesLeft || !_hasTimeLimit) return false;
+        if (!HasChargesLeft || !_hasTimeLimit || _windowHeldOpen) return false;
 
         _secondsLeftToUseTheRest -= deltaTime;
         if (_secondsLeftToUseTheRest > 0f) return false;

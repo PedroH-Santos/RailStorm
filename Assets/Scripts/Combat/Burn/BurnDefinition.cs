@@ -15,7 +15,7 @@ public class BurnDefinition : ScriptableObject
     [Min(0.1f)] public float tickInterval = 1f;
 
     [Header("Chama sobre o inimigo")]
-    public GameObject flamePrefab;
+    public LowPolyFlame flamePrefab;
     public Vector3 flameOffset = new Vector3(0f, 2f, 0f);
 
     [Header("Indicador de acúmulos")]

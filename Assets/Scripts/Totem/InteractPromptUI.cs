@@ -10,7 +10,7 @@ public class InteractPromptUI : MonoBehaviour
         {
             if (_instance == null)
             {
-                var found = FindFirstObjectByType<InteractPromptUI>(FindObjectsInactive.Include);
+                var found = FindAnyObjectByType<InteractPromptUI>(FindObjectsInactive.Include);
                 if (found != null && !found.gameObject.activeSelf)
                     found.gameObject.SetActive(true);
             }

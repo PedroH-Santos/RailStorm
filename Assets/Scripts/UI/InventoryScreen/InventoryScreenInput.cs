@@ -15,7 +15,7 @@ public class InventoryScreenInput : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        if (player == null) player = FindFirstObjectByType<PlayerController>();
+        if (player == null) player = FindAnyObjectByType<PlayerController>();
         if (stats == null && player != null) stats = player.GetComponent<PlayerStatsAggregator>();
     }
 

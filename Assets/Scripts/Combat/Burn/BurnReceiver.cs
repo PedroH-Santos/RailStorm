@@ -9,7 +9,7 @@ public class BurnReceiver : MonoBehaviour
     BurnDefinition _burn;
     LifeSystem _life;
     HitFlash _flash;
-    GameObject _flame;
+    LowPolyFlame _flame;
     BurnIndicator _indicator;
 
     int _stacks;
@@ -139,15 +139,15 @@ public class BurnReceiver : MonoBehaviour
     void ShowFlame()
     {
         if (_flame == null) _flame = SpawnFlameOverHead();
-        if (_flame != null) _flame.SetActive(true);
+        if (_flame != null) _flame.Ignite();
     }
 
     void HideFlame()
     {
-        if (_flame != null) _flame.SetActive(false);
+        if (_flame != null) _flame.Extinguish();
     }
 
-    GameObject SpawnFlameOverHead()
+    LowPolyFlame SpawnFlameOverHead()
     {
         if (_burn.flamePrefab == null) return null;
 

@@ -17,7 +17,7 @@ public class TooltipUI : MonoBehaviour
         {
             if (_instance == null)
             {
-                var found = FindFirstObjectByType<TooltipUI>(FindObjectsInactive.Include);
+                var found = FindAnyObjectByType<TooltipUI>(FindObjectsInactive.Include);
                 if (found != null && !found.gameObject.activeSelf)
                     found.gameObject.SetActive(true);
                 if (_instance == null && found != null)
